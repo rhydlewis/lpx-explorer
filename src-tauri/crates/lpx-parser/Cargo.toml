@@ -10,3 +10,7 @@ name = "lpx_parser"
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
+
+[dev-dependencies]
+sha2 = "0.10"
+tempfile = "3"
