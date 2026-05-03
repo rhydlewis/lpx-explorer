@@ -30,3 +30,20 @@ Currently undecided between `bd` (beads, as flowcus-v2 uses) and a plain `TASKS.
 ## When stuck
 
 Read the Python source-of-truth at `/Users/rhyd/code/lpx-toolkit/lpx_inspect.py`. Don't re-derive the `.logicx` format from first principles — every offset and signature whitelist is encoded there.
+
+## Quick Reference
+
+```bash
+npm run tauri:dev    # Full Tauri dev mode (Rust + frontend)
+npm run dev          # Vite dev server only (Tauri calls this automatically)
+npm test             # Vitest single run
+npm run test:watch   # Vitest watch mode
+npm run lint         # eslint .
+npm run typecheck    # tsc --noEmit
+npm run quality      # typecheck + lint + test
+cargo test           # Rust tests (run from src-tauri/ or src-tauri/crates/<crate>)
+```
+
+Pre-commit hook (`.husky/pre-commit`) runs typecheck, lint-staged on TS/TSX files (`eslint --max-warnings=0`), and the full test suite. Bypass with `git commit --no-verify` for emergencies only.
+
+Rust toolchain pinned in `rust-toolchain.toml` (channel `1.88`, the flowcus-v2 floor).
