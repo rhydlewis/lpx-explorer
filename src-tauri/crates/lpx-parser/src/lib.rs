@@ -70,6 +70,13 @@ pub fn find_aus(raw: &[u8]) -> Vec<AURef> {
             let type_le: [u8; 4] = raw[off..off + 4].try_into().expect("4 bytes");
             let sub_le: [u8; 4] = raw[off + 4..off + 8].try_into().expect("4 bytes");
 
+            if !is_printable_4cc(&mfr_le)
+                || !is_printable_4cc(&type_le)
+                || !is_printable_4cc(&sub_le)
+            {
+                continue;
+            }
+
             found.push(AURef {
                 type_code: reverse_4cc(type_le),
                 subtype: reverse_4cc(sub_le),
@@ -83,6 +90,14 @@ pub fn find_aus(raw: &[u8]) -> Vec<AURef> {
 
 fn find_subslice(haystack: &[u8], needle: &[u8; 4]) -> Option<usize> {
     haystack.windows(4).position(|w| w == needle)
+}
+
+/// `ProjectData` retains binary noise that occasionally contains the AU
+/// type tags by chance. Real descriptors are flanked by printable-ASCII
+/// 4CCs (manufacturer + subtype), so any candidate whose neighbouring
+/// bytes contain a non-printable byte is discarded.
+fn is_printable_4cc(bytes: &[u8; 4]) -> bool {
+    bytes.iter().all(|&b| (0x20..=0x7e).contains(&b))
 }
 
 #[cfg(test)]
@@ -121,5 +136,67 @@ mod tests {
         assert_eq!(au.manufacturer, "Toon");
         assert_eq!(au.offset, 12, "type-code anchor sits at byte 12");
         assert_eq!(au.fingerprint(), "aumu/EZk2/Toon");
+    }
+
+    /// `ProjectData`-shaped fixture: real bundles are ~MB of binary noise
+    /// with AU descriptors interleaved. The noisy regions occasionally
+    /// contain spurious `umua` / `xfua` / `fmua` byte sequences whose
+    /// surrounding bytes aren't valid 4CCs — these must be filtered out
+    /// (mirrors the printable-ASCII guard in lpx_inspect.py:717-718).
+    ///
+    /// Layout:
+    ///   [0..16)   binary noise containing a planted `umua` at offset 4
+    ///             whose neighbouring bytes are non-printable (NUL / 0xFF).
+    ///   [16..36)  one real AU descriptor (`aufx` / `Comp` / `Yamh`).
+    ///   [36..56)  more binary noise containing a planted `xfua` whose
+    ///             neighbouring bytes include a 0x00 byte.
+    fn project_data_shaped_fixture() -> Vec<u8> {
+        let mut bytes = Vec::new();
+
+        // [0..4)  4 bytes of non-printable noise — would be a "manufacturer"
+        //          for the planted false-positive `umua` if the filter were
+        //          missing.
+        bytes.extend_from_slice(&[0x00, 0xFF, 0x01, 0x7F]);
+        // [4..8)  planted false-positive type tag.
+        bytes.extend_from_slice(b"umua");
+        // [8..12) 4 bytes of non-printable "subtype" noise.
+        bytes.extend_from_slice(&[0xFE, 0x00, 0x10, 0x7F]);
+        // [12..16) 4 bytes padding before the real descriptor.
+        bytes.extend_from_slice(b"PAD_");
+
+        // Real descriptor at offset 20:
+        //   [16..20) name region
+        //   [20..24) manufacturer LE 'hmaY' -> 'Yamh'
+        //   [24..28) type LE 'xfua'         -> 'aufx'
+        //   [28..32) subtype LE 'pmoC'      -> 'Comp'
+        bytes.extend_from_slice(b"NAME"); // name region
+        bytes.extend_from_slice(b"hmaY");
+        bytes.extend_from_slice(b"xfua");
+        bytes.extend_from_slice(b"pmoC");
+
+        // Trailing noise containing a planted false-positive `xfua` with
+        // non-printable surrounding bytes.
+        bytes.extend_from_slice(&[0x00, 0x01, 0x02, 0x03]);
+        bytes.extend_from_slice(b"xfua");
+        bytes.extend_from_slice(&[0xFF, 0xFE, 0xFD, 0xFC]);
+        bytes.extend_from_slice(&[0xAA, 0xBB, 0xCC, 0xDD]);
+
+        bytes
+    }
+
+    #[test]
+    fn rejects_descriptors_with_non_printable_4ccs() {
+        let bytes = project_data_shaped_fixture();
+
+        let found = find_aus(&bytes);
+
+        assert_eq!(
+            found.len(),
+            1,
+            "expected exactly one AURef (the real descriptor); got {:?}",
+            found
+        );
+        assert_eq!(found[0].fingerprint(), "aufx/Comp/Yamh");
+        assert_eq!(found[0].offset, 24);
     }
 }
