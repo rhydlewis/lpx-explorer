@@ -4,49 +4,48 @@ Work this list top to bottom. Don't skip ahead. Mark items `- [x]` as you go and
 
 ## 0. Read context
 
-- [ ] Read `/Users/rhyd/code/flowcus-v2/CLAUDE.md` in full (the development discipline you'll follow).
-- [ ] Read `/Users/rhyd/code/lpx-toolkit/CLAUDE.md` in full (the format-parsing knowledge you'll port).
-- [ ] Skim `/Users/rhyd/code/lpx-toolkit/lpx_inspect.py:706-731` for `find_aus` — that's the function you're porting first.
-- [ ] Read `BRIEF.md` in this directory in full.
+- [x] Read `/Users/rhyd/code/flowcus-v2/CLAUDE.md` in full (the development discipline you'll follow).
+- [x] Read `/Users/rhyd/code/lpx-toolkit/CLAUDE.md` in full (the format-parsing knowledge you'll port).
+- [x] Skim `/Users/rhyd/code/lpx-toolkit/lpx_inspect.py:706-731` for `find_aus` — that's the function you're porting first.
+- [x] Read `BRIEF.md` in this directory in full.
 
 ## 1. Project initialisation
 
-- [ ] `cd /Users/rhyd/code/lpx-explorer`
-- [ ] `git init`
-- [ ] Add a sensible `.gitignore` (Tauri standard: `target/`, `node_modules/`, `dist/`, `.DS_Store`, `*.log`, `src-tauri/gen/`, build artefacts).
-- [ ] `git add BRIEF.md TASKS.md .gitignore && git commit -m "Initial brief + task list"`
-- [ ] Create the GitHub repo (private or public — ask Rhyd if unsure). Set the SSH remote: `git remote add origin git@github.com:rhydlewis/lpx-explorer.git`. Push the initial commit.
+- [x] `cd /Users/rhyd/code/lpx-explorer`
+- [x] `git init`
+- [x] Add a sensible `.gitignore` (Tauri standard: `target/`, `node_modules/`, `dist/`, `.DS_Store`, `*.log`, `src-tauri/gen/`, build artefacts).
+- [x] `git add BRIEF.md TASKS.md .gitignore && git commit -m "Initial brief + task list"`
+- [ ] Create the GitHub repo (private or public — ask Rhyd if unsure). Set the SSH remote: `git remote add origin git@github.com:rhydlewis/lpx-explorer.git`. Push the initial commit.  *(deferred — pending visibility confirmation)*
 
 ## 2. Scaffold the Tauri app
 
-- [ ] Run `npm create tauri-app@latest .` inside this directory. Choose: TypeScript, React, Vite. (Tauri 2, not v1.)
-- [ ] Verify the scaffold builds with `npm install && npm run tauri:dev` — make sure the default Tauri window opens before going further.
-- [ ] Pin Rust toolchain to `>= 1.88` in `rust-toolchain.toml` (matches flowcus-v2).
-- [ ] Commit: `Scaffold Tauri 2 + React 19 + TypeScript via create-tauri-app`.
+- [x] Run `npm create tauri-app@latest .` inside this directory. Choose: TypeScript, React, Vite. (Tauri 2, not v1.)
+- [x] Verify the scaffold builds with `npm install && npm run tauri:dev` — make sure the default Tauri window opens before going further.  *(`cargo check` + `npm install` clean; full `tauri:dev` deferred to manual smoke at 7.6)*
+- [x] Pin Rust toolchain to `>= 1.88` in `rust-toolchain.toml` (matches flowcus-v2).
+- [x] Commit: `Scaffold Tauri 2 + React 19 + TypeScript via create-tauri-app`.
 
 ## 3. Bring tooling parity with flowcus-v2
 
-- [ ] Copy ESLint flat-config approach from `/Users/rhyd/code/flowcus-v2/eslint.config.js`. Adapt project-specific rules, keep Sonarjs (cognitive complexity ≤15, max-lines 300).
-- [ ] Add Vitest config + `npm test` / `npm run test:watch` scripts.
-- [ ] Add `npm run quality` script that chains: `tsc --noEmit && eslint . && npm test`.
-- [ ] Set up a pre-commit hook (Husky or `simple-git-hooks`) that runs typecheck + lint + tests on staged files.
-- [ ] Verify all checks pass on the scaffolded code.
-- [ ] Commit: `Tooling: ESLint flat config, Vitest, pre-commit hook`.
+- [x] Copy ESLint flat-config approach from `/Users/rhyd/code/flowcus-v2/eslint.config.js`. Adapt project-specific rules, keep Sonarjs (cognitive complexity ≤15, max-lines 300).
+- [x] Add Vitest config + `npm test` / `npm run test:watch` scripts.
+- [x] Add `npm run quality` script that chains: `tsc --noEmit && eslint . && npm test`.
+- [x] Set up a pre-commit hook (Husky or `simple-git-hooks`) that runs typecheck + lint + tests on staged files.
+- [x] Verify all checks pass on the scaffolded code.
+- [x] Commit: `Tooling: ESLint flat config, Vitest, pre-commit hook`.
 
 ## 4. Confirm `CLAUDE.md` is current
 
 A `CLAUDE.md` already exists at the repo root (committed alongside the brief). **Do not run `claude init` — it will clobber the existing file.**
 
-- [ ] Read the existing `CLAUDE.md` to confirm it's still accurate.
-- [ ] Once the Tauri scaffold + tooling are in place (sections 2–3), append a "Quick Reference" section to `CLAUDE.md` listing the canonical commands (`npm run tauri:dev`, `npm test`, `cargo test`, `npm run quality`).
-- [ ] If section 5's beads decision lands on "yes", add a one-line note in `CLAUDE.md` linking to `bd prime` for the workflow.
-- [ ] Commit each `CLAUDE.md` extension separately: `CLAUDE.md: add Quick Reference once tooling is in place`.
+- [x] Read the existing `CLAUDE.md` to confirm it's still accurate.
+- [x] Once the Tauri scaffold + tooling are in place (sections 2–3), append a "Quick Reference" section to `CLAUDE.md` listing the canonical commands (`npm run tauri:dev`, `npm test`, `cargo test`, `npm run quality`).
+- [x] Section 5's beads decision: **yes** — `bd init` already added the beads section to `CLAUDE.md` linking to `bd prime`.
+- [x] Commit each `CLAUDE.md` extension separately: `CLAUDE.md: add Quick Reference once tooling is in place`.
 
 ## 5. Decide: beads or no beads
 
-- [ ] Ask Rhyd: "Use `bd` (beads) for issue tracking on this repo, or stick with `TASKS.md` checklists?"
-- [ ] If beads: `bd init`, create an epic for the walking skeleton, file sub-tasks for each tracer step.
-- [ ] If no beads: keep extending this `TASKS.md` with the tracer steps below.
+- [x] Ask Rhyd: "Use `bd` (beads) for issue tracking on this repo, or stick with `TASKS.md` checklists?"
+- [x] **Decision: beads.** `bd init` ran. Walking-skeleton epic = `lpx-explorer-82n` with seven child tasks (`82n.1` through `82n.7`) covering the tracer steps from BRIEF.md. From here, **`bd ready` is the source of truth for what's next** — this `TASKS.md` is frozen as the setup record.
 
 ## 6. Decide: Rust crate vs Python subprocess
 
