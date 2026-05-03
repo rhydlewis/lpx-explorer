@@ -1,0 +1,12 @@
+[package]
+name = "lpx-parser"
+version = "0.0.0"
+description = "Read-only parser for Logic Pro .logicx ProjectData binaries"
+edition = "2021"
+publish = false
+
+[lib]
+name = "lpx_parser"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
