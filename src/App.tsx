@@ -18,9 +18,10 @@ function App() {
 
   async function pickProject() {
     const selection = await open({
-      directory: true,
+      directory: false,
       multiple: false,
       title: "Select a .logicx project bundle",
+      filters: [{ name: "Logic Pro project", extensions: ["logicx"] }],
     });
     if (typeof selection !== "string") {
       return;
