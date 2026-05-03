@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "embedded",
+  "dolt_database": "lpx_explorer",
+  "project_id": "20fad987-f3d8-4101-8481-1e44d77fe46b"
+}
