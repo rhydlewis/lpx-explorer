@@ -1,0 +1,41 @@
+.shell {
+  display: grid;
+  grid-template-rows: var(--topbar-height) 1fr;
+  grid-template-columns: var(--rail-width) 1fr;
+  grid-template-areas:
+    "topbar topbar"
+    "rail   main";
+  height: 100vh;
+  background-color: var(--c-bg);
+  color: var(--c-text);
+}
+
+.shell.noRail {
+  grid-template-columns: 1fr;
+  grid-template-areas:
+    "topbar"
+    "main";
+}
+
+.topbar {
+  grid-area: topbar;
+  border-bottom: 1px solid var(--c-divider);
+  background-color: var(--c-surface);
+  display: flex;
+  align-items: center;
+  padding: 0 var(--s-4);
+}
+
+.rail {
+  grid-area: rail;
+  border-right: 1px solid var(--c-divider);
+  background-color: var(--c-surface);
+  overflow-y: auto;
+  padding: var(--s-3);
+}
+
+.main {
+  grid-area: main;
+  overflow-y: auto;
+  padding: var(--s-5);
+}
