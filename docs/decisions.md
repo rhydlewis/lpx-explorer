@@ -15,3 +15,29 @@ Append-only log. Newest entries at the bottom.
 **Alternatives considered:** A Python-subprocess shim that marshals `lpxtool --json` output across the Tauri boundary was rejected. It collapses the skeleton to plumbing with zero format-parsing in Rust, drags a Python runtime into every shipped build, complicates notarization/codesigning, and forfeits the shared-crate trajectory the brief commits to. Faster to a v1, far worse as a foundation.
 
 **Trade-offs:** We accept up-front Rust porting cost (offset by `find_aus` being trivially portable — `memchr`-style scan plus printable-ASCII validation) in exchange for: a self-contained binary, `cargo test` ergonomics against hand-built byte fixtures with no Python in CI, a natural enforcement point for the read-only invariant (`&[u8]` cannot write), and a clean PyO3 surface later because `find_aus(raw: bytes)` already takes bytes. Risk deferred: every additional parser surface (`find_track_registry_records`, `_decode_audio_strip_id`, OCuA decoding, NSKeyedArchive walking) must be re-ported rather than reused — that's the cost of owning the format twice until PyO3 lands.
+
+---
+
+## 2026-05-04 — UX/UI design v1
+
+**Bead:** docs/specs/2026-05-04-ux-design-v1.md (spec); resolves 6 decision beads + adds 2 task amendments.
+
+**Context:** The Python tool's CLI surfaces (`--html`, `--serve`, `--rollup`, `--json`) shouldn't translate 1:1 into native-app views. After a `/spec` session, six open questions surfaced. Settled jointly with Rhyd 2026-05-04.
+
+**Decisions:**
+
+1. **AU lookup activation when `~/.cache/lpx-toolkit/auval.json` is missing** (bead `lpx-explorer-jfx`). When the cache is absent, the CompatibilityVerdict stays neutral grey ("AU registry not yet scanned") and a one-time "Run AU scan" CTA lets the user opt into a Tauri-side scan. Rejected: spawning `auval -l` automatically (5–30s startup tax). Rejected: leaving the user to run the Python tool (half-answers the JTBD). Note: the auval text-parsing logic itself ports to the `lpx-parser` Rust crate as part of the AU-lookup epic — single source of truth, mechanical PyO3 surface.
+
+2. **Phantom-plugin filter UX** (bead `lpx-explorer-q78`). Always show with grouping: collapse identical fingerprints into one row with a `×N` badge; clicking expands. Rejected: always-on dedupe (loses information). Rejected: opt-in toggle (the Python tool's approach — too easy to forget the toggle exists). Grouping is honest *and* visually clean.
+
+3. **Library search/filter affordance** (bead `lpx-explorer-8uw`). Ship an always-visible search input at the top of the rail in Epic C (Library store + Recent). Rhyd has run the Python tool against 100+ Logic projects, so the use case is real, not hypothetical. Rejected: defer (premature optimisation only if the use case were speculative). Rejected: `⌘F` overlay (overkill for a list filter).
+
+4. **Folder scan persistence across launches** (bead `lpx-explorer-fzc`). Hold the v1 "no persistence" stance. The persistence epic (`lpx-explorer-nxt`) is filed and ready when a user-feedback signal indicates re-adding the same folder feels annoying.
+
+5. **Bundle path resolution location** (bead `lpx-explorer-cab`). Keep the parser bytes-only; folder scanning + `ProjectData` location stay in `src-tauri/src/commands.rs`. Re-evaluate when a third path-aware feature lands (AU-lookup, persistence, or JSON export will trigger the second).
+
+6. **Cross-project plug-in lookup UX** (bead `lpx-explorer-ehq`). Defer the rail-filter-vs-overlay shape — the right answer will be obvious once metadata extraction + AU-lookup epics ship and we can see what the data feels like in-app. The rollup epic (`lpx-explorer-185`) is filed as the implementation home.
+
+7. **Drag-and-drop project files** (bead `lpx-explorer-9h9`). Pull into Epic A (AppShell). Tauri 2 handles the drop event natively; ~20 lines on top of the existing file-pick handler. Cheaper to ship now than to remember to revisit.
+
+**Trade-offs:** Pulling decisions in at the spec stage costs minimal time and prevents downstream rework. Two decisions (3 and 7) overrode the spec's recommendations — both based on concrete Rhyd context (100+ projects, drag-and-drop is trivial in Tauri 2) rather than abstract correctness. The deferred decisions (4, 5, 6) all have implementation epics already filed, so they're not lost — just waiting for signal.
