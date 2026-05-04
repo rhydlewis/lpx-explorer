@@ -1,0 +1,118 @@
+/* Design tokens for lpx-explorer.
+ *
+ * Single source of truth for colours, spacing, type, and z-index. Components
+ * reference these via var(--name); never hard-code colour or spacing values
+ * inside component CSS modules.
+ *
+ * Palette mirrors Logic Pro 11's near-black UI with a hint of warmth, plus
+ * macOS system status colours. Light mode is deferred — see
+ * lpx-explorer-sme.
+ */
+
+:root {
+  /* ─── Colour: surface ────────────────────────────────────────────── */
+  --c-bg: #1d1d1f;          /* window background */
+  --c-surface: #2a2a2c;     /* rail, cards, inspector body */
+  --c-surface-2: #323234;   /* hover / selected row */
+  --c-divider: #3a3a3c;     /* subtle separator */
+
+  /* ─── Colour: text ───────────────────────────────────────────────── */
+  --c-text: #f5f5f7;        /* primary */
+  --c-text-secondary: rgba(245, 245, 247, 0.7); /* secondary metadata */
+  --c-text-muted: rgba(245, 245, 247, 0.5);     /* tertiary, placeholders */
+
+  /* ─── Colour: accent + status ────────────────────────────────────── */
+  --c-accent: #5e9eff;      /* Logic action blue */
+  --c-status-clean: #34c759;
+  --c-status-warn: #ff9f0a;
+  --c-status-fail: #ff453a;
+  --c-status-neutral: rgba(245, 245, 247, 0.4);
+
+  /* ─── Spacing scale (4px base) ───────────────────────────────────── */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 24px;
+  --s-6: 32px;
+  --s-7: 48px;
+  --s-8: 64px;
+
+  /* ─── Type ───────────────────────────────────────────────────────── */
+  --font-system: -apple-system, system-ui, "SF Pro Display", "SF Pro Text",
+    "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+  --fs-section-header: 10px;  /* small caps */
+  --fs-secondary: 11px;
+  --fs-body: 14px;
+  --fs-h2: 16px;
+  --fs-h1: 22px;
+
+  /* ─── Layout ─────────────────────────────────────────────────────── */
+  --row-height: 30px;
+  --rail-width: 260px;
+  --topbar-height: 36px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+
+  /* ─── Z-index tiers ──────────────────────────────────────────────── */
+  --z-rail: 10;
+  --z-toast: 100;
+  --z-modal: 200;
+  --z-drag-overlay: 300;
+}
+
+/* App-wide base styles. Single dark theme — no @media (prefers-color-scheme). */
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--c-bg);
+  color: var(--c-text);
+  font-family: var(--font-system);
+  font-size: var(--fs-body);
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+button {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  background: transparent;
+  border: 1px solid var(--c-divider);
+  border-radius: var(--radius-sm);
+  padding: var(--s-2) var(--s-4);
+  cursor: pointer;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+button:hover:not([aria-disabled="true"]) {
+  background-color: var(--c-surface-2);
+  border-color: var(--c-accent);
+}
+
+button:active:not([aria-disabled="true"]) {
+  background-color: var(--c-surface);
+}
+
+button[aria-disabled="true"] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+a {
+  color: var(--c-accent);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
