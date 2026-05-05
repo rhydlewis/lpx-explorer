@@ -12,7 +12,7 @@ interface Props {
 export function EmptyState({ onPickProject, onOpenFolder }: Props) {
   return (
     <div className={styles.empty}>
-      <h1 className={styles.heading}>lpx-explorer</h1>
+      <h1 className={styles.heading}>LPX Explorer</h1>
       <p className={styles.tagline}>
         Inspect Logic Pro projects without opening Logic.
       </p>

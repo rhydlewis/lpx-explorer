@@ -13,5 +13,5 @@ export function TopBar({ projectName }: Props) {
   const className = projectName === undefined
     ? `${styles.title} ${styles.appName}`
     : styles.title;
-  return <h1 className={className}>{projectName ?? "lpx-explorer"}</h1>;
+  return <h1 className={className}>{projectName ?? "LPX Explorer"}</h1>;
 }
