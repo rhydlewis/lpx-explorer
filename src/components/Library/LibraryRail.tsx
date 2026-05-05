@@ -1,19 +1,27 @@
 import { useLibraryStore } from "../../store/library-store";
 
+import { AddFolderButton } from "./AddFolderButton";
+import { FolderNode } from "./FolderNode";
 import { LibrarySearch } from "./LibrarySearch";
 import { RecentList } from "./RecentList";
 
+import styles from "./Library.module.css";
+
 /**
- * Library rail container. Composes LibrarySearch (always visible at the
- * top) + RecentList. Folder scanning (Epic D) slots in below RecentList.
+ * Library rail container. Composes:
+ *   - LibrarySearch (always visible at top)
+ *   - RecentList    (collapses if empty)
+ *   - one FolderNode per opened folder, under a 'FOLDERS' heading
+ *   - AddFolderButton at the bottom
  *
- * Returns null when the library is empty AND no query is active —
- * AppShell consumes the null as a signal to collapse the rail column.
+ * Returns null when both Recent and Folders are empty so AppShell can
+ * collapse the rail column at first launch.
  */
 export function LibraryRail() {
   const recentCount = useLibraryStore((s) => s.recent.length);
+  const folders = useLibraryStore((s) => s.folders);
 
-  if (recentCount === 0) {
+  if (recentCount === 0 && folders.length === 0) {
     return null;
   }
 
@@ -21,6 +29,15 @@ export function LibraryRail() {
     <>
       <LibrarySearch />
       <RecentList />
+      {folders.length > 0 && (
+        <section className={styles.section}>
+          <h3 className={styles.sectionLabel}>Folders</h3>
+          {folders.map((f) => (
+            <FolderNode key={f.path} folder={f} />
+          ))}
+        </section>
+      )}
+      <AddFolderButton />
     </>
   );
 }

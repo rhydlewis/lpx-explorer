@@ -19,6 +19,7 @@ const HINT_DISMISS_MS = 4000;
 function App() {
   const status = useProjectStore((s) => s.current);
   const recentCount = useLibraryStore((s) => s.recent.length);
+  const folderCount = useLibraryStore((s) => s.folders.length);
   const [hint, setHint] = useState<string | null>(null);
 
   async function openProject(path: string) {
@@ -72,7 +73,7 @@ function App() {
     />
   );
 
-  const rail = recentCount > 0 ? <LibraryRail /> : undefined;
+  const rail = recentCount > 0 || folderCount > 0 ? <LibraryRail /> : undefined;
 
   const main = status.kind === "idle"
     ? <EmptyState onPickProject={pickProject} />
