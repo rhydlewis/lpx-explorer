@@ -8,6 +8,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use serde::Serialize;
+use tauri::ipc::Channel;
 use thiserror::Error;
 
 const LOGICX_SUFFIX: &str = ".logicx";
@@ -19,12 +20,23 @@ pub enum ScanError {
     NotFound(String),
 }
 
-fn is_logicx_dir(name: &str) -> bool {
-    let lower = name.to_lowercase();
-    lower.ends_with(LOGICX_SUFFIX)
+/// Streamed events from a folder scan. Each `Project` is a discovered
+/// `.logicx` bundle path; `Done` signals the walk has finished.
+#[derive(Debug, Clone, Serialize)]
+#[serde(tag = "type")]
+pub enum ScanEvent {
+    Project { path: String },
+    Done,
 }
 
-fn walk(dir: &Path, cancel: &AtomicBool, out: &mut Vec<PathBuf>) {
+fn is_logicx_dir(name: &str) -> bool {
+    name.to_lowercase().ends_with(LOGICX_SUFFIX)
+}
+
+fn walk<F>(dir: &Path, cancel: &AtomicBool, on_match: &mut F)
+where
+    F: FnMut(PathBuf),
+{
     if cancel.load(Ordering::Relaxed) {
         return;
     }
@@ -52,38 +64,48 @@ fn walk(dir: &Path, cancel: &AtomicBool, out: &mut Vec<PathBuf>) {
         };
 
         if is_logicx_dir(name) {
-            out.push(path);
+            on_match(path);
             // Logic doesn't store sub-projects inside a `.logicx`; treat as leaf.
             continue;
         }
 
-        walk(&path, cancel, out);
+        walk(&path, cancel, on_match);
     }
 }
 
-/// Recursively collect `.logicx` bundle paths under `root`.
-///
-/// `cancel` is sampled at every directory entry; flipping it true mid-flight
-/// returns the partial result. The full cancel-mid-flight integration ships
-/// with bead `lpx-explorer-has.6` (progressive streaming).
-pub fn scan_for_logicx(root: &Path, cancel: &AtomicBool) -> Vec<PathBuf> {
+#[cfg(test)]
+fn scan_for_logicx(root: &Path, cancel: &AtomicBool) -> Vec<PathBuf> {
     let mut out = Vec::new();
-    walk(root, cancel, &mut out);
+    walk(root, cancel, &mut |p| out.push(p));
     out
 }
 
+/// Streaming Tauri command: emits a `ScanEvent::Project` for each
+/// discovered bundle, then `ScanEvent::Done` when the walk finishes.
+///
+/// The frontend creates a `Channel<ScanEvent>` and passes it as
+/// `onEvent`; events arrive at `channel.onmessage` in walk order.
 #[tauri::command]
-pub async fn scan_folder(path: String) -> Result<Vec<String>, ScanError> {
+pub async fn scan_folder(
+    path: String,
+    on_event: Channel<ScanEvent>,
+) -> Result<(), ScanError> {
     let root = PathBuf::from(&path);
     if !root.is_dir() {
         return Err(ScanError::NotFound(path));
     }
+
     let cancel = AtomicBool::new(false);
-    let results = scan_for_logicx(&root, &cancel);
-    Ok(results
-        .into_iter()
-        .map(|p| p.to_string_lossy().into_owned())
-        .collect())
+    walk(&root, &cancel, &mut |found| {
+        // Channel send only fails if the frontend has unsubscribed; nothing
+        // useful to do mid-walk if it has, so swallow.
+        let _ = on_event.send(ScanEvent::Project {
+            path: found.to_string_lossy().into_owned(),
+        });
+    });
+
+    let _ = on_event.send(ScanEvent::Done);
+    Ok(())
 }
 
 #[cfg(test)]
@@ -174,10 +196,6 @@ mod tests {
 
     #[test]
     fn pre_set_cancellation_token_returns_no_results() {
-        // The integration of cancel-mid-flight ships in D.6 (progressive
-        // streaming requires a different shape). For D.1 we ship the
-        // primitive: if the token is set when the walker enters, it bails
-        // out cleanly with whatever it has so far (zero, here).
         let dir = tempdir().expect("tempdir");
         create_logicx(dir.path(), "ignored.logicx");
 

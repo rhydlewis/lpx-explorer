@@ -31,6 +31,16 @@ function updateFolderStatus(
   return folders.map((f) => (f.path === path ? { ...f, status } : f));
 }
 
+function appendFolderProject(
+  folders: ReadonlyArray<FolderEntry>,
+  path: string,
+  project: string,
+): ReadonlyArray<FolderEntry> {
+  return folders.map((f) =>
+    f.path === path ? { ...f, projects: [...f.projects, project] } : f,
+  );
+}
+
 export const useLibraryStore = create<LibraryState>((set, get) => ({
   recent: [],
   folders: [],
@@ -72,16 +82,21 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
 
   startScan: async (path: string) => {
     set((state) => ({
-      folders: updateFolderStatus(state.folders, path, { kind: "scanning" }),
+      folders: state.folders.map((f) =>
+        f.path === path
+          ? { path, status: { kind: "scanning" }, projects: [] }
+          : f,
+      ),
     }));
-    try {
-      const projects = await scanFolder(path);
+    const appendProject = (project: string) => {
       set((state) => ({
-        folders: state.folders.map((f) =>
-          f.path === path
-            ? { path, status: { kind: "done" }, projects }
-            : f,
-        ),
+        folders: appendFolderProject(state.folders, path, project),
+      }));
+    };
+    try {
+      await scanFolder(path, appendProject);
+      set((state) => ({
+        folders: updateFolderStatus(state.folders, path, { kind: "done" }),
       }));
     } catch (e) {
       set((state) => ({

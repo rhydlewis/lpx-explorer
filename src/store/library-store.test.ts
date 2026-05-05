@@ -111,7 +111,9 @@ describe("useLibraryStore", () => {
   });
 
   it("addFolder appends the folder and immediately starts a scan", async () => {
-    mockedScan.mockResolvedValueOnce(["/Music/Logic/a.logicx"]);
+    mockedScan.mockImplementationOnce(async (_path, onProject) => {
+      onProject?.("/Music/Logic/a.logicx");
+    });
 
     await useLibraryStore.getState().addFolder("/Music/Logic");
 
@@ -120,11 +122,16 @@ describe("useLibraryStore", () => {
     expect(folders[0]?.path).toBe("/Music/Logic");
     expect(folders[0]?.status).toEqual({ kind: "done" });
     expect(folders[0]?.projects).toEqual(["/Music/Logic/a.logicx"]);
-    expect(mockedScan).toHaveBeenCalledWith("/Music/Logic");
+    expect(mockedScan).toHaveBeenCalledWith(
+      "/Music/Logic",
+      expect.any(Function),
+    );
   });
 
   it("addFolder is idempotent — re-adding an existing folder does nothing", async () => {
-    mockedScan.mockResolvedValue(["/Music/Logic/a.logicx"]);
+    mockedScan.mockImplementation(async () => {
+      // no projects emitted
+    });
     await useLibraryStore.getState().addFolder("/Music/Logic");
     mockedScan.mockClear();
 
@@ -134,13 +141,49 @@ describe("useLibraryStore", () => {
     expect(mockedScan).not.toHaveBeenCalled();
   });
 
+  it("appends discovered projects progressively as onProject is called", async () => {
+    let onProjectRef: ((path: string) => void) | undefined;
+    let resolveScan!: () => void;
+    mockedScan.mockImplementationOnce(async (_path, onProject) => {
+      onProjectRef = onProject;
+      await new Promise<void>((r) => {
+        resolveScan = r;
+      });
+    });
+
+    const scanPromise = useLibraryStore.getState().addFolder("/Music/Logic");
+    expect(useLibraryStore.getState().folders[0]?.projects).toEqual([]);
+
+    onProjectRef?.("/Music/Logic/a.logicx");
+    expect(useLibraryStore.getState().folders[0]?.projects).toEqual([
+      "/Music/Logic/a.logicx",
+    ]);
+
+    onProjectRef?.("/Music/Logic/b.logicx");
+    onProjectRef?.("/Music/Logic/c.logicx");
+    expect(useLibraryStore.getState().folders[0]?.projects).toEqual([
+      "/Music/Logic/a.logicx",
+      "/Music/Logic/b.logicx",
+      "/Music/Logic/c.logicx",
+    ]);
+    // Status stays "scanning" until the wrapper resolves.
+    expect(useLibraryStore.getState().folders[0]?.status).toEqual({
+      kind: "scanning",
+    });
+
+    resolveScan();
+    await scanPromise;
+
+    expect(useLibraryStore.getState().folders[0]?.status).toEqual({ kind: "done" });
+  });
+
   it("startScan sets scanning status while the scan is in flight", async () => {
-    let resolve!: (paths: string[]) => void;
-    mockedScan.mockReturnValueOnce(
-      new Promise<string[]>((r) => {
-        resolve = r;
-      }),
-    );
+    let resolveScan!: () => void;
+    mockedScan.mockImplementationOnce(async () => {
+      await new Promise<void>((r) => {
+        resolveScan = r;
+      });
+    });
 
     const scanPromise = useLibraryStore.getState().addFolder("/Music/Logic");
 
@@ -148,7 +191,7 @@ describe("useLibraryStore", () => {
       kind: "scanning",
     });
 
-    resolve(["/x.logicx"]);
+    resolveScan();
     await scanPromise;
 
     expect(useLibraryStore.getState().folders[0]?.status).toEqual({ kind: "done" });
@@ -166,7 +209,10 @@ describe("useLibraryStore", () => {
   });
 
   it("cancelScan resets the entry to idle with empty projects", async () => {
-    mockedScan.mockResolvedValueOnce(["/x.logicx", "/y.logicx"]);
+    mockedScan.mockImplementationOnce(async (_path, onProject) => {
+      onProject?.("/x.logicx");
+      onProject?.("/y.logicx");
+    });
     await useLibraryStore.getState().addFolder("/Music/Logic");
     expect(useLibraryStore.getState().folders[0]?.projects).toHaveLength(2);
 
@@ -177,7 +223,9 @@ describe("useLibraryStore", () => {
   });
 
   it("removeFolder filters by path without disturbing siblings", async () => {
-    mockedScan.mockResolvedValue([]);
+    mockedScan.mockImplementation(async () => {
+      // empty scan
+    });
     await useLibraryStore.getState().addFolder("/a");
     await useLibraryStore.getState().addFolder("/b");
     await useLibraryStore.getState().addFolder("/c");
@@ -190,7 +238,9 @@ describe("useLibraryStore", () => {
   });
 
   it("clear empties the folder list as well", async () => {
-    mockedScan.mockResolvedValueOnce([]);
+    mockedScan.mockImplementationOnce(async () => {
+      // empty scan
+    });
     await useLibraryStore.getState().addFolder("/x");
 
     useLibraryStore.getState().clear();

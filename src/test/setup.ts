@@ -10,6 +10,9 @@ afterEach(() => {
 // Individual tests override this via `vi.mocked(invoke).mockImplementation(...)`.
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: vi.fn(),
+  Channel: class {
+    onmessage: ((event: unknown) => void) | null = null;
+  },
 }));
 
 vi.mock("@tauri-apps/plugin-dialog", () => ({
