@@ -199,6 +199,56 @@ fn is_user_track_name(name: &str) -> bool {
     true
 }
 
+/// `true` when `name` matches Logic's default channel-strip pattern
+/// (`Audio 1`, `Inst 12`, `Bus 7`, `Output 1-2`, `Master`, etc.). These
+/// names are auto-generated when the user creates a track; only explicit
+/// renames produce non-matching cluster names.
+///
+/// Mirrors `_AUTO_TRACK_NAME_RE` in `lpx_inspect.py:228-230`.
+pub fn is_auto_track_name(name: &str) -> bool {
+    let mut chars = name.chars();
+    let prefix: String = chars.by_ref().take_while(|c| c.is_ascii_alphabetic()).collect();
+    match prefix.as_str() {
+        "Audio" | "Inst" | "Bus" | "Aux" | "Output" | "Input" | "Master" => {}
+        _ => return false,
+    }
+    let rest = name[prefix.len()..].as_bytes();
+    // "Master" with no suffix → auto. Same for any prefix with no suffix.
+    if rest.is_empty() {
+        return true;
+    }
+    // Otherwise: " <digits>" or " <digits>-<digits>"
+    if rest[0] != b' ' {
+        return false;
+    }
+    let after_space = &rest[1..];
+    if after_space.is_empty() {
+        return false;
+    }
+    let mut saw_digit = false;
+    let mut i = 0;
+    while i < after_space.len() && after_space[i].is_ascii_digit() {
+        saw_digit = true;
+        i += 1;
+    }
+    if !saw_digit {
+        return false;
+    }
+    if i == after_space.len() {
+        return true;
+    }
+    if after_space[i] != b'-' {
+        return false;
+    }
+    i += 1;
+    let mut saw_second_digit = false;
+    while i < after_space.len() && after_space[i].is_ascii_digit() {
+        saw_second_digit = true;
+        i += 1;
+    }
+    saw_second_digit && i == after_space.len()
+}
+
 fn is_bare_comp_tag(name: &str) -> bool {
     let bytes = name.as_bytes();
     if bytes.len() != "Comp X".len() || !name.starts_with("Comp ") {
@@ -442,5 +492,34 @@ mod tests {
         let clusters = cluster_regions(&records);
 
         assert!(clusters.is_empty());
+    }
+
+    // ─── is_auto_track_name ────────────────────────────────────────────
+
+    #[test]
+    fn is_auto_track_name_matches_default_channel_strip_names() {
+        assert!(is_auto_track_name("Audio 1"));
+        assert!(is_auto_track_name("Audio 12"));
+        assert!(is_auto_track_name("Inst 1"));
+        assert!(is_auto_track_name("Inst 99"));
+        assert!(is_auto_track_name("Bus 7"));
+        assert!(is_auto_track_name("Aux 3"));
+        assert!(is_auto_track_name("Input 1"));
+        assert!(is_auto_track_name("Master"));
+        assert!(is_auto_track_name("Output 1-2"));
+        assert!(is_auto_track_name("Output 3-4"));
+    }
+
+    #[test]
+    fn is_auto_track_name_rejects_user_renames() {
+        assert!(!is_auto_track_name("Acoustic GTR"));
+        assert!(!is_auto_track_name("Pocket Strings"));
+        assert!(!is_auto_track_name("Vocal"));
+        assert!(!is_auto_track_name("Audio 1 with extra"));
+        assert!(!is_auto_track_name(""));
+        assert!(!is_auto_track_name("AudioStuff"));
+        // bare prefix (e.g. "Audio") matches Python's regex too — kept
+        // consistent with `_AUTO_TRACK_NAME_RE` in lpx_inspect.py.
+        assert!(is_auto_track_name("Audio"));
     }
 }

@@ -9,7 +9,7 @@
 
 use serde::Serialize;
 
-use crate::{AURef, RegionCluster};
+use crate::{is_auto_track_name, AURef, RegionCluster};
 
 const NAME_FIELD_LEN: usize = 16;
 const DESCRIPTOR_LEN: usize = 8;
@@ -63,6 +63,14 @@ pub fn assign_user_names(tracks: &mut [Track], clusters: &[RegionCluster]) {
     sorted_clusters.sort_by_key(|c| c.first_offset);
 
     for cluster in sorted_clusters {
+        // Skip clusters whose base_name matches Logic's default
+        // channel-strip pattern (`Audio 1`, `Inst 12`, etc.). When a
+        // user records, then renames the track, BOTH names appear as
+        // clusters — without this filter the auto-named cluster wins
+        // because it sits earlier in the binary.
+        if is_auto_track_name(&cluster.base_name) {
+            continue;
+        }
         let owner_idx = match tracks
             .iter()
             .rposition(|t| t.offset <= cluster.first_offset)
@@ -625,5 +633,37 @@ mod tests {
         assign_user_names(&mut tracks, &clusters);
 
         assert!(tracks.is_empty());
+    }
+
+    #[test]
+    fn skips_auto_named_clusters_so_user_renames_win_when_both_exist() {
+        // Real-world case: user records into "Audio 3", THEN renames to
+        // "Acoustic GTR" and records again. Both clusters exist; the
+        // auto-named one sits earlier in the binary. Without the auto-name
+        // filter the user would still see "Audio 3" because first-cluster-
+        // wins. The filter ignores the auto-named cluster and lets the
+        // user-renamed one through.
+        let mut tracks = vec![track("Audio 3", TrackKind::Audio, 100)];
+        let clusters = vec![
+            cluster_at(150, "Audio 3"),       // earlier — auto-named, skipped
+            cluster_at(250, "Acoustic GTR"),  // user rename — wins
+        ];
+
+        assign_user_names(&mut tracks, &clusters);
+
+        assert_eq!(tracks[0].user_name.as_deref(), Some("Acoustic GTR"));
+    }
+
+    #[test]
+    fn does_not_assign_auto_named_clusters_even_when_no_alternative_exists() {
+        // If the ONLY cluster for a track is auto-named, leave user_name
+        // as None — the track's channel-strip name carries the same
+        // information already.
+        let mut tracks = vec![track("Audio 3", TrackKind::Audio, 100)];
+        let clusters = vec![cluster_at(150, "Audio 3")];
+
+        assign_user_names(&mut tracks, &clusters);
+
+        assert!(tracks[0].user_name.is_none());
     }
 }
