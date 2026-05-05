@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { ProjectSummary } from "../lib/types";
 import { parseProject } from "../lib/parse";
+import { makeSummary } from "../test/fixtures";
 
 import { useProjectStore } from "./project-store";
 
@@ -26,11 +27,11 @@ describe("useProjectStore", () => {
   });
 
   it("transitions through loading → loaded on a successful select", async () => {
-    const summary: ProjectSummary = {
+    const summary = makeSummary({
       fingerprints: [
         { type_code: "aumu", subtype: "EZk2", manufacturer: "Toon", offset: 12 },
       ],
-    };
+    });
     let resolve!: (value: ProjectSummary) => void;
     mockedParse.mockReturnValueOnce(
       new Promise<ProjectSummary>((res) => {
@@ -82,7 +83,7 @@ describe("useProjectStore", () => {
   });
 
   it("clear resets to idle", async () => {
-    mockedParse.mockResolvedValueOnce({ fingerprints: [] });
+    mockedParse.mockResolvedValueOnce(makeSummary());
     await useProjectStore.getState().select("/x.logicx");
     expect(useProjectStore.getState().current.kind).toBe("loaded");
 

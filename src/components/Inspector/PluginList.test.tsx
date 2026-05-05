@@ -2,10 +2,12 @@ import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 
 import type { ProjectSummary } from "../../lib/types";
+import { makeSummary } from "../../test/fixtures";
+
 import { PluginList } from "./PluginList";
 
 function summaryWith(...fingerprints: ProjectSummary["fingerprints"]): ProjectSummary {
-  return { fingerprints };
+  return makeSummary({ fingerprints });
 }
 
 describe("<PluginList />", () => {

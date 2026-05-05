@@ -8,8 +8,29 @@ export interface AURef {
   offset: number;
 }
 
+export interface ProjectMetadata {
+  song_key: string;
+  song_gender: string;
+  bpm: number;
+  sig_numerator: number;
+  sig_denominator: number;
+  track_count: number;
+  sample_rate: number;
+  audio_file_count: number;
+  impulse_response_count: number;
+  frame_rate_index: number;
+}
+
+export interface BundleStats {
+  size_bytes: number;
+  created_at_unix: number;
+  modified_at_unix: number;
+}
+
 export interface ProjectSummary {
   fingerprints: AURef[];
+  metadata: ProjectMetadata;
+  stats: BundleStats;
 }
 
 // ─── Library / UI types ──────────────────────────────────────────────

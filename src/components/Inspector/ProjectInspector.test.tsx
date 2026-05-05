@@ -2,12 +2,14 @@ import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 
 import type { ProjectStatus } from "../../store/project-store";
+import { makeSummary } from "../../test/fixtures";
+
 import { ProjectInspector } from "./ProjectInspector";
 
 const loaded: ProjectStatus = {
   kind: "loaded",
   path: "/Users/rhyd/Music/Logic/song.logicx",
-  summary: { fingerprints: [] },
+  summary: makeSummary(),
 };
 
 describe("<ProjectInspector />", () => {
