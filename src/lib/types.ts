@@ -27,10 +27,35 @@ export interface BundleStats {
   modified_at_unix: number;
 }
 
+export type TrackKind =
+  | "audio"
+  | "instrument"
+  | "folder"
+  | "summing-stack"
+  | "master"
+  | "output"
+  | "bus"
+  | "aux"
+  | "input"
+  | "unknown";
+
+export interface Track {
+  name: string;
+  kind: TrackKind;
+  offset: number;
+  is_active: boolean;
+  instrument: AURef | null;
+  midi_fx: AURef[];
+  audio_fx: AURef[];
+  sub_number: number | null;
+  parent_offset: number | null;
+}
+
 export interface ProjectSummary {
   fingerprints: AURef[];
   metadata: ProjectMetadata;
   stats: BundleStats;
+  tracks: Track[];
 }
 
 // ─── Library / UI types ──────────────────────────────────────────────

@@ -7,7 +7,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use lpx_parser::{AURef, ProjectMetadata};
+use lpx_parser::{AURef, ProjectMetadata, Track};
 use serde::Serialize;
 use thiserror::Error;
 
@@ -18,6 +18,7 @@ pub struct ProjectSummary {
     pub fingerprints: Vec<AURef>,
     pub metadata: ProjectMetadata,
     pub stats: BundleStats,
+    pub tracks: Vec<Track>,
 }
 
 #[derive(Debug, Error, Serialize)]
@@ -53,10 +54,14 @@ pub fn parse_project(path: String) -> Result<ProjectSummary, ParseError> {
         .map_err(|e| ParseError::MetadataInvalid(format!("{e:?}")))?;
     let stats = bundle_stats(&bundle).map_err(|e| ParseError::Io(e.to_string()))?;
 
+    let mut tracks = lpx_parser::find_tracks(&project_data_bytes);
+    lpx_parser::assign_aus(&mut tracks, &fingerprints);
+
     Ok(ProjectSummary {
         fingerprints,
         metadata,
         stats,
+        tracks,
     })
 }
 

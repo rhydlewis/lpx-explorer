@@ -32,4 +32,45 @@ describe("parseProject IPC contract", () => {
       path: "/some/path.logicx",
     });
   });
+
+  it("round-trips the tracks payload alongside fingerprints + metadata", async () => {
+    const expected = makeSummary({
+      tracks: [
+        {
+          name: "Audio 1",
+          kind: "audio",
+          offset: 1024,
+          is_active: true,
+          instrument: null,
+          midi_fx: [],
+          audio_fx: [],
+          sub_number: null,
+          parent_offset: null,
+        },
+        {
+          name: "Drums",
+          kind: "instrument",
+          offset: 2048,
+          is_active: false,
+          instrument: {
+            type_code: "aumu",
+            subtype: "EZk2",
+            manufacturer: "Toon",
+            offset: 2080,
+          },
+          midi_fx: [],
+          audio_fx: [],
+          sub_number: null,
+          parent_offset: null,
+        },
+      ],
+    });
+    mockInvoke.mockResolvedValueOnce(expected);
+
+    const result = await parseProject("/x.logicx");
+
+    expect(result.tracks).toHaveLength(2);
+    expect(result.tracks[0]?.name).toBe("Audio 1");
+    expect(result.tracks[1]?.instrument?.type_code).toBe("aumu");
+  });
 });

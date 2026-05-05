@@ -3,6 +3,7 @@ import type {
   BundleStats,
   ProjectMetadata,
   ProjectSummary,
+  Track,
 } from "../lib/types";
 
 const DEFAULT_METADATA: ProjectMetadata = {
@@ -36,11 +37,13 @@ export function makeSummary(
     fingerprints?: AURef[];
     metadata?: Partial<ProjectMetadata>;
     stats?: Partial<BundleStats>;
+    tracks?: Track[];
   } = {},
 ): ProjectSummary {
   return {
     fingerprints: overrides.fingerprints ?? [],
     metadata: { ...DEFAULT_METADATA, ...(overrides.metadata ?? {}) },
     stats: { ...DEFAULT_STATS, ...(overrides.stats ?? {}) },
+    tracks: overrides.tracks ?? [],
   };
 }
