@@ -5,6 +5,7 @@ import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { openProject } from "./lib/open-project";
 import { projectNameOf } from "./lib/path-utils";
 import { routeDrop } from "./lib/drop-routing";
+import { useAuRegistryStore } from "./store/au-registry-store";
 import { useLibraryStore } from "./store/library-store";
 import { useProjectStore } from "./store/project-store";
 import { AppShell } from "./components/AppShell";
@@ -35,6 +36,10 @@ function App() {
     }
     await openProject(selection);
   }
+
+  useEffect(() => {
+    void useAuRegistryStore.getState().loadFromCache();
+  }, []);
 
   useEffect(() => {
     const unlistenPromise = getCurrentWebview().onDragDropEvent((event) => {

@@ -31,3 +31,32 @@
   font-size: var(--fs-secondary);
   color: var(--c-text-secondary);
 }
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  flex-wrap: wrap;
+}
+
+.cta {
+  background-color: var(--c-accent);
+  border-color: var(--c-accent);
+  color: #fff;
+  font-size: var(--fs-secondary);
+  font-weight: 500;
+}
+
+.cta:hover:not([aria-disabled="true"]) {
+  filter: brightness(1.1);
+}
+
+.scanning {
+  font-size: var(--fs-secondary);
+  color: var(--c-text-secondary);
+}
+
+.errorMessage {
+  font-size: var(--fs-secondary);
+  color: var(--c-status-fail);
+}
