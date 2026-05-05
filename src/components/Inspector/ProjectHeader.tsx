@@ -1,3 +1,5 @@
+import { revealItemInDir } from "@tauri-apps/plugin-opener";
+
 import styles from "./ProjectHeader.module.css";
 
 interface Props {
@@ -16,14 +18,24 @@ function trimmedPath(path: string): string {
 }
 
 export function ProjectHeader({ path }: Props) {
+  const trimmed = trimmedPath(path);
   return (
     <section aria-label="project" className={styles.header}>
-      <h2 className={styles.name} title={trimmedPath(path)}>
+      <h2 className={styles.name} title={trimmed}>
         {projectNameOf(path)}
       </h2>
-      <p className={styles.path} title={trimmedPath(path)}>
-        {trimmedPath(path)}
-      </p>
+      <div className={styles.pathRow}>
+        <p className={styles.path} title={trimmed}>
+          {trimmed}
+        </p>
+        <button
+          type="button"
+          className={styles.revealButton}
+          onClick={() => void revealItemInDir(trimmed)}
+        >
+          Reveal in Finder
+        </button>
+      </div>
     </section>
   );
 }

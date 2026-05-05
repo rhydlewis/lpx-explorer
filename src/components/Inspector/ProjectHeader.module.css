@@ -15,12 +15,25 @@
   text-overflow: ellipsis;
 }
 
+.pathRow {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+}
+
 .path {
   font-family: var(--font-mono);
   font-size: var(--fs-secondary);
   color: var(--c-text-muted);
   margin: 0;
+  flex: 1;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.revealButton {
+  flex-shrink: 0;
+  font-size: var(--fs-secondary);
+  padding: var(--s-1) var(--s-3);
 }

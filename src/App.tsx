@@ -6,7 +6,6 @@ import { getCurrentWebview } from "@tauri-apps/api/webview";
 
 import { openProject } from "./lib/open-project";
 import { pickAndAddFolder } from "./lib/open-folder";
-import { projectNameOf } from "./lib/path-utils";
 import { routeDrop } from "./lib/drop-routing";
 import { useAuRegistryStore } from "./store/au-registry-store";
 import { useLibraryStore } from "./store/library-store";
@@ -15,7 +14,6 @@ import { AppShell } from "./components/AppShell";
 import { EmptyState } from "./components/EmptyState";
 import { ProjectInspector } from "./components/Inspector/ProjectInspector";
 import { LibraryRail } from "./components/Library/LibraryRail";
-import { TopBar } from "./components/TopBar";
 
 import "./App.css";
 
@@ -86,14 +84,6 @@ function App() {
     };
   }, []);
 
-  const topBar = (
-    <TopBar
-      projectName={
-        status.kind === "loaded" ? projectNameOf(status.path) : undefined
-      }
-    />
-  );
-
   const rail = recentCount > 0 || folderCount > 0 ? <LibraryRail /> : undefined;
 
   const main = status.kind === "idle"
@@ -105,7 +95,7 @@ function App() {
 
   return (
     <>
-      <AppShell topBar={topBar} rail={rail} main={main} />
+      <AppShell rail={rail} main={main} />
       {hint !== null && (
         <div role="status" aria-live="polite" className="drop-hint">
           {hint}

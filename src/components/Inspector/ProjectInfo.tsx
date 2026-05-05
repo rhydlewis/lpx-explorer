@@ -43,6 +43,26 @@ function formatSampleRate(hz: number): string {
   return `${khz.toFixed(1)} kHz`;
 }
 
+/**
+ * Logic stores frame rate as a small integer index into a SMPTE rate
+ * table (e.g. 0→24fps, 1→25fps, 2→29.97 drop-frame). Mirrors the table
+ * at lpx_inspect.py:133-142.
+ */
+const FRAME_RATE_BY_INDEX: Record<number, string> = {
+  0: "24 fps",
+  1: "25 fps",
+  2: "29.97 fps (drop)",
+  3: "30 fps (drop)",
+  4: "29.97 fps",
+  5: "30 fps",
+  6: "23.976 fps",
+  7: "23.976 fps",
+};
+
+function formatFrameRate(idx: number): string | null {
+  return FRAME_RATE_BY_INDEX[idx] ?? null;
+}
+
 function formatDateWithRelative(unix: number, now: Date): string {
   if (unix <= 0) {
     return "—";
@@ -83,6 +103,12 @@ export function ProjectInfo({ metadata, stats, now = new Date() }: Props) {
         <dd>{formatSig(metadata)}</dd>
         <dt>Sample rate</dt>
         <dd>{formatSampleRate(metadata.sample_rate)}</dd>
+        {formatFrameRate(metadata.frame_rate_index) !== null && (
+          <>
+            <dt>Frame rate</dt>
+            <dd>{formatFrameRate(metadata.frame_rate_index)}</dd>
+          </>
+        )}
         <dt>Tracks</dt>
         <dd>{metadata.track_count}</dd>
         <dt>Created</dt>
