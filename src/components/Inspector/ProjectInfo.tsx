@@ -1,4 +1,5 @@
 import type { BundleStats, ProjectMetadata } from "../../lib/types";
+import { formatRelative } from "../../lib/time-utils";
 
 import sectionStyles from "./Inspector.module.css";
 import styles from "./ProjectInfo.module.css";
@@ -6,6 +7,11 @@ import styles from "./ProjectInfo.module.css";
 interface Props {
   readonly metadata: ProjectMetadata;
   readonly stats: BundleStats;
+  /**
+   * Reference instant for relative-time formatting. Defaults to `new Date()`
+   * — tests pin it for deterministic output.
+   */
+  readonly now?: Date;
 }
 
 function formatKey(meta: ProjectMetadata): string {
@@ -37,11 +43,12 @@ function formatSampleRate(hz: number): string {
   return `${khz.toFixed(1)} kHz`;
 }
 
-function formatDate(unix: number): string {
+function formatDateWithRelative(unix: number, now: Date): string {
   if (unix <= 0) {
     return "—";
   }
-  return new Date(unix * 1000).toISOString().slice(0, 10);
+  const iso = new Date(unix * 1000).toISOString().slice(0, 10);
+  return `${iso} (${formatRelative(unix, now)})`;
 }
 
 function formatBytes(n: number): string {
@@ -63,7 +70,7 @@ function formatBytes(n: number): string {
   return `${(n / GB).toFixed(1)} GB`;
 }
 
-export function ProjectInfo({ metadata, stats }: Props) {
+export function ProjectInfo({ metadata, stats, now = new Date() }: Props) {
   return (
     <section aria-label="project info" className={sectionStyles.section}>
       <h3 className={sectionStyles.sectionLabel}>Project</h3>
@@ -78,8 +85,10 @@ export function ProjectInfo({ metadata, stats }: Props) {
         <dd>{formatSampleRate(metadata.sample_rate)}</dd>
         <dt>Tracks</dt>
         <dd>{metadata.track_count}</dd>
+        <dt>Created</dt>
+        <dd>{formatDateWithRelative(stats.created_at_unix, now)}</dd>
         <dt>Modified</dt>
-        <dd>{formatDate(stats.modified_at_unix)}</dd>
+        <dd>{formatDateWithRelative(stats.modified_at_unix, now)}</dd>
         <dt>Bundle size</dt>
         <dd>{formatBytes(stats.size_bytes)}</dd>
         <dt>Audio files</dt>
