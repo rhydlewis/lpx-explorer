@@ -42,6 +42,38 @@ pub struct Track {
     pub parent_offset: Option<usize>,
 }
 
+/// Route each AU to its nearest preceding track. Mirrors
+/// `lpx_inspect.py:765-786`. `aumu` (instrument) descriptors only attach
+/// when the owner track's kind is [`TrackKind::Instrument`] — phantom
+/// instruments preceded by an audio/bus track are dropped (silent;
+/// matches the JTBD of "show me what this track plays").
+pub fn assign_aus(tracks: &mut Vec<Track>, aus: &[AURef]) {
+    if tracks.is_empty() {
+        return;
+    }
+    tracks.sort_by_key(|t| t.offset);
+
+    let mut sorted: Vec<&AURef> = aus.iter().collect();
+    sorted.sort_by_key(|a| a.offset);
+
+    for au in sorted {
+        let owner_idx = match tracks.iter().rposition(|t| t.offset <= au.offset) {
+            Some(i) => i,
+            None => continue,
+        };
+        let owner = &mut tracks[owner_idx];
+        match au.type_code.as_str() {
+            "aumu" => {
+                if owner.kind == TrackKind::Instrument && owner.instrument.is_none() {
+                    owner.instrument = Some(au.clone());
+                }
+            }
+            "aumf" => owner.midi_fx.push(au.clone()),
+            _ => owner.audio_fx.push(au.clone()),
+        }
+    }
+}
+
 /// Map a descriptor's first 4 bytes to a [`TrackKind`]. Mirrors the
 /// `Track.kind` property in `lpx_inspect.py:69-82`.
 fn classify_descriptor(descriptor: &[u8; 8]) -> TrackKind {
@@ -355,5 +387,121 @@ mod tests {
         assert!(tracks[0].audio_fx.is_empty());
         assert!(tracks[0].sub_number.is_none());
         assert!(tracks[0].parent_offset.is_none());
+    }
+
+    // ─── assign_aus ────────────────────────────────────────────────────
+
+    fn au_at(offset: usize, type_code: &str) -> AURef {
+        AURef {
+            type_code: type_code.into(),
+            subtype: "Subt".into(),
+            manufacturer: "Mfgr".into(),
+            offset,
+        }
+    }
+
+    fn track(name: &str, kind: TrackKind, offset: usize) -> Track {
+        Track {
+            name: name.into(),
+            kind,
+            offset,
+            is_active: false,
+            instrument: None,
+            midi_fx: Vec::new(),
+            audio_fx: Vec::new(),
+            sub_number: None,
+            parent_offset: None,
+        }
+    }
+
+    #[test]
+    fn assigns_audio_effect_to_nearest_preceding_track_audio_fx() {
+        let mut tracks = vec![track("Audio 1", TrackKind::Audio, 100)];
+        let aus = vec![au_at(200, "aufx")];
+
+        assign_aus(&mut tracks, &aus);
+
+        assert_eq!(tracks[0].audio_fx.len(), 1);
+        assert_eq!(tracks[0].audio_fx[0].offset, 200);
+    }
+
+    #[test]
+    fn assigns_midi_effect_to_midi_fx() {
+        let mut tracks = vec![track("Inst 1", TrackKind::Instrument, 100)];
+        let aus = vec![au_at(150, "aumf")];
+
+        assign_aus(&mut tracks, &aus);
+
+        assert_eq!(tracks[0].midi_fx.len(), 1);
+        assert!(tracks[0].audio_fx.is_empty());
+    }
+
+    #[test]
+    fn assigns_instrument_to_instrument_field_only_when_track_is_instrument() {
+        let mut tracks = vec![track("Inst 1", TrackKind::Instrument, 100)];
+        let aus = vec![au_at(150, "aumu")];
+
+        assign_aus(&mut tracks, &aus);
+
+        assert!(tracks[0].instrument.is_some());
+        assert_eq!(tracks[0].instrument.as_ref().unwrap().offset, 150);
+    }
+
+    #[test]
+    fn drops_instrument_au_when_owner_is_not_an_instrument_track() {
+        let mut tracks = vec![track("Audio 1", TrackKind::Audio, 100)];
+        let aus = vec![au_at(150, "aumu")];
+
+        assign_aus(&mut tracks, &aus);
+
+        assert!(tracks[0].instrument.is_none());
+        assert!(tracks[0].midi_fx.is_empty());
+        assert!(tracks[0].audio_fx.is_empty());
+    }
+
+    #[test]
+    fn keeps_only_the_first_instrument_per_track() {
+        let mut tracks = vec![track("Inst 1", TrackKind::Instrument, 100)];
+        let aus = vec![au_at(150, "aumu"), au_at(200, "aumu")];
+
+        assign_aus(&mut tracks, &aus);
+
+        assert_eq!(tracks[0].instrument.as_ref().unwrap().offset, 150);
+    }
+
+    #[test]
+    fn drops_aus_preceding_all_tracks() {
+        let mut tracks = vec![track("Audio 1", TrackKind::Audio, 200)];
+        let aus = vec![au_at(50, "aufx")];
+
+        assign_aus(&mut tracks, &aus);
+
+        assert!(tracks[0].audio_fx.is_empty());
+    }
+
+    #[test]
+    fn assigns_to_the_nearest_preceding_track_when_multiple_exist() {
+        let mut tracks = vec![
+            track("Audio 1", TrackKind::Audio, 100),
+            track("Audio 2", TrackKind::Audio, 300),
+            track("Audio 3", TrackKind::Audio, 500),
+        ];
+        let aus = vec![au_at(400, "aufx")];
+
+        assign_aus(&mut tracks, &aus);
+
+        assert!(tracks[0].audio_fx.is_empty());
+        assert_eq!(tracks[1].audio_fx.len(), 1);
+        assert!(tracks[2].audio_fx.is_empty());
+    }
+
+    #[test]
+    fn empty_track_list_is_a_no_op() {
+        let mut tracks: Vec<Track> = Vec::new();
+        let aus = vec![au_at(100, "aufx")];
+
+        assign_aus(&mut tracks, &aus);
+
+        assert!(tracks.is_empty());
     }
 }

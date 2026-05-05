@@ -11,7 +11,7 @@ mod metadata;
 mod tracks;
 
 pub use metadata::{parse_metadata_plist, MetadataError, ProjectMetadata};
-pub use tracks::{find_tracks, Track, TrackKind};
+pub use tracks::{assign_aus, find_tracks, Track, TrackKind};
 
 use serde::Serialize;
 
