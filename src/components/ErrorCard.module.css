@@ -1,0 +1,56 @@
+.card {
+  border: 1px solid var(--c-status-fail);
+  border-radius: var(--radius-md);
+  padding: var(--s-4);
+  background-color: rgba(255, 69, 58, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+
+.headline {
+  font-size: var(--fs-h2);
+  font-weight: 600;
+  color: var(--c-status-fail);
+  margin: 0;
+}
+
+.subhead {
+  font-size: var(--fs-body);
+  color: var(--c-text);
+  margin: 0;
+  word-break: break-all;
+}
+
+.details {
+  font-size: var(--fs-secondary);
+  color: var(--c-text-secondary);
+}
+
+.details summary {
+  cursor: pointer;
+  user-select: none;
+}
+
+.details pre {
+  margin: var(--s-2) 0 0 0;
+  padding: var(--s-2) var(--s-3);
+  background-color: var(--c-surface);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: var(--fs-secondary);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.retry {
+  align-self: flex-start;
+  background-color: var(--c-accent);
+  border-color: var(--c-accent);
+  color: #fff;
+  font-weight: 500;
+}
+
+.retry:hover {
+  filter: brightness(1.1);
+}

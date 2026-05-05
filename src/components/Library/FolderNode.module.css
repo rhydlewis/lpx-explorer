@@ -61,10 +61,8 @@
   color: var(--c-status-fail);
 }
 
-.error {
-  padding: var(--s-1) var(--s-2);
-  color: var(--c-status-fail);
-  font-size: var(--fs-secondary);
+.errorWrap {
+  padding: var(--s-2);
 }
 
 .empty {

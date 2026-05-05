@@ -5,6 +5,7 @@ import { projectNameOf } from "../../lib/path-utils";
 import type { FolderEntry } from "../../lib/types";
 import { useLibraryStore } from "../../store/library-store";
 import { useProjectStore } from "../../store/project-store";
+import { ErrorCard } from "../ErrorCard";
 
 import { ProjectRow } from "./ProjectRow";
 
@@ -103,9 +104,13 @@ export function FolderNode({ folder }: Props) {
       </div>
 
       {folder.status.kind === "error" && (
-        <p className={styles.error} role="alert">
-          Scan failed: {folder.status.message}
-        </p>
+        <div className={styles.errorWrap}>
+          <ErrorCard
+            headline="Scan failed"
+            detail={folder.status.message}
+            onRetry={() => void useLibraryStore.getState().startScan(folder.path)}
+          />
+        </div>
       )}
 
       {folder.status.kind === "done" && folder.projects.length === 0 && (

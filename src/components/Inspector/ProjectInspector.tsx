@@ -1,4 +1,5 @@
-import type { ProjectStatus } from "../../store/project-store";
+import { useProjectStore, type ProjectStatus } from "../../store/project-store";
+import { ErrorCard } from "../ErrorCard";
 
 import { CompatibilityVerdict } from "./CompatibilityVerdict";
 import { InspectorSkeleton } from "./InspectorSkeleton";
@@ -22,9 +23,14 @@ export function ProjectInspector({ status }: Props) {
 
   if (status.kind === "error") {
     return (
-      <div role="alert">
-        Error parsing <code>{status.path}</code>: {status.message}
-      </div>
+      <ErrorCard
+        headline="Couldn't open project"
+        subhead={<code>{status.path}</code>}
+        detail={status.message}
+        onRetry={() => {
+          void useProjectStore.getState().select(status.path);
+        }}
+      />
     );
   }
 
