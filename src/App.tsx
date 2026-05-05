@@ -3,6 +3,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 
 import { openProject } from "./lib/open-project";
+import { pickAndAddFolder } from "./lib/open-folder";
 import { projectNameOf } from "./lib/path-utils";
 import { routeDrop } from "./lib/drop-routing";
 import { useAuRegistryStore } from "./store/au-registry-store";
@@ -77,7 +78,10 @@ function App() {
   const rail = recentCount > 0 || folderCount > 0 ? <LibraryRail /> : undefined;
 
   const main = status.kind === "idle"
-    ? <EmptyState onPickProject={pickProject} />
+    ? <EmptyState
+        onPickProject={pickProject}
+        onOpenFolder={() => void pickAndAddFolder()}
+      />
     : <ProjectInspector status={status} />;
 
   return (

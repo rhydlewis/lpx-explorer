@@ -5,7 +5,7 @@ import { EmptyState } from "./EmptyState";
 
 describe("<EmptyState />", () => {
   it("renders the tagline and reassurance copy", () => {
-    render(<EmptyState onPickProject={vi.fn()} />);
+    render(<EmptyState onPickProject={vi.fn()} onOpenFolder={vi.fn()} />);
 
     expect(
       screen.getByText(/Inspect Logic Pro projects without opening Logic\./i),
@@ -16,7 +16,7 @@ describe("<EmptyState />", () => {
   });
 
   it("renders Pick project and Open folder buttons", () => {
-    render(<EmptyState onPickProject={vi.fn()} />);
+    render(<EmptyState onPickProject={vi.fn()} onOpenFolder={vi.fn()} />);
 
     expect(
       screen.getByRole("button", { name: /pick project/i }),
@@ -28,17 +28,26 @@ describe("<EmptyState />", () => {
 
   it("invokes onPickProject when the Pick project button is clicked", () => {
     const handler = vi.fn();
-    render(<EmptyState onPickProject={handler} />);
+    render(<EmptyState onPickProject={handler} onOpenFolder={vi.fn()} />);
 
     fireEvent.click(screen.getByRole("button", { name: /pick project/i }));
 
     expect(handler).toHaveBeenCalledTimes(1);
   });
 
-  it("renders Open folder as disabled until folder scanning lands", () => {
-    render(<EmptyState onPickProject={vi.fn()} />);
+  it("renders Open folder as enabled now that folder scanning has shipped", () => {
+    render(<EmptyState onPickProject={vi.fn()} onOpenFolder={vi.fn()} />);
 
     const openFolder = screen.getByRole("button", { name: /open folder/i });
-    expect(openFolder).toHaveAttribute("aria-disabled", "true");
+    expect(openFolder).not.toHaveAttribute("aria-disabled", "true");
+  });
+
+  it("invokes onOpenFolder when the Open folder button is clicked", () => {
+    const handler = vi.fn();
+    render(<EmptyState onPickProject={vi.fn()} onOpenFolder={handler} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /open folder/i }));
+
+    expect(handler).toHaveBeenCalledTimes(1);
   });
 });

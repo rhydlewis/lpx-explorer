@@ -2,14 +2,14 @@ import styles from "./EmptyState.module.css";
 
 interface Props {
   readonly onPickProject: () => void;
+  readonly onOpenFolder: () => void;
 }
 
 /**
  * First-launch view. Two CTAs (Pick project / Open folder), a tagline, and a
- * read-only reassurance line. Folder scanning lands in Epic D — until then,
- * the Open folder button is disabled with an explanatory tooltip.
+ * read-only reassurance line.
  */
-export function EmptyState({ onPickProject }: Props) {
+export function EmptyState({ onPickProject, onOpenFolder }: Props) {
   return (
     <div className={styles.empty}>
       <h1 className={styles.heading}>lpx-explorer</h1>
@@ -24,11 +24,7 @@ export function EmptyState({ onPickProject }: Props) {
         >
           Pick project
         </button>
-        <button
-          type="button"
-          aria-disabled="true"
-          title="Folder scanning lands in Epic D"
-        >
+        <button type="button" onClick={onOpenFolder}>
           Open folder
         </button>
       </div>
