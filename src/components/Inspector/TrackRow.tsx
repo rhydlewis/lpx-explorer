@@ -1,4 +1,8 @@
-import type { AURef, Track, TrackKind } from "../../lib/types";
+import { useMemo } from "react";
+
+import type { AURef, AuvalEntry, Track, TrackKind } from "../../lib/types";
+import { displayNameOf } from "../../lib/track-display";
+import { useAuRegistryStore } from "../../store/au-registry-store";
 import { StatusDot } from "../StatusDot";
 
 import styles from "./TrackRow.module.css";
@@ -36,7 +40,19 @@ function collectInserts(track: Track): readonly AURef[] {
 }
 
 export function TrackRow({ track, depth }: Props) {
+  const registryStatus = useAuRegistryStore((s) => s.status);
+  const byFingerprint = useMemo<ReadonlyMap<string, AuvalEntry>>(() => {
+    if (registryStatus.kind !== "loaded") {
+      return new Map();
+    }
+    const map = new Map<string, AuvalEntry>();
+    for (const entry of registryStatus.registry.entries) {
+      map.set(entry.fingerprint, entry);
+    }
+    return map;
+  }, [registryStatus]);
   const inserts = collectInserts(track);
+  const name = displayNameOf(track, byFingerprint);
   return (
     <div
       className={styles.row}
@@ -48,11 +64,8 @@ export function TrackRow({ track, depth }: Props) {
         <span className={styles.icon} aria-hidden="true">
           {KIND_GLYPH[track.kind]}
         </span>
-        <span
-          className={styles.name}
-          title={track.user_name ?? track.name}
-        >
-          {track.user_name ?? track.name}
+        <span className={styles.name} title={name}>
+          {name}
         </span>
         <StatusDot status={track.is_active ? "clean" : "neutral"} />
       </div>
