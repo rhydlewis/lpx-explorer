@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 
@@ -71,6 +72,19 @@ function App() {
     const timer = setTimeout(() => setHint(null), HINT_DISMISS_MS);
     return () => clearTimeout(timer);
   }, [hint]);
+
+  useEffect(() => {
+    const unlistenPromise = listen<string>("menu-event", (event) => {
+      if (event.payload === "menu_open_project") {
+        void pickProject();
+      } else if (event.payload === "menu_open_folder") {
+        void pickAndAddFolder();
+      }
+    });
+    return () => {
+      void unlistenPromise.then((unlisten) => unlisten());
+    };
+  }, []);
 
   const topBar = (
     <TopBar
