@@ -1,0 +1,19 @@
+.section {
+  border-top: 1px solid var(--c-divider);
+  padding: var(--s-4) 0;
+}
+
+.sectionLabel {
+  font-size: var(--fs-section-header);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--c-text-secondary);
+  margin: 0 0 var(--s-3) 0;
+}
+
+.placeholder {
+  font-style: italic;
+  color: var(--c-text-muted);
+  margin: 0;
+}
