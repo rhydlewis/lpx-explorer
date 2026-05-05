@@ -1,3 +1,4 @@
+mod auval;
 mod bundle;
 mod commands;
 mod library;
