@@ -7,9 +7,10 @@ export function AddFolderButton() {
     <button
       type="button"
       className={styles.button}
+      aria-label="Add folder"
       onClick={() => void pickAndAddFolder()}
     >
-      + Add folder
+      <span aria-hidden="true">+ </span>Add folder
     </button>
   );
 }

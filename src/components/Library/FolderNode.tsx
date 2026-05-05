@@ -90,7 +90,9 @@ export function FolderNode({ folder }: Props) {
       </div>
 
       {folder.status.kind === "error" && (
-        <p className={styles.error}>Scan failed: {folder.status.message}</p>
+        <p className={styles.error} role="alert">
+          Scan failed: {folder.status.message}
+        </p>
       )}
 
       {folder.status.kind === "done" && folder.projects.length === 0 && (
