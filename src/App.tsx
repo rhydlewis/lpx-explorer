@@ -2,28 +2,29 @@ import { useEffect, useState } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 
+import { projectNameOf } from "./lib/path-utils";
 import { routeDrop } from "./lib/drop-routing";
+import { useLibraryStore } from "./store/library-store";
 import { useProjectStore } from "./store/project-store";
 import { AppShell } from "./components/AppShell";
 import { EmptyState } from "./components/EmptyState";
 import { ProjectInspector } from "./components/Inspector/ProjectInspector";
+import { LibraryRail } from "./components/Library/LibraryRail";
 import { TopBar } from "./components/TopBar";
 
 import "./App.css";
 
 const HINT_DISMISS_MS = 4000;
 
-function projectNameOf(path: string): string {
-  const trimmed = path.endsWith("/") ? path.slice(0, -1) : path;
-  const segments = trimmed.split("/").filter(Boolean);
-  const last = segments[segments.length - 1] ?? trimmed;
-  return last.replace(/\.logicx$/i, "");
-}
-
 function App() {
   const status = useProjectStore((s) => s.current);
-  const select = useProjectStore((s) => s.select);
+  const recentCount = useLibraryStore((s) => s.recent.length);
   const [hint, setHint] = useState<string | null>(null);
+
+  async function openProject(path: string) {
+    useLibraryStore.getState().addRecent(path);
+    await useProjectStore.getState().select(path);
+  }
 
   async function pickProject() {
     const selection = await open({
@@ -35,7 +36,7 @@ function App() {
     if (typeof selection !== "string") {
       return;
     }
-    await select(selection);
+    await openProject(selection);
   }
 
   useEffect(() => {
@@ -45,7 +46,7 @@ function App() {
       }
       const action = routeDrop(event.payload.paths);
       if (action.kind === "open-project") {
-        void select(action.path);
+        void openProject(action.path);
       } else {
         setHint(action.reason);
       }
@@ -53,7 +54,7 @@ function App() {
     return () => {
       void unlistenPromise.then((unlisten) => unlisten());
     };
-  }, [select]);
+  }, []);
 
   useEffect(() => {
     if (hint === null) {
@@ -71,13 +72,15 @@ function App() {
     />
   );
 
+  const rail = recentCount > 0 ? <LibraryRail /> : undefined;
+
   const main = status.kind === "idle"
     ? <EmptyState onPickProject={pickProject} />
     : <ProjectInspector status={status} />;
 
   return (
     <>
-      <AppShell topBar={topBar} main={main} />
+      <AppShell topBar={topBar} rail={rail} main={main} />
       {hint !== null && (
         <div role="status" aria-live="polite" className="drop-hint">
           {hint}
