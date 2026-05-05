@@ -147,6 +147,28 @@ describe("<FolderNode />", () => {
     expect(screen.getByText(/1 of 3/i)).toBeInTheDocument();
   });
 
+  it("ArrowRight on a collapsed folder toggle expands it", () => {
+    render(<FolderNode folder={entry({ status: { kind: "done" } })} />);
+
+    const toggle = screen.getByRole("button", { expanded: false });
+    fireEvent.keyDown(toggle, { key: "ArrowRight" });
+
+    expect(screen.getByRole("button", { expanded: true })).toBeInTheDocument();
+  });
+
+  it("ArrowLeft on an expanded folder toggle collapses it", () => {
+    render(<FolderNode folder={entry({ status: { kind: "done" } })} />);
+
+    const toggle = screen.getByRole("button", { expanded: false });
+    fireEvent.click(toggle); // expand
+    fireEvent.keyDown(
+      screen.getByRole("button", { expanded: true }),
+      { key: "ArrowLeft" },
+    );
+
+    expect(screen.getByRole("button", { expanded: false })).toBeInTheDocument();
+  });
+
   it("adds the project to Recent when a folder-child row is clicked", () => {
     const folder = entry({
       status: { kind: "done" },

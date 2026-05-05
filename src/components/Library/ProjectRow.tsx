@@ -15,6 +15,7 @@ export function ProjectRow({ name, path, status, selected, onSelect }: Props) {
     <button
       type="button"
       className={styles.row}
+      data-rail-row="true"
       aria-current={selected ? "true" : undefined}
       title={path}
       onClick={onSelect}

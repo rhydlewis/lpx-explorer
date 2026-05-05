@@ -68,9 +68,22 @@ export function FolderNode({ folder }: Props) {
       <div className={styles.header}>
         <button
           type="button"
+          data-rail-row="true"
           aria-expanded={open}
           className={styles.toggle}
           onClick={() => setOpen((v) => !v)}
+          onKeyDown={(e) => {
+            // ArrowRight expands a closed folder, ArrowLeft collapses
+            // an open one. Both stop propagation so the rail's
+            // Up/Down navigator doesn't also treat them as moves.
+            if (e.key === "ArrowRight" && !open) {
+              e.preventDefault();
+              setOpen(true);
+            } else if (e.key === "ArrowLeft" && open) {
+              e.preventDefault();
+              setOpen(false);
+            }
+          }}
           title={folder.path}
         >
           <span className={`${styles.disclosure} ${open ? styles.open : ""}`}>

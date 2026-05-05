@@ -1,3 +1,4 @@
+import { handleRailKeyDown } from "../../lib/rail-keynav";
 import { useLibraryStore } from "../../store/library-store";
 
 import { AddFolderButton } from "./AddFolderButton";
@@ -16,6 +17,10 @@ import styles from "./Library.module.css";
  *
  * Returns null when both Recent and Folders are empty so AppShell can
  * collapse the rail column at first launch.
+ *
+ * Captures Up/Down/Home/End keystrokes on `[data-rail-row="true"]`
+ * children (project rows + folder toggles) for roving keyboard
+ * navigation — see lib/rail-keynav.ts.
  */
 export function LibraryRail() {
   const recentCount = useLibraryStore((s) => s.recent.length);
@@ -26,7 +31,7 @@ export function LibraryRail() {
   }
 
   return (
-    <>
+    <div onKeyDown={handleRailKeyDown}>
       <LibrarySearch />
       <RecentList />
       {folders.length > 0 && (
@@ -38,6 +43,6 @@ export function LibraryRail() {
         </section>
       )}
       <AddFolderButton />
-    </>
+    </div>
   );
 }
