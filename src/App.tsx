@@ -1,47 +1,29 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 
-import { parseProject } from "./lib/parse";
 import { routeDrop } from "./lib/drop-routing";
-import type { ProjectSummary as ProjectSummaryData } from "./lib/types";
+import { useProjectStore } from "./store/project-store";
 import { AppShell } from "./components/AppShell";
 import { EmptyState } from "./components/EmptyState";
-import { PluginList } from "./components/Inspector/PluginList";
+import { ProjectInspector } from "./components/Inspector/ProjectInspector";
 import { TopBar } from "./components/TopBar";
 
 import "./App.css";
 
-type Status =
-  | { kind: "idle" }
-  | { kind: "loading"; path: string }
-  | { kind: "loaded"; path: string; summary: ProjectSummaryData }
-  | { kind: "error"; message: string };
-
 const HINT_DISMISS_MS = 4000;
 
 function projectNameOf(path: string): string {
-  const segments = path.split("/").filter(Boolean);
-  const last = segments[segments.length - 1] ?? path;
+  const trimmed = path.endsWith("/") ? path.slice(0, -1) : path;
+  const segments = trimmed.split("/").filter(Boolean);
+  const last = segments[segments.length - 1] ?? trimmed;
   return last.replace(/\.logicx$/i, "");
 }
 
 function App() {
-  const [status, setStatus] = useState<Status>({ kind: "idle" });
+  const status = useProjectStore((s) => s.current);
+  const select = useProjectStore((s) => s.select);
   const [hint, setHint] = useState<string | null>(null);
-
-  const loadProject = useCallback(async (path: string) => {
-    setStatus({ kind: "loading", path });
-    try {
-      const summary = await parseProject(path);
-      setStatus({ kind: "loaded", path, summary });
-    } catch (e) {
-      setStatus({
-        kind: "error",
-        message: e instanceof Error ? e.message : String(e),
-      });
-    }
-  }, []);
 
   async function pickProject() {
     const selection = await open({
@@ -53,7 +35,7 @@ function App() {
     if (typeof selection !== "string") {
       return;
     }
-    await loadProject(selection);
+    await select(selection);
   }
 
   useEffect(() => {
@@ -63,7 +45,7 @@ function App() {
       }
       const action = routeDrop(event.payload.paths);
       if (action.kind === "open-project") {
-        void loadProject(action.path);
+        void select(action.path);
       } else {
         setHint(action.reason);
       }
@@ -71,7 +53,7 @@ function App() {
     return () => {
       void unlistenPromise.then((unlisten) => unlisten());
     };
-  }, [loadProject]);
+  }, [select]);
 
   useEffect(() => {
     if (hint === null) {
@@ -89,7 +71,9 @@ function App() {
     />
   );
 
-  const main = renderMain(status, pickProject);
+  const main = status.kind === "idle"
+    ? <EmptyState onPickProject={pickProject} />
+    : <ProjectInspector status={status} />;
 
   return (
     <>
@@ -99,26 +83,6 @@ function App() {
           {hint}
         </div>
       )}
-    </>
-  );
-}
-
-function renderMain(status: Status, pickProject: () => Promise<void>) {
-  if (status.kind === "idle") {
-    return <EmptyState onPickProject={pickProject} />;
-  }
-  if (status.kind === "loading") {
-    return <p>Parsing {status.path}…</p>;
-  }
-  if (status.kind === "error") {
-    return <p role="alert">Error: {status.message}</p>;
-  }
-  return (
-    <>
-      <p>
-        <code>{status.path}</code>
-      </p>
-      <PluginList summary={status.summary} />
     </>
   );
 }
