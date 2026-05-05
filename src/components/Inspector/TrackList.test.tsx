@@ -6,11 +6,14 @@ import type { Track } from "../../lib/types";
 import { TrackList } from "./TrackList";
 
 function track(overrides: Partial<Track> = {}): Track {
+  // Default to active because <TrackList /> hides inactive tracks (default
+  // channel strips Logic creates but the user never used). Tests asserting
+  // visibility need is_active: true; the filter test passes false explicitly.
   return {
     name: "Audio 1",
     kind: "audio",
     offset: 100,
-    is_active: false,
+    is_active: true,
     instrument: null,
     midi_fx: [],
     audio_fx: [],
@@ -98,6 +101,40 @@ describe("<TrackList />", () => {
     const childRow = container.querySelector('[data-track-depth="1"]');
     expect(childRow).not.toBeNull();
     expect(childRow?.textContent).toContain("Kick");
+  });
+
+  it("hides inactive tracks (Logic's default-but-unused channel strips)", () => {
+    render(
+      <TrackList
+        tracks={[
+          track({ name: "Active 1", offset: 1, is_active: true }),
+          track({ name: "Phantom Audio", offset: 2, is_active: false }),
+          track({
+            name: "Phantom Inst",
+            kind: "instrument",
+            offset: 3,
+            is_active: false,
+          }),
+        ]}
+      />,
+    );
+
+    expect(screen.getByText("Active 1")).toBeInTheDocument();
+    expect(screen.queryByText("Phantom Audio")).not.toBeInTheDocument();
+    expect(screen.queryByText("Phantom Inst")).not.toBeInTheDocument();
+  });
+
+  it("shows the empty state when only inactive tracks exist", () => {
+    render(
+      <TrackList
+        tracks={[
+          track({ name: "Audio 1", offset: 1, is_active: false }),
+          track({ name: "Audio 2", offset: 2, is_active: false }),
+        ]}
+      />,
+    );
+
+    expect(screen.getByText(/no tracks detected/i)).toBeInTheDocument();
   });
 
   it("renders folders flat — children do NOT nest under folders", () => {

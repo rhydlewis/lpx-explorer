@@ -25,13 +25,17 @@ interface RenderItem {
 /**
  * Build the visible render order from a flat tracks array:
  *   1. Filter to user-visible kinds.
- *   2. Sort by byte offset (matches Logic's Tracks Area top-to-bottom).
- *   3. Nest tracks under summing-stack parents (depth = 1). Folder
+ *   2. Filter to is_active — Logic creates a default set of unused
+ *      channel strips when a project starts; without this filter the
+ *      list balloons with phantom Audio 1-3 / Inst 4 etc. The v1.1
+ *      "Show all" toggle (bead `lpx-explorer-8fb`) will surface them.
+ *   3. Sort by byte offset (matches Logic's Tracks Area top-to-bottom).
+ *   4. Nest tracks under summing-stack parents (depth = 1). Folder
  *      children stay flat — folder is a visual marker only in v1.
  */
 function buildRenderOrder(tracks: ReadonlyArray<Track>): ReadonlyArray<RenderItem> {
   const visible = tracks
-    .filter((t) => USER_VISIBLE.has(t.kind))
+    .filter((t) => USER_VISIBLE.has(t.kind) && t.is_active)
     .slice()
     .sort((a, b) => a.offset - b.offset);
 
