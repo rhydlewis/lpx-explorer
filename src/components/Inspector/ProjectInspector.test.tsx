@@ -39,16 +39,17 @@ describe("<ProjectInspector />", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("renders a loading message during parse", () => {
+  it("renders the loading skeleton during parse", () => {
     render(
       <ProjectInspector
         status={{ kind: "loading", path: "/x.logicx" }}
       />,
     );
 
+    // 'Parsing /x.logicx…' is the aria-live announcement.
     expect(screen.getByText(/parsing/i)).toBeInTheDocument();
     // No section regions yet during loading — the verdict-and-tracks shape is
-    // for the loaded state.
+    // for the loaded state. (Skeleton sections are aria-hidden.)
     expect(screen.queryByRole("region", { name: "tracks" })).not.toBeInTheDocument();
   });
 

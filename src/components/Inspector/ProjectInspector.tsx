@@ -1,6 +1,7 @@
 import type { ProjectStatus } from "../../store/project-store";
 
 import { CompatibilityVerdict } from "./CompatibilityVerdict";
+import { InspectorSkeleton } from "./InspectorSkeleton";
 import { PluginList } from "./PluginList";
 import { ProjectHeader } from "./ProjectHeader";
 import { ProjectInfo } from "./ProjectInfo";
@@ -16,7 +17,7 @@ export function ProjectInspector({ status }: Props) {
   }
 
   if (status.kind === "loading") {
-    return <p>Parsing {status.path}…</p>;
+    return <InspectorSkeleton path={status.path} />;
   }
 
   if (status.kind === "error") {
