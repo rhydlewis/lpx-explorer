@@ -25,16 +25,18 @@ function track(overrides: Partial<Track> = {}): Track {
 }
 
 describe("<TrackList />", () => {
-  it("exposes the section under aria-label='tracks'", () => {
+  it("exposes the section under aria-label='plug-in chains'", () => {
     render(<TrackList tracks={[]} />);
 
-    expect(screen.getByRole("region", { name: "tracks" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("region", { name: "plug-in chains" }),
+    ).toBeInTheDocument();
   });
 
   it("renders 'No tracks detected.' when the list is empty", () => {
     render(<TrackList tracks={[]} />);
 
-    expect(screen.getByText(/no tracks detected/i)).toBeInTheDocument();
+    expect(screen.getByText(/no plug-in chains detected/i)).toBeInTheDocument();
   });
 
   it("renders 'No tracks detected.' when only routing kinds are present", () => {
@@ -48,7 +50,7 @@ describe("<TrackList />", () => {
       />,
     );
 
-    expect(screen.getByText(/no tracks detected/i)).toBeInTheDocument();
+    expect(screen.getByText(/no plug-in chains detected/i)).toBeInTheDocument();
   });
 
   it("renders user-visible kinds and hides routing kinds", () => {
@@ -135,7 +137,7 @@ describe("<TrackList />", () => {
       />,
     );
 
-    expect(screen.getByText(/no tracks detected/i)).toBeInTheDocument();
+    expect(screen.getByText(/no plug-in chains detected/i)).toBeInTheDocument();
   });
 
   it("renders folders flat — children do NOT nest under folders", () => {

@@ -19,7 +19,7 @@ describe("<ProjectInspector />", () => {
     expect(screen.getByRole("region", { name: "project" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "compatibility" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "project info" })).toBeInTheDocument();
-    expect(screen.getByRole("region", { name: "tracks" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "plug-in chains" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "plug-ins" })).toBeInTheDocument();
   });
 
@@ -50,7 +50,7 @@ describe("<ProjectInspector />", () => {
     expect(screen.getByText(/parsing/i)).toBeInTheDocument();
     // No section regions yet during loading — the verdict-and-tracks shape is
     // for the loaded state. (Skeleton sections are aria-hidden.)
-    expect(screen.queryByRole("region", { name: "tracks" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "plug-in chains" })).not.toBeInTheDocument();
   });
 
   it("replaces the sections with an error card when parse fails", () => {
@@ -65,6 +65,6 @@ describe("<ProjectInspector />", () => {
     );
 
     expect(screen.getByRole("alert")).toHaveTextContent(/projectdata not found/i);
-    expect(screen.queryByRole("region", { name: "tracks" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "plug-in chains" })).not.toBeInTheDocument();
   });
 });

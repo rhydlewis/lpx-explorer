@@ -88,10 +88,12 @@ export function TrackList({ tracks }: Props) {
   const items = useMemo(() => buildRenderOrder(tracks), [tracks]);
 
   return (
-    <section aria-label="tracks" className={sectionStyles.section}>
-      <h3 className={sectionStyles.sectionLabel}>Tracks</h3>
+    <section aria-label="plug-in chains" className={sectionStyles.section}>
+      <h3 className={sectionStyles.sectionLabel}>Plug-in Chains</h3>
       {items.length === 0 ? (
-        <p className={sectionStyles.placeholder}>No tracks detected.</p>
+        <p className={sectionStyles.placeholder}>
+          No plug-in chains detected.
+        </p>
       ) : (
         items.map(({ track, depth }) => (
           <TrackRow key={track.offset} track={track} depth={depth} />
