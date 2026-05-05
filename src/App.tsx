@@ -7,6 +7,11 @@ import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { openProject } from "./lib/open-project";
 import { pickAndAddFolder } from "./lib/open-folder";
 import { routeDrop } from "./lib/drop-routing";
+import {
+  loadPersistedLibrary,
+  persistLibrary,
+  setRecentMenu,
+} from "./lib/persistence";
 import { useAuRegistryStore } from "./store/au-registry-store";
 import { useLibraryStore } from "./store/library-store";
 import { useProjectStore } from "./store/project-store";
@@ -42,6 +47,50 @@ function App() {
     void useAuRegistryStore.getState().loadFromCache();
   }, []);
 
+  // Persistence: hydrate from disk, then sync writes + native menu on every
+  // recent-list change. Subscribes AFTER hydration so the initial fill
+  // doesn't echo straight back to disk. The native macOS File menu's
+  // "Open Recent Project" / "Open Recent Folder" submenus are rebuilt on
+  // each change via `set_recent_menu` (Tauri command).
+  useEffect(() => {
+    let unsubscribe: (() => void) | null = null;
+    let cancelled = false;
+
+    void (async () => {
+      const persisted = await loadPersistedLibrary();
+      if (cancelled) {
+        return;
+      }
+      useLibraryStore.getState().hydrate(persisted);
+      await setRecentMenu(persisted.recent, persisted.recentFolders);
+      if (cancelled) {
+        return;
+      }
+
+      let prevRecent = persisted.recent;
+      let prevRecentFolders = persisted.recentFolders;
+      unsubscribe = useLibraryStore.subscribe((state) => {
+        if (
+          state.recent === prevRecent &&
+          state.recentFolders === prevRecentFolders
+        ) {
+          return;
+        }
+        prevRecent = state.recent;
+        prevRecentFolders = state.recentFolders;
+        void persistLibrary(state.recent, state.recentFolders);
+        void setRecentMenu(state.recent, state.recentFolders);
+      });
+    })();
+
+    return () => {
+      cancelled = true;
+      if (unsubscribe !== null) {
+        unsubscribe();
+      }
+    };
+  }, []);
+
   useEffect(() => {
     const isDir = (path: string): Promise<boolean> =>
       invoke<boolean>("is_dir", { path });
@@ -73,10 +122,21 @@ function App() {
 
   useEffect(() => {
     const unlistenPromise = listen<string>("menu-event", (event) => {
-      if (event.payload === "menu_open_project") {
+      const id = event.payload;
+      if (id === "menu_open_project") {
         void pickProject();
-      } else if (event.payload === "menu_open_folder") {
+      } else if (id === "menu_open_folder") {
         void pickAndAddFolder();
+      } else if (id === "clear_recent_projects") {
+        useLibraryStore.getState().clearRecent();
+      } else if (id === "clear_recent_folders") {
+        useLibraryStore.getState().clearRecentFolders();
+      } else if (id.startsWith("recent_project::")) {
+        void openProject(id.slice("recent_project::".length));
+      } else if (id.startsWith("recent_folder::")) {
+        void useLibraryStore
+          .getState()
+          .addFolder(id.slice("recent_folder::".length));
       }
     });
     return () => {

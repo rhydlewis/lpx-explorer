@@ -28,6 +28,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "1"
 lpx-parser = { path = "crates/lpx-parser" }
+tauri-plugin-store = "2.4.3"
 
 [dev-dependencies]
 tempfile = "3"

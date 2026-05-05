@@ -10,3 +10,12 @@ export function projectNameOf(path: string): string {
   const last = segments[segments.length - 1] ?? trimmed;
   return last.replace(/\.logicx$/i, "");
 }
+
+/**
+ * Last path segment of a folder path (without the `.logicx` strip).
+ */
+export function folderNameOf(path: string): string {
+  const trimmed = path.endsWith("/") ? path.slice(0, -1) : path;
+  const segments = trimmed.split("/").filter(Boolean);
+  return segments[segments.length - 1] ?? trimmed;
+}

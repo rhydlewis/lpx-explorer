@@ -1,18 +1,37 @@
 import { create } from "zustand";
 
 import { scanFolder } from "../lib/library";
-import { projectNameOf } from "../lib/path-utils";
+import { folderNameOf, projectNameOf } from "../lib/path-utils";
 import type { FolderEntry, RecentEntry, ScanStatus } from "../lib/types";
 import { useProjectStore } from "./project-store";
 
-export const RECENT_LIMIT = 8;
+/** macOS HIG: ~10 recent items in File menus. */
+export const RECENT_LIMIT = 10;
 
 export interface LibraryState {
   recent: ReadonlyArray<RecentEntry>;
+  /**
+   * Every folder ever scanned, persisted across launches. Distinct from
+   * `folders` (which holds only the currently-active scan targets shown
+   * in the rail). Removing from the rail does not remove from this list.
+   */
+  recentFolders: ReadonlyArray<RecentEntry>;
   folders: ReadonlyArray<FolderEntry>;
   query: string;
   addRecent: (path: string, nowMs?: number) => void;
+  addRecentFolder: (path: string, nowMs?: number) => void;
   removeRecent: (path: string) => void;
+  clearRecent: () => void;
+  clearRecentFolders: () => void;
+  /**
+   * One-shot bulk-set used by the persistence layer at app boot — after
+   * loading from `tauri-plugin-store` and dropping paths whose targets
+   * no longer exist on disk.
+   */
+  hydrate: (state: {
+    recent: ReadonlyArray<RecentEntry>;
+    recentFolders: ReadonlyArray<RecentEntry>;
+  }) => void;
   addFolder: (path: string) => Promise<void>;
   removeFolder: (path: string) => void;
   startScan: (path: string) => Promise<void>;
@@ -57,6 +76,7 @@ function appendFolderProject(
 
 export const useLibraryStore = create<LibraryState>((set, get) => ({
   recent: [],
+  recentFolders: [],
   folders: [],
   query: "",
 
@@ -69,13 +89,41 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
     });
   },
 
+  addRecentFolder: (path: string, nowMs?: number) => {
+    const lastLoadedMs = nowMs ?? Date.now();
+    const entry: RecentEntry = { path, name: folderNameOf(path), lastLoadedMs };
+    set((state) => {
+      const without = state.recentFolders.filter((r) => r.path !== path);
+      return { recentFolders: [entry, ...without].slice(0, RECENT_LIMIT) };
+    });
+  },
+
   removeRecent: (path: string) => {
     set((state) => ({
       recent: state.recent.filter((r) => r.path !== path),
     }));
   },
 
+  clearRecent: () => {
+    set({ recent: [] });
+  },
+
+  clearRecentFolders: () => {
+    set({ recentFolders: [] });
+  },
+
+  hydrate: (state) => {
+    set({
+      recent: state.recent.slice(0, RECENT_LIMIT),
+      recentFolders: state.recentFolders.slice(0, RECENT_LIMIT),
+    });
+  },
+
   addFolder: async (path: string) => {
+    // Always record a recent-folder entry, even if the folder is
+    // already in the rail. That way "Open Recent Folder" reflects the
+    // most-recent-first ordering by access time.
+    get().addRecentFolder(path);
     if (get().folders.some((f) => f.path === path)) {
       return;
     }
@@ -147,6 +195,6 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
   },
 
   clear: () => {
-    set({ recent: [], folders: [], query: "" });
+    set({ recent: [], recentFolders: [], folders: [], query: "" });
   },
 }));

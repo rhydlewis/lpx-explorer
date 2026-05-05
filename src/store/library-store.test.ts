@@ -301,4 +301,132 @@ describe("useLibraryStore", () => {
 
     expect(useLibraryStore.getState().folders).toEqual([]);
   });
+
+  // ─── Recent folders + clear actions + hydrate ───────────────────────
+
+  it("addRecentFolder records the folder with its basename", () => {
+    useLibraryStore.getState().addRecentFolder(
+      "/Users/rhyd/Music/Logic",
+      1_700_000_000_000,
+    );
+
+    expect(useLibraryStore.getState().recentFolders).toEqual([
+      { path: "/Users/rhyd/Music/Logic", name: "Logic", lastLoadedMs: 1_700_000_000_000 },
+    ]);
+  });
+
+  it("addRecentFolder dedupes by path with most-recent ordering", () => {
+    const store = useLibraryStore.getState();
+    store.addRecentFolder("/a", 1);
+    store.addRecentFolder("/b", 2);
+    store.addRecentFolder("/a", 3);
+
+    const folders = useLibraryStore.getState().recentFolders;
+    expect(folders.map((f) => f.path)).toEqual(["/a", "/b"]);
+    expect(folders[0]?.lastLoadedMs).toBe(3);
+  });
+
+  it("addRecentFolder caps at RECENT_LIMIT — oldest drops", () => {
+    const store = useLibraryStore.getState();
+    for (let i = 0; i < RECENT_LIMIT + 3; i++) {
+      store.addRecentFolder(`/folder-${i}`, i);
+    }
+
+    const folders = useLibraryStore.getState().recentFolders;
+    expect(folders).toHaveLength(RECENT_LIMIT);
+    expect(folders[0]?.path).toBe(`/folder-${RECENT_LIMIT + 2}`);
+    expect(folders.find((f) => f.path === "/folder-0")).toBeUndefined();
+  });
+
+  it("addFolder also bumps the matching recentFolders entry", async () => {
+    mockedScan.mockImplementation(async () => {
+      // empty scan
+    });
+
+    await useLibraryStore.getState().addFolder("/Music/Logic");
+
+    expect(
+      useLibraryStore.getState().recentFolders.map((f) => f.path),
+    ).toEqual(["/Music/Logic"]);
+  });
+
+  it("re-opening a folder via addFolder re-orders recentFolders most-recent-first", async () => {
+    mockedScan.mockImplementation(async () => {
+      // empty scan
+    });
+    await useLibraryStore.getState().addFolder("/a");
+    await useLibraryStore.getState().addFolder("/b");
+
+    // Re-open /a — re-add path is idempotent for the rail (still 2 folders),
+    // but recentFolders should bump /a to the front.
+    await useLibraryStore.getState().addFolder("/a");
+
+    expect(
+      useLibraryStore.getState().recentFolders.map((f) => f.path),
+    ).toEqual(["/a", "/b"]);
+  });
+
+  it("clearRecent wipes recent without touching folders or recentFolders", async () => {
+    const store = useLibraryStore.getState();
+    store.addRecent("/proj.logicx", 1);
+    store.addRecentFolder("/Music", 2);
+
+    store.clearRecent();
+
+    expect(useLibraryStore.getState().recent).toEqual([]);
+    expect(useLibraryStore.getState().recentFolders).toHaveLength(1);
+  });
+
+  it("clearRecentFolders wipes recentFolders without touching recent or rail folders", async () => {
+    mockedScan.mockImplementation(async () => {
+      // empty scan
+    });
+    await useLibraryStore.getState().addFolder("/Music/Logic");
+    useLibraryStore.getState().addRecent("/proj.logicx", 1);
+
+    useLibraryStore.getState().clearRecentFolders();
+
+    expect(useLibraryStore.getState().recentFolders).toEqual([]);
+    expect(useLibraryStore.getState().recent).toHaveLength(1);
+    expect(useLibraryStore.getState().folders).toHaveLength(1);
+  });
+
+  it("hydrate replaces recent + recentFolders in one shot", () => {
+    useLibraryStore.getState().hydrate({
+      recent: [{ path: "/p.logicx", name: "p", lastLoadedMs: 1 }],
+      recentFolders: [{ path: "/f", name: "f", lastLoadedMs: 2 }],
+    });
+
+    const state = useLibraryStore.getState();
+    expect(state.recent).toEqual([
+      { path: "/p.logicx", name: "p", lastLoadedMs: 1 },
+    ]);
+    expect(state.recentFolders).toEqual([
+      { path: "/f", name: "f", lastLoadedMs: 2 },
+    ]);
+  });
+
+  it("hydrate truncates oversized lists to RECENT_LIMIT", () => {
+    const oversized = Array.from({ length: RECENT_LIMIT + 5 }, (_, i) => ({
+      path: `/p-${i}.logicx`,
+      name: `p-${i}`,
+      lastLoadedMs: i,
+    }));
+
+    useLibraryStore.getState().hydrate({
+      recent: oversized,
+      recentFolders: oversized,
+    });
+
+    expect(useLibraryStore.getState().recent).toHaveLength(RECENT_LIMIT);
+    expect(useLibraryStore.getState().recentFolders).toHaveLength(RECENT_LIMIT);
+  });
+
+  it("clear also resets recentFolders", () => {
+    useLibraryStore.getState().addRecentFolder("/x", 1);
+
+    useLibraryStore.getState().clear();
+
+    expect(useLibraryStore.getState().recentFolders).toEqual([]);
+  });
 });
