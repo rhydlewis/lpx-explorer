@@ -1,0 +1,33 @@
+.pill {
+  display: inline-block;
+  padding: var(--s-2) var(--s-4);
+  border-radius: var(--radius-md);
+  font-size: var(--fs-secondary);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background-color: var(--c-status-neutral);
+  color: var(--c-bg);
+}
+
+.pill[data-status="clean"] {
+  background-color: var(--c-status-clean);
+}
+
+.pill[data-status="warnings"] {
+  background-color: var(--c-status-warn);
+}
+
+.pill[data-status="will-not-open"] {
+  background-color: var(--c-status-fail);
+}
+
+.pill[data-status="unknown"] {
+  background-color: var(--c-status-neutral);
+}
+
+.summary {
+  margin: var(--s-2) 0 0 0;
+  font-size: var(--fs-secondary);
+  color: var(--c-text-secondary);
+}
