@@ -36,7 +36,7 @@ describe("<CompatibilityVerdict />", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders 'Opens cleanly' (green) when every fingerprint is installed", () => {
+  it("renders 'Opens cleanly' (green) when every fingerprint is installed, plus a summary line", () => {
     useAuRegistryStore.setState({
       status: {
         kind: "loaded",
@@ -59,6 +59,9 @@ describe("<CompatibilityVerdict />", () => {
     const { container } = render(<CompatibilityVerdict />);
 
     expect(screen.getByText(/opens cleanly/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/all 2 plug-ins installed on this mac/i),
+    ).toBeInTheDocument();
     expect(container.querySelector("[data-status='clean']")).not.toBeNull();
   });
 

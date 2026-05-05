@@ -43,7 +43,11 @@ function renderVerdict(
   }
   const missing = countMissing(fingerprints, registryStatus);
   if (missing === 0) {
-    return { status: "clean", headline: "Opens cleanly", summary: undefined };
+    return {
+      status: "clean",
+      headline: "Opens cleanly",
+      summary: `All ${fingerprints.length} plug-in${fingerprints.length === 1 ? "" : "s"} installed on this Mac.`,
+    };
   }
   if (missing === fingerprints.length) {
     return {
