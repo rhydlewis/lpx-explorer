@@ -48,8 +48,11 @@ export function TrackRow({ track, depth }: Props) {
         <span className={styles.icon} aria-hidden="true">
           {KIND_GLYPH[track.kind]}
         </span>
-        <span className={styles.name} title={track.name}>
-          {track.name}
+        <span
+          className={styles.name}
+          title={track.user_name ?? track.name}
+        >
+          {track.user_name ?? track.name}
         </span>
         <StatusDot status={track.is_active ? "clean" : "neutral"} />
       </div>

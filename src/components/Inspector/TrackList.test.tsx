@@ -11,6 +11,7 @@ function track(overrides: Partial<Track> = {}): Track {
   // visibility need is_active: true; the filter test passes false explicitly.
   return {
     name: "Audio 1",
+    user_name: null,
     kind: "audio",
     offset: 100,
     is_active: true,

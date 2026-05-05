@@ -56,6 +56,9 @@ pub fn parse_project(path: String) -> Result<ProjectSummary, ParseError> {
 
     let mut tracks = lpx_parser::find_tracks(&project_data_bytes);
     lpx_parser::assign_aus(&mut tracks, &fingerprints);
+    let region_records = lpx_parser::find_region_records(&project_data_bytes);
+    let clusters = lpx_parser::cluster_regions(&region_records);
+    lpx_parser::assign_user_names(&mut tracks, &clusters);
 
     Ok(ProjectSummary {
         fingerprints,

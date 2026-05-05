@@ -9,7 +9,7 @@
 
 use serde::Serialize;
 
-use crate::AURef;
+use crate::{AURef, RegionCluster};
 
 const NAME_FIELD_LEN: usize = 16;
 const DESCRIPTOR_LEN: usize = 8;
@@ -32,6 +32,10 @@ pub enum TrackKind {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct Track {
     pub name: String,
+    /// User-given name recovered from a region-record cluster
+    /// (`Track.name` keeps the channel-strip default like `"Inst 1"`).
+    /// Some when [`assign_user_names`] found a matching cluster.
+    pub user_name: Option<String>,
     pub kind: TrackKind,
     pub offset: usize,
     pub is_active: bool,
@@ -40,6 +44,37 @@ pub struct Track {
     pub audio_fx: Vec<AURef>,
     pub sub_number: Option<u32>,
     pub parent_offset: Option<usize>,
+}
+
+/// For each cluster, find the nearest preceding track and set its
+/// `user_name` to the cluster's `base_name` (only when `user_name` is
+/// still `None`). Mirrors the byte-offset-based "nearest preceding
+/// track" heuristic from [`assign_aus`].
+///
+/// Each Logic track's regions sit in `ProjectData` after the track's
+/// channel-strip record, so a cluster's `first_offset` typically falls
+/// just after the track it belongs to.
+pub fn assign_user_names(tracks: &mut [Track], clusters: &[RegionCluster]) {
+    if tracks.is_empty() {
+        return;
+    }
+    tracks.sort_by_key(|t| t.offset);
+    let mut sorted_clusters: Vec<&RegionCluster> = clusters.iter().collect();
+    sorted_clusters.sort_by_key(|c| c.first_offset);
+
+    for cluster in sorted_clusters {
+        let owner_idx = match tracks
+            .iter()
+            .rposition(|t| t.offset <= cluster.first_offset)
+        {
+            Some(i) => i,
+            None => continue,
+        };
+        let owner = &mut tracks[owner_idx];
+        if owner.user_name.is_none() {
+            owner.user_name = Some(cluster.base_name.clone());
+        }
+    }
 }
 
 /// Route each AU to its nearest preceding track. Mirrors
@@ -187,6 +222,7 @@ pub fn find_tracks(raw: &[u8]) -> Vec<Track> {
         if seen.insert(i) {
             tracks.push(Track {
                 name,
+                user_name: None,
                 kind: classify_descriptor(&descriptor),
                 offset: i,
                 is_active: descriptor_is_active(&descriptor),
@@ -403,6 +439,7 @@ mod tests {
     fn track(name: &str, kind: TrackKind, offset: usize) -> Track {
         Track {
             name: name.into(),
+            user_name: None,
             kind,
             offset,
             is_active: false,
@@ -501,6 +538,91 @@ mod tests {
         let aus = vec![au_at(100, "aufx")];
 
         assign_aus(&mut tracks, &aus);
+
+        assert!(tracks.is_empty());
+    }
+
+    // ─── assign_user_names ─────────────────────────────────────────────
+
+    fn cluster_at(offset: usize, base_name: &str) -> RegionCluster {
+        RegionCluster {
+            base_name: base_name.into(),
+            count: 1,
+            first_offset: offset,
+            last_offset: offset,
+        }
+    }
+
+    #[test]
+    fn assigns_cluster_name_to_nearest_preceding_track() {
+        let mut tracks = vec![track("Inst 1", TrackKind::Instrument, 100)];
+        let clusters = vec![cluster_at(150, "Pocket Strings")];
+
+        assign_user_names(&mut tracks, &clusters);
+
+        assert_eq!(tracks[0].user_name.as_deref(), Some("Pocket Strings"));
+    }
+
+    #[test]
+    fn picks_the_correct_owner_when_multiple_tracks_exist() {
+        let mut tracks = vec![
+            track("Inst 1", TrackKind::Instrument, 100),
+            track("Inst 2", TrackKind::Instrument, 300),
+            track("Inst 3", TrackKind::Instrument, 500),
+        ];
+        let clusters = vec![
+            cluster_at(150, "Pocket Strings"),
+            cluster_at(350, "Vaults"),
+            cluster_at(550, "Glass Strings"),
+        ];
+
+        assign_user_names(&mut tracks, &clusters);
+
+        assert_eq!(tracks[0].user_name.as_deref(), Some("Pocket Strings"));
+        assert_eq!(tracks[1].user_name.as_deref(), Some("Vaults"));
+        assert_eq!(tracks[2].user_name.as_deref(), Some("Glass Strings"));
+    }
+
+    #[test]
+    fn drops_clusters_preceding_all_tracks() {
+        let mut tracks = vec![track("Inst 1", TrackKind::Instrument, 200)];
+        let clusters = vec![cluster_at(50, "Orphan")];
+
+        assign_user_names(&mut tracks, &clusters);
+
+        assert!(tracks[0].user_name.is_none());
+    }
+
+    #[test]
+    fn does_not_overwrite_an_existing_user_name() {
+        // First cluster wins; later clusters owned by the same track
+        // (e.g. a take/comp run that didn't strip cleanly) don't overwrite.
+        let mut tracks = vec![track("Inst 1", TrackKind::Instrument, 100)];
+        let clusters = vec![
+            cluster_at(150, "Pocket Strings"),
+            cluster_at(160, "Different Name"),
+        ];
+
+        assign_user_names(&mut tracks, &clusters);
+
+        assert_eq!(tracks[0].user_name.as_deref(), Some("Pocket Strings"));
+    }
+
+    #[test]
+    fn empty_clusters_are_a_no_op() {
+        let mut tracks = vec![track("Inst 1", TrackKind::Instrument, 100)];
+
+        assign_user_names(&mut tracks, &[]);
+
+        assert!(tracks[0].user_name.is_none());
+    }
+
+    #[test]
+    fn empty_tracks_with_clusters_is_a_no_op() {
+        let mut tracks: Vec<Track> = Vec::new();
+        let clusters = vec![cluster_at(100, "Anything")];
+
+        assign_user_names(&mut tracks, &clusters);
 
         assert!(tracks.is_empty());
     }

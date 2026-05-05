@@ -38,6 +38,7 @@ describe("parseProject IPC contract", () => {
       tracks: [
         {
           name: "Audio 1",
+          user_name: null,
           kind: "audio",
           offset: 1024,
           is_active: true,
@@ -48,7 +49,8 @@ describe("parseProject IPC contract", () => {
           parent_offset: null,
         },
         {
-          name: "Drums",
+          name: "Inst 1",
+          user_name: "Pocket Strings",
           kind: "instrument",
           offset: 2048,
           is_active: false,

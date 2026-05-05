@@ -9,11 +9,13 @@
 
 mod auval;
 mod metadata;
+mod regions;
 mod tracks;
 
 pub use auval::{parse_auval_line, AuvalEntry};
 pub use metadata::{parse_metadata_plist, MetadataError, ProjectMetadata};
-pub use tracks::{assign_aus, find_tracks, Track, TrackKind};
+pub use regions::{cluster_regions, find_region_records, RegionCluster, RegionRecord};
+pub use tracks::{assign_aus, assign_user_names, find_tracks, Track, TrackKind};
 
 use serde::Serialize;
 

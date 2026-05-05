@@ -41,6 +41,13 @@ export type TrackKind =
 
 export interface Track {
   name: string;
+  /**
+   * User-given name recovered from a region-record cluster.
+   * `null` when the parser couldn't pair this track with a cluster
+   * (e.g. user never renamed it). Display layer prefers this over
+   * `name` when present.
+   */
+  user_name: string | null;
   kind: TrackKind;
   offset: number;
   is_active: boolean;

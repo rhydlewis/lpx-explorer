@@ -8,6 +8,7 @@ import { TrackRow } from "./TrackRow";
 function track(overrides: Partial<Track> = {}): Track {
   return {
     name: "Audio 1",
+    user_name: null,
     kind: "audio",
     offset: 100,
     is_active: false,
@@ -44,6 +45,18 @@ describe("<TrackRow />", () => {
     render(<TrackRow track={track({ name: "Drums" })} depth={0} />);
 
     expect(screen.getByText("Drums")).toBeInTheDocument();
+  });
+
+  it("prefers user_name over name when present", () => {
+    render(
+      <TrackRow
+        track={track({ name: "Inst 1", user_name: "Pocket Strings" })}
+        depth={0}
+      />,
+    );
+
+    expect(screen.getByText("Pocket Strings")).toBeInTheDocument();
+    expect(screen.queryByText("Inst 1")).not.toBeInTheDocument();
   });
 
   it("encodes the kind in a data attribute for icon CSS", () => {
