@@ -3,9 +3,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { scanFolder } from "../lib/library";
 
 import { RECENT_LIMIT, useLibraryStore } from "./library-store";
+import { useProjectStore } from "./project-store";
 
 vi.mock("../lib/library", () => ({
   scanFolder: vi.fn(),
+}));
+
+vi.mock("../lib/parse", () => ({
+  parseProject: vi.fn().mockResolvedValue({ fingerprints: [] }),
 }));
 
 const mockedScan = vi.mocked(scanFolder);
@@ -13,10 +18,12 @@ const mockedScan = vi.mocked(scanFolder);
 describe("useLibraryStore", () => {
   beforeEach(() => {
     useLibraryStore.getState().clear();
+    useProjectStore.getState().clear();
     mockedScan.mockReset();
   });
   afterEach(() => {
     useLibraryStore.getState().clear();
+    useProjectStore.getState().clear();
   });
 
   it("starts with an empty recent list", () => {
@@ -220,6 +227,36 @@ describe("useLibraryStore", () => {
 
     expect(useLibraryStore.getState().folders[0]?.status).toEqual({ kind: "idle" });
     expect(useLibraryStore.getState().folders[0]?.projects).toEqual([]);
+  });
+
+  it("removeFolder clears the loaded project if it came from that folder", async () => {
+    mockedScan.mockImplementationOnce(async (_path, onProject) => {
+      onProject?.("/Music/Logic/song.logicx");
+    });
+    await useLibraryStore.getState().addFolder("/Music/Logic");
+    await useProjectStore.getState().select("/Music/Logic/song.logicx");
+    expect(useProjectStore.getState().current.kind).toBe("loaded");
+
+    useLibraryStore.getState().removeFolder("/Music/Logic");
+
+    expect(useProjectStore.getState().current).toEqual({ kind: "idle" });
+  });
+
+  it("removeFolder leaves the loaded project alone if it came from elsewhere", async () => {
+    mockedScan.mockImplementation(async () => {
+      // empty scan
+    });
+    await useLibraryStore.getState().addFolder("/Music/Logic");
+    await useProjectStore.getState().select("/Other/song.logicx");
+    expect(useProjectStore.getState().current.kind).toBe("loaded");
+
+    useLibraryStore.getState().removeFolder("/Music/Logic");
+
+    const status = useProjectStore.getState().current;
+    expect(status.kind).toBe("loaded");
+    if (status.kind === "loaded") {
+      expect(status.path).toBe("/Other/song.logicx");
+    }
   });
 
   it("removeFolder filters by path without disturbing siblings", async () => {

@@ -3,6 +3,7 @@ import { create } from "zustand";
 import { scanFolder } from "../lib/library";
 import { projectNameOf } from "../lib/path-utils";
 import type { FolderEntry, RecentEntry, ScanStatus } from "../lib/types";
+import { useProjectStore } from "./project-store";
 
 export const RECENT_LIMIT = 8;
 
@@ -75,9 +76,19 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
   },
 
   removeFolder: (path: string) => {
+    const removed = get().folders.find((f) => f.path === path);
     set((state) => ({
       folders: state.folders.filter((f) => f.path !== path),
     }));
+    // Clear the Inspector if the loaded project came from the removed folder.
+    const project = useProjectStore.getState().current;
+    if (
+      removed !== undefined &&
+      project.kind !== "idle" &&
+      removed.projects.includes(project.path)
+    ) {
+      useProjectStore.getState().clear();
+    }
   },
 
   startScan: async (path: string) => {
