@@ -31,7 +31,10 @@ export function ProjectInspector({ status }: Props) {
     <>
       <ProjectHeader path={status.path} />
       <CompatibilityVerdict />
-      <ProjectInfo />
+      <ProjectInfo
+        metadata={status.summary.metadata}
+        stats={status.summary.stats}
+      />
       <TrackList />
       <PluginList summary={status.summary} />
     </>

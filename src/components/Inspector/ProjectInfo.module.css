@@ -1,0 +1,19 @@
+.grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: var(--s-4);
+  row-gap: var(--s-2);
+  margin: 0;
+  font-size: var(--fs-secondary);
+}
+
+.grid dt {
+  color: var(--c-text-secondary);
+  font-weight: 500;
+}
+
+.grid dd {
+  margin: 0;
+  color: var(--c-text);
+  font-variant-numeric: tabular-nums;
+}
