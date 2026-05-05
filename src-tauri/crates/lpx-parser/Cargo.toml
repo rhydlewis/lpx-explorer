@@ -10,6 +10,8 @@ name = "lpx_parser"
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
+plist = "1"
+thiserror = "1"
 
 [dev-dependencies]
 sha2 = "0.10"

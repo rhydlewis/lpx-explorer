@@ -1974,9 +1974,11 @@ dependencies = [
 name = "lpx-parser"
 version = "0.0.0"
 dependencies = [
+ "plist",
  "serde",
  "sha2",
  "tempfile",
+ "thiserror 1.0.69",
 ]
 
 [[package]]

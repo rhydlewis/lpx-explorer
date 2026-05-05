@@ -1,9 +1,15 @@
 //! Read-only parser for Logic Pro `.logicx` `ProjectData` binaries.
 //!
-//! Walking-skeleton scope: locate Audio Unit (AU) component descriptors
-//! inside the binary blob. The format is undocumented; offsets here
-//! mirror the empirically-derived Python implementation at
-//! `lpx-toolkit/lpx_inspect.py:706-728`.
+//! Scope:
+//!   * `find_aus(&[u8])` — Audio Unit descriptors in `ProjectData`.
+//!   * `parse_metadata_plist(&[u8])` — project metadata from `MetaData.plist`.
+//!
+//! The format is undocumented; offsets here mirror the empirically-derived
+//! Python implementation at `lpx-toolkit/lpx_inspect.py`.
+
+mod metadata;
+
+pub use metadata::{parse_metadata_plist, MetadataError, ProjectMetadata};
 
 use serde::Serialize;
 
