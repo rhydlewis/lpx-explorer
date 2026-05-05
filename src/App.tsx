@@ -1,9 +1,14 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
+import { getCurrentWebview } from "@tauri-apps/api/webview";
 
 import { parseProject } from "./lib/parse";
+import { routeDrop } from "./lib/drop-routing";
 import type { ProjectSummary as ProjectSummaryData } from "./lib/types";
+import { AppShell } from "./components/AppShell";
+import { EmptyState } from "./components/EmptyState";
 import { ProjectSummary } from "./components/ProjectSummary";
+import { TopBar } from "./components/TopBar";
 
 import "./App.css";
 
@@ -13,8 +18,30 @@ type Status =
   | { kind: "loaded"; path: string; summary: ProjectSummaryData }
   | { kind: "error"; message: string };
 
+const HINT_DISMISS_MS = 4000;
+
+function projectNameOf(path: string): string {
+  const segments = path.split("/").filter(Boolean);
+  const last = segments[segments.length - 1] ?? path;
+  return last.replace(/\.logicx$/i, "");
+}
+
 function App() {
   const [status, setStatus] = useState<Status>({ kind: "idle" });
+  const [hint, setHint] = useState<string | null>(null);
+
+  const loadProject = useCallback(async (path: string) => {
+    setStatus({ kind: "loading", path });
+    try {
+      const summary = await parseProject(path);
+      setStatus({ kind: "loaded", path, summary });
+    } catch (e) {
+      setStatus({
+        kind: "error",
+        message: e instanceof Error ? e.message : String(e),
+      });
+    }
+  }, []);
 
   async function pickProject() {
     const selection = await open({
@@ -26,36 +53,73 @@ function App() {
     if (typeof selection !== "string") {
       return;
     }
-    setStatus({ kind: "loading", path: selection });
-    try {
-      const summary = await parseProject(selection);
-      setStatus({ kind: "loaded", path: selection, summary });
-    } catch (e) {
-      setStatus({
-        kind: "error",
-        message: e instanceof Error ? e.message : String(e),
-      });
-    }
+    await loadProject(selection);
   }
 
+  useEffect(() => {
+    const unlistenPromise = getCurrentWebview().onDragDropEvent((event) => {
+      if (event.payload.type !== "drop") {
+        return;
+      }
+      const action = routeDrop(event.payload.paths);
+      if (action.kind === "open-project") {
+        void loadProject(action.path);
+      } else {
+        setHint(action.reason);
+      }
+    });
+    return () => {
+      void unlistenPromise.then((unlisten) => unlisten());
+    };
+  }, [loadProject]);
+
+  useEffect(() => {
+    if (hint === null) {
+      return;
+    }
+    const timer = setTimeout(() => setHint(null), HINT_DISMISS_MS);
+    return () => clearTimeout(timer);
+  }, [hint]);
+
+  const topBar = (
+    <TopBar
+      projectName={
+        status.kind === "loaded" ? projectNameOf(status.path) : undefined
+      }
+    />
+  );
+
+  const main = renderMain(status, pickProject);
+
   return (
-    <main className="container">
-      <h1>lpx-explorer</h1>
-      <p>Walking-skeleton tracer: pick a .logicx and see its AU fingerprints.</p>
-      <button type="button" onClick={pickProject}>
-        Pick project
-      </button>
-      {status.kind === "loading" && <p>Parsing {status.path}…</p>}
-      {status.kind === "error" && <p role="alert">Error: {status.message}</p>}
-      {status.kind === "loaded" && (
-        <>
-          <p>
-            <code>{status.path}</code>
-          </p>
-          <ProjectSummary summary={status.summary} />
-        </>
+    <>
+      <AppShell topBar={topBar} main={main} />
+      {hint !== null && (
+        <div role="status" aria-live="polite" className="drop-hint">
+          {hint}
+        </div>
       )}
-    </main>
+    </>
+  );
+}
+
+function renderMain(status: Status, pickProject: () => Promise<void>) {
+  if (status.kind === "idle") {
+    return <EmptyState onPickProject={pickProject} />;
+  }
+  if (status.kind === "loading") {
+    return <p>Parsing {status.path}…</p>;
+  }
+  if (status.kind === "error") {
+    return <p role="alert">Error: {status.message}</p>;
+  }
+  return (
+    <>
+      <p>
+        <code>{status.path}</code>
+      </p>
+      <ProjectSummary summary={status.summary} />
+    </>
   );
 }
 

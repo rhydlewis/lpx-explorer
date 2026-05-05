@@ -1,2 +1,16 @@
 /* App-level layout. Component-specific styles live in colocated *.module.css
  * files. Tokens come from styles/tokens.css (imported once in main.tsx). */
+
+.drop-hint {
+  position: fixed;
+  bottom: var(--s-5);
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: var(--c-surface-2);
+  color: var(--c-text);
+  padding: var(--s-2) var(--s-4);
+  border-radius: var(--radius-md);
+  font-size: var(--fs-secondary);
+  z-index: var(--z-toast);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
