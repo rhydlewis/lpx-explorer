@@ -1,5 +1,7 @@
 import type {
   AURef,
+  AuRegistry,
+  AuvalEntry,
   BundleStats,
   ProjectMetadata,
   ProjectSummary,
@@ -46,4 +48,23 @@ export function makeSummary(
     stats: { ...DEFAULT_STATS, ...(overrides.stats ?? {}) },
     tracks: overrides.tracks ?? [],
   };
+}
+
+/**
+ * Build an [`AuRegistry`] for tests. Pass fingerprint strings; helper
+ * splits them into the 4CC fields so callers don't repeat the dance.
+ */
+export function makeAuRegistry(fingerprints: ReadonlyArray<string> = []): AuRegistry {
+  const entries: AuvalEntry[] = fingerprints.map((fingerprint) => {
+    const [type_4cc = "", subtype_4cc = "", manufacturer_4cc = ""] =
+      fingerprint.split("/");
+    return {
+      fingerprint,
+      type_4cc,
+      subtype_4cc,
+      manufacturer_4cc,
+      name: fingerprint, // tests usually don't care about the human name
+    };
+  });
+  return { entries, scanned_at_unix: 0 };
 }
