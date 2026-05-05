@@ -7,13 +7,16 @@ export const RECENT_LIMIT = 8;
 
 export interface LibraryState {
   recent: ReadonlyArray<RecentEntry>;
+  query: string;
   addRecent: (path: string, nowMs?: number) => void;
   removeRecent: (path: string) => void;
+  setQuery: (q: string) => void;
   clear: () => void;
 }
 
 export const useLibraryStore = create<LibraryState>((set) => ({
   recent: [],
+  query: "",
 
   addRecent: (path: string, nowMs?: number) => {
     const lastLoadedMs = nowMs ?? Date.now();
@@ -30,7 +33,11 @@ export const useLibraryStore = create<LibraryState>((set) => ({
     }));
   },
 
+  setQuery: (q: string) => {
+    set({ query: q });
+  },
+
   clear: () => {
-    set({ recent: [] });
+    set({ recent: [], query: "" });
   },
 }));

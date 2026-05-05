@@ -48,6 +48,19 @@ describe("<RecentList />", () => {
     expect(select).toHaveBeenCalledWith("/x.logicx");
   });
 
+  it("filters entries case-insensitively by the library-store query", () => {
+    useLibraryStore.getState().addRecent("/a/arp strings.logicx", 1);
+    useLibraryStore.getState().addRecent("/b/Demo song.logicx", 2);
+    useLibraryStore.getState().addRecent("/c/STRINGS sketch.logicx", 3);
+    useLibraryStore.getState().setQuery("strings");
+
+    render(<RecentList />);
+
+    expect(screen.queryByText("Demo song")).not.toBeInTheDocument();
+    expect(screen.getByText("arp strings")).toBeInTheDocument();
+    expect(screen.getByText("STRINGS sketch")).toBeInTheDocument();
+  });
+
   it("marks the currently-loaded project as selected via aria-current", async () => {
     useLibraryStore.getState().addRecent("/x.logicx", 1);
     await useProjectStore.getState().select("/x.logicx");

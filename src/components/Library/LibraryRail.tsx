@@ -1,15 +1,14 @@
 import { useLibraryStore } from "../../store/library-store";
 
+import { LibrarySearch } from "./LibrarySearch";
 import { RecentList } from "./RecentList";
 
 /**
- * Library rail container. Currently composes only RecentList; folder
- * scanning (Epic D) and search input (C.8) slot in here.
+ * Library rail container. Composes LibrarySearch (always visible at the
+ * top) + RecentList. Folder scanning (Epic D) slots in below RecentList.
  *
- * Returns null when the library has nothing to show — AppShell consumes
- * this as a signal to collapse the rail column. Once `useUIStore.railVisible`
- * gets a manual toggle (Epic F.2 keyboard nav), the visibility decision
- * moves up to AppShell consumers.
+ * Returns null when the library is empty AND no query is active —
+ * AppShell consumes the null as a signal to collapse the rail column.
  */
 export function LibraryRail() {
   const recentCount = useLibraryStore((s) => s.recent.length);
@@ -20,6 +19,7 @@ export function LibraryRail() {
 
   return (
     <>
+      <LibrarySearch />
       <RecentList />
     </>
   );

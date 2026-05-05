@@ -7,11 +7,14 @@ import styles from "./Library.module.css";
 
 export function RecentList() {
   const recent = useLibraryStore((s) => s.recent);
+  const query = useLibraryStore((s) => s.query);
   const selectedPath = useProjectStore((s) =>
     s.current.kind === "idle" ? undefined : s.current.path,
   );
 
-  if (recent.length === 0) {
+  const visible = filterByQuery(recent, query);
+
+  if (visible.length === 0) {
     return null;
   }
 
@@ -19,7 +22,7 @@ export function RecentList() {
     <section className={styles.section}>
       <h3 className={styles.sectionLabel}>Recent</h3>
       <ul className={styles.list}>
-        {recent.map((entry) => (
+        {visible.map((entry) => (
           <li key={entry.path}>
             <ProjectRow
               name={entry.name}
@@ -35,4 +38,15 @@ export function RecentList() {
       </ul>
     </section>
   );
+}
+
+function filterByQuery<T extends { name: string }>(
+  entries: ReadonlyArray<T>,
+  query: string,
+): ReadonlyArray<T> {
+  if (query.trim() === "") {
+    return entries;
+  }
+  const needle = query.toLowerCase();
+  return entries.filter((e) => e.name.toLowerCase().includes(needle));
 }

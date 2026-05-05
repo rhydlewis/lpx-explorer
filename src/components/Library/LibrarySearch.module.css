@@ -1,0 +1,23 @@
+.wrapper {
+  padding: 0 var(--s-2) var(--s-3) var(--s-2);
+}
+
+.input {
+  width: 100%;
+  background-color: var(--c-bg);
+  border: 1px solid var(--c-divider);
+  border-radius: var(--radius-sm);
+  padding: var(--s-2) var(--s-3);
+  font-size: var(--fs-secondary);
+  font-family: inherit;
+  color: var(--c-text);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--c-accent);
+}
+
+.input::placeholder {
+  color: var(--c-text-muted);
+}

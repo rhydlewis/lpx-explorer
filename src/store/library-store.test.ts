@@ -76,4 +76,22 @@ describe("useLibraryStore", () => {
 
     expect(useLibraryStore.getState().recent).toEqual([]);
   });
+
+  it("starts with an empty query", () => {
+    expect(useLibraryStore.getState().query).toBe("");
+  });
+
+  it("setQuery stores the user's filter input", () => {
+    useLibraryStore.getState().setQuery("strings");
+
+    expect(useLibraryStore.getState().query).toBe("strings");
+  });
+
+  it("clear resets the query as well", () => {
+    useLibraryStore.getState().setQuery("foo");
+
+    useLibraryStore.getState().clear();
+
+    expect(useLibraryStore.getState().query).toBe("");
+  });
 });
