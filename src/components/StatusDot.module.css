@@ -1,0 +1,24 @@
+.dot {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background-color: var(--c-status-neutral);
+}
+
+.dot[data-status="clean"] {
+  background-color: var(--c-status-clean);
+}
+
+.dot[data-status="warn"] {
+  background-color: var(--c-status-warn);
+}
+
+.dot[data-status="fail"] {
+  background-color: var(--c-status-fail);
+}
+
+.dot[data-status="neutral"] {
+  background-color: var(--c-status-neutral);
+}
