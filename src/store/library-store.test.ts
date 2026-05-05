@@ -1,10 +1,19 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import { scanFolder } from "../lib/library";
 
 import { RECENT_LIMIT, useLibraryStore } from "./library-store";
+
+vi.mock("../lib/library", () => ({
+  scanFolder: vi.fn(),
+}));
+
+const mockedScan = vi.mocked(scanFolder);
 
 describe("useLibraryStore", () => {
   beforeEach(() => {
     useLibraryStore.getState().clear();
+    mockedScan.mockReset();
   });
   afterEach(() => {
     useLibraryStore.getState().clear();
@@ -93,5 +102,99 @@ describe("useLibraryStore", () => {
     useLibraryStore.getState().clear();
 
     expect(useLibraryStore.getState().query).toBe("");
+  });
+
+  // ─── Folder slice ───────────────────────────────────────────────────
+
+  it("starts with no folders", () => {
+    expect(useLibraryStore.getState().folders).toEqual([]);
+  });
+
+  it("addFolder appends the folder and immediately starts a scan", async () => {
+    mockedScan.mockResolvedValueOnce(["/Music/Logic/a.logicx"]);
+
+    await useLibraryStore.getState().addFolder("/Music/Logic");
+
+    const folders = useLibraryStore.getState().folders;
+    expect(folders).toHaveLength(1);
+    expect(folders[0]?.path).toBe("/Music/Logic");
+    expect(folders[0]?.status).toEqual({ kind: "done" });
+    expect(folders[0]?.projects).toEqual(["/Music/Logic/a.logicx"]);
+    expect(mockedScan).toHaveBeenCalledWith("/Music/Logic");
+  });
+
+  it("addFolder is idempotent — re-adding an existing folder does nothing", async () => {
+    mockedScan.mockResolvedValue(["/Music/Logic/a.logicx"]);
+    await useLibraryStore.getState().addFolder("/Music/Logic");
+    mockedScan.mockClear();
+
+    await useLibraryStore.getState().addFolder("/Music/Logic");
+
+    expect(useLibraryStore.getState().folders).toHaveLength(1);
+    expect(mockedScan).not.toHaveBeenCalled();
+  });
+
+  it("startScan sets scanning status while the scan is in flight", async () => {
+    let resolve!: (paths: string[]) => void;
+    mockedScan.mockReturnValueOnce(
+      new Promise<string[]>((r) => {
+        resolve = r;
+      }),
+    );
+
+    const scanPromise = useLibraryStore.getState().addFolder("/Music/Logic");
+
+    expect(useLibraryStore.getState().folders[0]?.status).toEqual({
+      kind: "scanning",
+    });
+
+    resolve(["/x.logicx"]);
+    await scanPromise;
+
+    expect(useLibraryStore.getState().folders[0]?.status).toEqual({ kind: "done" });
+  });
+
+  it("startScan transitions to error when scanFolder rejects", async () => {
+    mockedScan.mockRejectedValueOnce(new Error("permission denied"));
+
+    await useLibraryStore.getState().addFolder("/restricted");
+
+    expect(useLibraryStore.getState().folders[0]?.status).toEqual({
+      kind: "error",
+      message: "permission denied",
+    });
+  });
+
+  it("cancelScan resets the entry to idle with empty projects", async () => {
+    mockedScan.mockResolvedValueOnce(["/x.logicx", "/y.logicx"]);
+    await useLibraryStore.getState().addFolder("/Music/Logic");
+    expect(useLibraryStore.getState().folders[0]?.projects).toHaveLength(2);
+
+    useLibraryStore.getState().cancelScan("/Music/Logic");
+
+    expect(useLibraryStore.getState().folders[0]?.status).toEqual({ kind: "idle" });
+    expect(useLibraryStore.getState().folders[0]?.projects).toEqual([]);
+  });
+
+  it("removeFolder filters by path without disturbing siblings", async () => {
+    mockedScan.mockResolvedValue([]);
+    await useLibraryStore.getState().addFolder("/a");
+    await useLibraryStore.getState().addFolder("/b");
+    await useLibraryStore.getState().addFolder("/c");
+
+    useLibraryStore.getState().removeFolder("/b");
+
+    expect(
+      useLibraryStore.getState().folders.map((f) => f.path),
+    ).toEqual(["/a", "/c"]);
+  });
+
+  it("clear empties the folder list as well", async () => {
+    mockedScan.mockResolvedValueOnce([]);
+    await useLibraryStore.getState().addFolder("/x");
+
+    useLibraryStore.getState().clear();
+
+    expect(useLibraryStore.getState().folders).toEqual([]);
   });
 });
