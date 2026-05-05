@@ -1,10 +1,16 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { routeDrop } from "./drop-routing";
 
+const isDirAlways = vi.fn().mockResolvedValue(true);
+const isDirNever = vi.fn().mockResolvedValue(false);
+
 describe("routeDrop", () => {
-  it("opens a single .logicx as a project", () => {
-    const action = routeDrop(["/Users/rhyd/Music/Logic/arp strings.logicx"]);
+  it("opens a single .logicx as a project", async () => {
+    const action = await routeDrop(
+      ["/Users/rhyd/Music/Logic/arp strings.logicx"],
+      isDirNever,
+    );
 
     expect(action).toEqual({
       kind: "open-project",
@@ -12,14 +18,17 @@ describe("routeDrop", () => {
     });
   });
 
-  it("matches .logicx case-insensitively", () => {
-    const action = routeDrop(["/path/to/Demo.LOGICX"]);
+  it("matches .logicx case-insensitively", async () => {
+    const action = await routeDrop(["/path/to/Demo.LOGICX"], isDirNever);
 
     expect(action.kind).toBe("open-project");
   });
 
-  it("strips a trailing slash before opening", () => {
-    const action = routeDrop(["/Users/rhyd/Music/Logic/song.logicx/"]);
+  it("strips a trailing slash before opening", async () => {
+    const action = await routeDrop(
+      ["/Users/rhyd/Music/Logic/song.logicx/"],
+      isDirNever,
+    );
 
     expect(action).toEqual({
       kind: "open-project",
@@ -27,29 +36,41 @@ describe("routeDrop", () => {
     });
   });
 
-  it("rejects non-.logicx files with an explanatory reason", () => {
-    const action = routeDrop(["/path/to/song.wav"]);
+  it("opens a non-.logicx directory as a folder", async () => {
+    const action = await routeDrop(
+      ["/Users/rhyd/Music/Logic"],
+      isDirAlways,
+    );
+
+    expect(action).toEqual({
+      kind: "open-folder",
+      path: "/Users/rhyd/Music/Logic",
+    });
+  });
+
+  it("rejects a non-.logicx file with an explanatory reason", async () => {
+    const action = await routeDrop(["/path/to/song.wav"], isDirNever);
 
     expect(action.kind).toBe("unsupported");
     if (action.kind === "unsupported") {
-      expect(action.reason).toMatch(/\.logicx/i);
+      expect(action.reason).toMatch(/\.logicx|folder/i);
     }
   });
 
-  it("rejects multi-file drops", () => {
-    const action = routeDrop([
-      "/path/to/a.logicx",
-      "/path/to/b.logicx",
-    ]);
+  it("rejects multi-item drops", async () => {
+    const action = await routeDrop(
+      ["/path/to/a.logicx", "/path/to/b.logicx"],
+      isDirNever,
+    );
 
     expect(action.kind).toBe("unsupported");
     if (action.kind === "unsupported") {
-      expect(action.reason).toMatch(/one project/i);
+      expect(action.reason).toMatch(/one project|folder/i);
     }
   });
 
-  it("rejects an empty drop", () => {
-    const action = routeDrop([]);
+  it("rejects an empty drop", async () => {
+    const action = await routeDrop([], isDirNever);
 
     expect(action.kind).toBe("unsupported");
   });

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 
@@ -43,13 +44,17 @@ function App() {
   }, []);
 
   useEffect(() => {
-    const unlistenPromise = getCurrentWebview().onDragDropEvent((event) => {
+    const isDir = (path: string): Promise<boolean> =>
+      invoke<boolean>("is_dir", { path });
+    const unlistenPromise = getCurrentWebview().onDragDropEvent(async (event) => {
       if (event.payload.type !== "drop") {
         return;
       }
-      const action = routeDrop(event.payload.paths);
+      const action = await routeDrop(event.payload.paths, isDir);
       if (action.kind === "open-project") {
         void openProject(action.path);
+      } else if (action.kind === "open-folder") {
+        void useLibraryStore.getState().addFolder(action.path);
       } else {
         setHint(action.reason);
       }

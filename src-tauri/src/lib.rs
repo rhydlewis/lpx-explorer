@@ -11,6 +11,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             auval::load_au_registry,
             auval::run_au_scan,
+            commands::is_dir,
             commands::parse_project,
             library::scan_folder
         ])

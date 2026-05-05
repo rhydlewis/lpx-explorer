@@ -78,6 +78,14 @@ fn read_required(path: &Path) -> Result<Vec<u8>, ParseError> {
     fs::read(path).map_err(|e| ParseError::Io(e.to_string()))
 }
 
+/// Tauri command: `true` when `path` exists and is a directory.
+/// Used by the drop-routing logic to distinguish folder drops from
+/// stray-file drops without bothering the library store.
+#[tauri::command]
+pub fn is_dir(path: String) -> bool {
+    PathBuf::from(path).is_dir()
+}
+
 /// First `<bundle>/Alternatives/<n>/` directory containing ProjectData.
 fn locate_alternative(bundle: &Path) -> Option<PathBuf> {
     let alternatives = bundle.join("Alternatives");
