@@ -11,3 +11,11 @@ export interface AURef {
 export interface ProjectSummary {
   fingerprints: AURef[];
 }
+
+// ─── Library / UI types ──────────────────────────────────────────────
+
+export interface RecentEntry {
+  readonly path: string;
+  readonly name: string;
+  readonly lastLoadedMs: number;
+}
