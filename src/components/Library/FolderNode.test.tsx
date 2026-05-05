@@ -110,4 +110,19 @@ describe("<FolderNode />", () => {
 
     expect(useLibraryStore.getState().folders).toHaveLength(0);
   });
+
+  it("adds the project to Recent when a folder-child row is clicked", () => {
+    const folder = entry({
+      status: { kind: "done" },
+      projects: ["/Music/Logic/song-x.logicx"],
+    });
+    render(<FolderNode folder={folder} />);
+
+    fireEvent.click(screen.getByRole("button", { expanded: false }));
+    fireEvent.click(screen.getByRole("button", { name: /song-x/i }));
+
+    expect(useLibraryStore.getState().recent[0]?.path).toBe(
+      "/Music/Logic/song-x.logicx",
+    );
+  });
 });

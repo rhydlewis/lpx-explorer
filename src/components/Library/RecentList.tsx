@@ -1,3 +1,4 @@
+import { openProject } from "../../lib/open-project";
 import { useLibraryStore } from "../../store/library-store";
 import { useProjectStore } from "../../store/project-store";
 
@@ -30,7 +31,7 @@ export function RecentList() {
               status="neutral"
               selected={entry.path === selectedPath}
               onSelect={() => {
-                void useProjectStore.getState().select(entry.path);
+                void openProject(entry.path);
               }}
             />
           </li>

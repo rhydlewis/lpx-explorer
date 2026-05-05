@@ -1,5 +1,6 @@
 import { useState } from "react";
 
+import { openProject } from "../../lib/open-project";
 import { projectNameOf } from "../../lib/path-utils";
 import type { FolderEntry } from "../../lib/types";
 import { useLibraryStore } from "../../store/library-store";
@@ -88,7 +89,7 @@ export function FolderNode({ folder }: Props) {
                 status="neutral"
                 selected={path === selectedPath}
                 onSelect={() => {
-                  void useProjectStore.getState().select(path);
+                  void openProject(path);
                 }}
               />
             </li>

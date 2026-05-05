@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 
+import { openProject } from "./lib/open-project";
 import { projectNameOf } from "./lib/path-utils";
 import { routeDrop } from "./lib/drop-routing";
 import { useLibraryStore } from "./store/library-store";
@@ -21,11 +22,6 @@ function App() {
   const recentCount = useLibraryStore((s) => s.recent.length);
   const folderCount = useLibraryStore((s) => s.folders.length);
   const [hint, setHint] = useState<string | null>(null);
-
-  async function openProject(path: string) {
-    useLibraryStore.getState().addRecent(path);
-    await useProjectStore.getState().select(path);
-  }
 
   async function pickProject() {
     const selection = await open({
