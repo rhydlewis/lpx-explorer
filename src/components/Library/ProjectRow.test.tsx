@@ -80,4 +80,20 @@ describe("<ProjectRow />", () => {
       "aria-current",
     );
   });
+
+  it("exposes the full path via the button's title attribute (long-name truncation)", () => {
+    const longPath = `/Users/rhyd/Music/Logic/${"a".repeat(200)}.logicx`;
+    render(
+      <ProjectRow
+        name="long"
+        path={longPath}
+        status="neutral"
+        onSelect={vi.fn()}
+      />,
+    );
+
+    const button = screen.getByRole("button", { name: /long/i });
+    // Visible text is CSS-truncated; full string lives on title for hover.
+    expect(button).toHaveAttribute("title", longPath);
+  });
 });
