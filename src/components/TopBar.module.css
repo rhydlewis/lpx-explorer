@@ -1,0 +1,15 @@
+.title {
+  font-size: var(--fs-body);
+  font-weight: 500;
+  color: var(--c-text);
+  margin: 0;
+  /* Leave room for the macOS traffic-light buttons on the left. */
+  padding-left: 76px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.appName {
+  color: var(--c-text-secondary);
+}
