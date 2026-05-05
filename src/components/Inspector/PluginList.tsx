@@ -1,17 +1,17 @@
-import type { AURef, ProjectSummary as ProjectSummaryData } from "../lib/types";
+import type { AURef, ProjectSummary } from "../../lib/types";
 
 interface Props {
-  readonly summary: ProjectSummaryData;
+  readonly summary: ProjectSummary;
 }
 
 function fingerprintOf(au: AURef): string {
   return `${au.type_code}/${au.subtype}/${au.manufacturer}`;
 }
 
-export function ProjectSummary({ summary }: Props) {
+export function PluginList({ summary }: Props) {
   const { fingerprints } = summary;
   return (
-    <section aria-label="project-summary">
+    <section aria-label="plug-ins">
       <p>
         {fingerprints.length} fingerprint{fingerprints.length === 1 ? "" : "s"}
       </p>

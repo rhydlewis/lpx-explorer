@@ -7,7 +7,7 @@ import { routeDrop } from "./lib/drop-routing";
 import type { ProjectSummary as ProjectSummaryData } from "./lib/types";
 import { AppShell } from "./components/AppShell";
 import { EmptyState } from "./components/EmptyState";
-import { ProjectSummary } from "./components/ProjectSummary";
+import { PluginList } from "./components/Inspector/PluginList";
 import { TopBar } from "./components/TopBar";
 
 import "./App.css";
@@ -118,7 +118,7 @@ function renderMain(status: Status, pickProject: () => Promise<void>) {
       <p>
         <code>{status.path}</code>
       </p>
-      <ProjectSummary summary={status.summary} />
+      <PluginList summary={status.summary} />
     </>
   );
 }
