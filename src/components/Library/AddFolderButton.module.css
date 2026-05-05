@@ -1,0 +1,15 @@
+.button {
+  width: 100%;
+  text-align: left;
+  font-size: var(--fs-secondary);
+  color: var(--c-text-secondary);
+  background: transparent;
+  border: 1px dashed var(--c-divider);
+  padding: var(--s-2) var(--s-3);
+  margin-top: var(--s-3);
+}
+
+.button:hover {
+  border-color: var(--c-accent);
+  color: var(--c-text);
+}
