@@ -1,3 +1,4 @@
+mod bundle;
 mod commands;
 mod library;
 
