@@ -58,6 +58,21 @@ export interface ProjectSummary {
   tracks: Track[];
 }
 
+// ─── AU registry ─────────────────────────────────────────────────────
+
+export interface AuvalEntry {
+  fingerprint: string;          // "{type}/{subtype}/{manufacturer}"
+  type_4cc: string;
+  subtype_4cc: string;          // trailing/leading spaces preserved verbatim
+  manufacturer_4cc: string;     // trailing/leading spaces preserved verbatim
+  name: string;
+}
+
+export interface AuRegistry {
+  entries: AuvalEntry[];
+  scanned_at_unix: number;
+}
+
 // ─── Library / UI types ──────────────────────────────────────────────
 
 export interface RecentEntry {

@@ -38,6 +38,18 @@ pub fn default_cache_path() -> Option<PathBuf> {
     Some(PathBuf::from(home).join(".cache/lpx-explorer/auval.json"))
 }
 
+/// Tauri command: read the AU registry from the default cache path.
+/// Returns `Ok(None)` when the cache file doesn't exist — frontend
+/// surfaces a "Run AU scan" CTA in that case.
+#[tauri::command]
+pub fn load_au_registry() -> Result<Option<AuRegistry>, AuvalError> {
+    let path = match default_cache_path() {
+        Some(p) => p,
+        None => return Ok(None), // HOME unset — treat as fresh install
+    };
+    read_cache(&path)
+}
+
 /// Read & deserialize an [`AuRegistry`] from `path`. Returns `Ok(None)`
 /// when the file is absent (a fresh install with no scan yet — not an
 /// error).
