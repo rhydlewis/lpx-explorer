@@ -35,7 +35,7 @@ export function ProjectInspector({ status }: Props) {
         metadata={status.summary.metadata}
         stats={status.summary.stats}
       />
-      <TrackList />
+      <TrackList tracks={status.summary.tracks} />
       <PluginList summary={status.summary} />
     </>
   );

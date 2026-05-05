@@ -1,0 +1,53 @@
+.row {
+  border-bottom: 1px solid var(--c-divider);
+  padding: var(--s-2) 0;
+}
+
+.row:last-child {
+  border-bottom: 0;
+}
+
+.row[data-track-depth="1"] .header {
+  padding-left: var(--s-4);
+}
+
+.row[data-track-depth="2"] .header {
+  padding-left: var(--s-6);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+.icon {
+  width: 16px;
+  text-align: center;
+  font-size: var(--fs-secondary);
+  color: var(--c-text-muted);
+}
+
+.name {
+  flex: 1;
+  font-size: var(--fs-body);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.row[data-track-active="false"] .name {
+  color: var(--c-text-muted);
+}
+
+.inserts {
+  list-style: none;
+  margin: var(--s-1) 0 0 var(--s-5);
+  padding: 0;
+  font-family: var(--font-mono);
+  font-size: var(--fs-secondary);
+  color: var(--c-text-secondary);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
