@@ -19,3 +19,15 @@ export interface RecentEntry {
   readonly name: string;
   readonly lastLoadedMs: number;
 }
+
+export type ScanStatus =
+  | { readonly kind: "idle" }
+  | { readonly kind: "scanning" }
+  | { readonly kind: "done" }
+  | { readonly kind: "error"; readonly message: string };
+
+export interface FolderEntry {
+  readonly path: string;
+  readonly status: ScanStatus;
+  readonly projects: ReadonlyArray<string>;
+}

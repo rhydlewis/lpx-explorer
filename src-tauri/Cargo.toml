@@ -29,3 +29,6 @@ serde_json = "1"
 thiserror = "1"
 lpx-parser = { path = "crates/lpx-parser" }
 
+[dev-dependencies]
+tempfile = "3"
+
