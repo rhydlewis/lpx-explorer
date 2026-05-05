@@ -41,3 +41,19 @@ Append-only log. Newest entries at the bottom.
 7. **Drag-and-drop project files** (bead `lpx-explorer-9h9`). Pull into Epic A (AppShell). Tauri 2 handles the drop event natively; ~20 lines on top of the existing file-pick handler. Cheaper to ship now than to remember to revisit.
 
 **Trade-offs:** Pulling decisions in at the spec stage costs minimal time and prevents downstream rework. Two decisions (3 and 7) overrode the spec's recommendations — both based on concrete Rhyd context (100+ projects, drag-and-drop is trivial in Tauri 2) rather than abstract correctness. The deferred decisions (4, 5, 6) all have implementation epics already filed, so they're not lost — just waiting for signal.
+
+---
+
+## 2026-05-05 — Hierarchy in v1: flat where it's labelling, nested where it's signal flow
+
+**Beads:** `lpx-explorer-aum` (track-list folders), `lpx-explorer-mrh` (rail folders).
+
+**Context:** Two open decisions about visual nesting before the new Tracks-section bead (`lpx-explorer-8sy`) ships. (a) The existing TrackList (now relabelled "Plug-in Chains" per `vbt`) nests summing-stack children one indent under their parent, but renders folder children flat. Should folders also nest? (b) The LibraryRail renders projects from a scanned folder as a flat list under one FolderNode, with the path hint disambiguating. Should subfolders render as nested disclosures?
+
+**Decision (a) — track list:** Stay as-is. Summing stacks (Track Stacks) route audio *through* their parent — nesting reflects real signal flow. Folders in Logic are visual-only organisation markers; their children play through their own outputs, not the folder's. Indenting folder children would imply routing that doesn't exist. Existing test in `TrackList.test.tsx` already encodes this (`renders folders flat — children do NOT nest under folders`).
+
+**Decision (b) — rail:** Stay flat. Search/filter (already shipped per the prior decision log entry) handles "find one project among 100+" better than visual hierarchy. Nested disclosures cost real UI complexity (empty-folder rendering, partial-scan state per subfolder, expand/collapse persistence) for marginal gain when the path hint already disambiguates "Covers/" from the parent.
+
+**Alternatives considered:** (a) Nest folder children one indent. Rejected — implies routing semantics Logic doesn't have. (b) File-tree-style rail with disclosure triangles per subfolder. Rejected — adds state machinery the v1 doesn't need; revisit when persistence (`lpx-explorer-nxt`) ships and folders accumulate enough that organisation becomes the dominant friction.
+
+**Trade-offs:** Both choices are reversible — flat-by-default is the cheap baseline; nested is additive when a real signal demands it. The carrying cost is one more thing the user has to learn (which kinds nest, which don't), mitigated by the answer being intuitive: "folders just label, summing stacks actually route."

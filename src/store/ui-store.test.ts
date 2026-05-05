@@ -4,10 +4,10 @@ import { useUIStore } from "./ui-store";
 
 describe("useUIStore", () => {
   beforeEach(() => {
-    useUIStore.setState({ railVisible: false });
+    useUIStore.setState({ railVisible: false, pluginChainsShowAll: false });
   });
   afterEach(() => {
-    useUIStore.setState({ railVisible: false });
+    useUIStore.setState({ railVisible: false, pluginChainsShowAll: false });
   });
 
   it("starts with the rail hidden — first launch lands on EmptyState", () => {
@@ -26,5 +26,23 @@ describe("useUIStore", () => {
 
     useUIStore.getState().toggleRail();
     expect(useUIStore.getState().railVisible).toBe(false);
+  });
+
+  it("starts with pluginChainsShowAll off — routing kinds hidden by default", () => {
+    expect(useUIStore.getState().pluginChainsShowAll).toBe(false);
+  });
+
+  it("setPluginChainsShowAll(true) reveals routing kinds", () => {
+    useUIStore.getState().setPluginChainsShowAll(true);
+
+    expect(useUIStore.getState().pluginChainsShowAll).toBe(true);
+  });
+
+  it("togglePluginChainsShowAll flips the value", () => {
+    useUIStore.getState().togglePluginChainsShowAll();
+    expect(useUIStore.getState().pluginChainsShowAll).toBe(true);
+
+    useUIStore.getState().togglePluginChainsShowAll();
+    expect(useUIStore.getState().pluginChainsShowAll).toBe(false);
   });
 });

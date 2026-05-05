@@ -6,6 +6,7 @@ import type {
   ProjectMetadata,
   ProjectSummary,
   Track,
+  TrackRegistryEntry,
 } from "../lib/types";
 
 const DEFAULT_METADATA: ProjectMetadata = {
@@ -40,6 +41,7 @@ export function makeSummary(
     metadata?: Partial<ProjectMetadata>;
     stats?: Partial<BundleStats>;
     tracks?: Track[];
+    tracks_registry?: TrackRegistryEntry[];
   } = {},
 ): ProjectSummary {
   return {
@@ -47,6 +49,7 @@ export function makeSummary(
     metadata: { ...DEFAULT_METADATA, ...(overrides.metadata ?? {}) },
     stats: { ...DEFAULT_STATS, ...(overrides.stats ?? {}) },
     tracks: overrides.tracks ?? [],
+    tracks_registry: overrides.tracks_registry ?? [],
   };
 }
 

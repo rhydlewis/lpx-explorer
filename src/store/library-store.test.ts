@@ -215,6 +215,23 @@ describe("useLibraryStore", () => {
     });
   });
 
+  it("extracts .message from a Tauri-style ScanError object", async () => {
+    // Tauri serializes #[derive(thiserror::Error, Serialize)] enums to
+    // {kind, message}; the rejection isn't an Error instance, so the
+    // store has to dig the message out by hand.
+    mockedScan.mockRejectedValueOnce({
+      kind: "ReadFailed",
+      message: "/restricted: Permission denied (os error 13)",
+    });
+
+    await useLibraryStore.getState().addFolder("/restricted");
+
+    expect(useLibraryStore.getState().folders[0]?.status).toEqual({
+      kind: "error",
+      message: "/restricted: Permission denied (os error 13)",
+    });
+  });
+
   it("cancelScan resets the entry to idle with empty projects", async () => {
     mockedScan.mockImplementationOnce(async (_path, onProject) => {
       onProject?.("/x.logicx");

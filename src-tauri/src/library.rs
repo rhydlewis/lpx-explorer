@@ -18,6 +18,8 @@ const LOGICX_SUFFIX: &str = ".logicx";
 pub enum ScanError {
     #[error("folder not found: {0}")]
     NotFound(String),
+    #[error("can't read folder: {0}")]
+    ReadFailed(String),
 }
 
 /// Streamed events from a folder scan. Each `Project` is a discovered
@@ -85,15 +87,27 @@ fn scan_for_logicx(root: &Path, cancel: &AtomicBool) -> Vec<PathBuf> {
 ///
 /// The frontend creates a `Channel<ScanEvent>` and passes it as
 /// `onEvent`; events arrive at `channel.onmessage` in walk order.
+/// Validates the scan root: must be a directory we can `read_dir`. The
+/// per-subtree walk swallows read errors (one locked subdirectory shouldn't
+/// fail the whole scan), but if the *root* itself fails, the user would
+/// otherwise see "0 projects found" instead of an explanation.
+fn validate_scan_root(path: &Path) -> Result<(), ScanError> {
+    if !path.is_dir() {
+        return Err(ScanError::NotFound(path.to_string_lossy().into_owned()));
+    }
+    if let Err(err) = std::fs::read_dir(path) {
+        return Err(ScanError::ReadFailed(format!("{}: {}", path.display(), err)));
+    }
+    Ok(())
+}
+
 #[tauri::command]
 pub async fn scan_folder(
     path: String,
     on_event: Channel<ScanEvent>,
 ) -> Result<(), ScanError> {
     let root = PathBuf::from(&path);
-    if !root.is_dir() {
-        return Err(ScanError::NotFound(path));
-    }
+    validate_scan_root(&root)?;
 
     let cancel = AtomicBool::new(false);
     walk(&root, &cancel, &mut |found| {
@@ -204,5 +218,49 @@ mod tests {
         let found = scan_for_logicx(dir.path(), &cancel);
 
         assert!(found.is_empty(), "expected no results when cancellation pre-set");
+    }
+
+    #[test]
+    fn validate_returns_not_found_for_missing_path() {
+        let err = validate_scan_root(Path::new("/this/does/not/exist/lpx-explorer-test"))
+            .expect_err("expected NotFound");
+
+        assert!(matches!(err, ScanError::NotFound(_)), "got {:?}", err);
+    }
+
+    #[test]
+    fn validate_returns_not_found_for_a_regular_file() {
+        let dir = tempdir().expect("tempdir");
+        let f = dir.path().join("not_a_dir.txt");
+        fs::write(&f, b"hi").expect("write");
+
+        let err = validate_scan_root(&f).expect_err("expected NotFound");
+
+        assert!(matches!(err, ScanError::NotFound(_)), "got {:?}", err);
+    }
+
+    #[test]
+    fn validate_returns_read_failed_for_unreadable_directory() {
+        // macOS-only project — chmod 000 reliably blocks read_dir while
+        // letting `is_dir()` (which only needs metadata) still succeed.
+        use std::os::unix::fs::PermissionsExt;
+        let dir = tempdir().expect("tempdir");
+        let locked = dir.path().join("locked");
+        fs::create_dir(&locked).expect("create locked dir");
+        fs::set_permissions(&locked, fs::Permissions::from_mode(0o000)).expect("chmod 000");
+
+        let err = validate_scan_root(&locked);
+
+        // Always restore permissions so tempdir can clean up.
+        fs::set_permissions(&locked, fs::Permissions::from_mode(0o755)).ok();
+
+        let err = err.expect_err("expected ReadFailed");
+        assert!(matches!(err, ScanError::ReadFailed(_)), "got {:?}", err);
+    }
+
+    #[test]
+    fn validate_returns_ok_for_a_readable_empty_directory() {
+        let dir = tempdir().expect("tempdir");
+        validate_scan_root(dir.path()).expect("expected Ok");
     }
 }

@@ -58,11 +58,28 @@ export interface Track {
   parent_offset: number | null;
 }
 
+/**
+ * Single record from the track-registry scan — one per user-visible
+ * Tracks Area entry in Logic. Distinct from `Track` (channel-strip
+ * record): registry entries are what the user *sees*; channel strips
+ * are the AU-bearing slots underneath.
+ */
+export interface TrackRegistryEntry {
+  offset: number;
+  name: string;
+  kind: TrackKind;
+  /** Per-track ID; 0 when the preceding track-link structure is absent. */
+  track_id: number;
+  /** Channel-strip number for audio kinds; 0 otherwise / unrecoverable. */
+  strip_id: number;
+}
+
 export interface ProjectSummary {
   fingerprints: AURef[];
   metadata: ProjectMetadata;
   stats: BundleStats;
   tracks: Track[];
+  tracks_registry: TrackRegistryEntry[];
 }
 
 // ─── AU registry ─────────────────────────────────────────────────────

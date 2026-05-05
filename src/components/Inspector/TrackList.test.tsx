@@ -1,7 +1,8 @@
-import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
 
 import type { Track } from "../../lib/types";
+import { useUIStore } from "../../store/ui-store";
 
 import { TrackList } from "./TrackList";
 
@@ -25,6 +26,13 @@ function track(overrides: Partial<Track> = {}): Track {
 }
 
 describe("<TrackList />", () => {
+  beforeEach(() => {
+    useUIStore.setState({ pluginChainsShowAll: false });
+  });
+  afterEach(() => {
+    useUIStore.setState({ pluginChainsShowAll: false });
+  });
+
   it("exposes the section under aria-label='plug-in chains'", () => {
     render(<TrackList tracks={[]} />);
 
@@ -153,5 +161,83 @@ describe("<TrackList />", () => {
     const childRow = container.querySelector('[data-track-depth="1"]');
     // child has parent_offset matching the folder, but folders don't nest.
     expect(childRow).toBeNull();
+  });
+
+  it("hides routing kinds by default (toggle off)", () => {
+    render(
+      <TrackList
+        tracks={[
+          track({ name: "Audio 1", kind: "audio", offset: 1 }),
+          track({ name: "Stereo Out", kind: "output", offset: 2 }),
+          track({ name: "Bus 1", kind: "bus", offset: 3 }),
+          track({ name: "Aux 1", kind: "aux", offset: 4 }),
+        ]}
+      />,
+    );
+
+    expect(screen.getByText("Audio 1")).toBeInTheDocument();
+    expect(screen.queryByText("Stereo Out")).not.toBeInTheDocument();
+    expect(screen.queryByText("Bus 1")).not.toBeInTheDocument();
+    expect(screen.queryByText("Aux 1")).not.toBeInTheDocument();
+  });
+
+  it("reveals only routing kinds with at least one insert when 'Show all' is on", () => {
+    // Logic emits ~256 default buses, all flagged as is_active because
+    // descriptor[4] carries the bus number. Surfacing them all turns
+    // 'Show all' into noise; users care about the ones with FX loaded.
+    const auFx = {
+      type_code: "aufx",
+      subtype: "Comp",
+      manufacturer: "Yamh",
+      offset: 1000,
+    };
+    render(
+      <TrackList
+        tracks={[
+          track({ name: "Audio 1", kind: "audio", offset: 1 }),
+          track({ name: "Stereo Out", kind: "output", offset: 2 }),
+          track({ name: "Empty Bus", kind: "bus", offset: 3 }),
+          track({
+            name: "Mix Bus",
+            kind: "bus",
+            offset: 4,
+            audio_fx: [auFx],
+          }),
+        ]}
+      />,
+    );
+
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: /show routing kinds/i }),
+    );
+
+    expect(screen.getByText("Mix Bus")).toBeInTheDocument();
+    expect(screen.queryByText("Empty Bus")).not.toBeInTheDocument();
+    expect(screen.queryByText("Stereo Out")).not.toBeInTheDocument();
+  });
+
+  it("still hides inactive tracks even when 'Show all' is on", () => {
+    render(
+      <TrackList
+        tracks={[
+          track({ name: "Audio 1", offset: 1, is_active: true }),
+          track({
+            name: "Phantom Bus",
+            kind: "bus",
+            offset: 2,
+            is_active: false,
+          }),
+        ]}
+      />,
+    );
+
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: /show routing kinds/i }),
+    );
+
+    // Show-all surfaces routing kinds but does not unhide inactive tracks
+    // (different concern; would still be Logic's "default but unused"
+    // channel strips the user has never touched).
+    expect(screen.queryByText("Phantom Bus")).not.toBeInTheDocument();
   });
 });

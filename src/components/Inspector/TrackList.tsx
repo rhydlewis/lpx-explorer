@@ -1,10 +1,12 @@
 import { useMemo } from "react";
 
 import type { Track, TrackKind } from "../../lib/types";
+import { useUIStore } from "../../store/ui-store";
 
 import { TrackRow } from "./TrackRow";
 
 import sectionStyles from "./Inspector.module.css";
+import styles from "./TrackList.module.css";
 
 interface Props {
   readonly tracks: ReadonlyArray<Track>;
@@ -17,25 +19,55 @@ const USER_VISIBLE: ReadonlySet<TrackKind> = new Set<TrackKind>([
   "summing-stack",
 ]);
 
+const ROUTING_KINDS: ReadonlySet<TrackKind> = new Set<TrackKind>([
+  "master",
+  "output",
+  "bus",
+  "aux",
+  "input",
+]);
+
 interface RenderItem {
   readonly track: Track;
   readonly depth: number;
 }
 
+function hasAnyInsert(t: Track): boolean {
+  return (
+    t.instrument !== null || t.midi_fx.length > 0 || t.audio_fx.length > 0
+  );
+}
+
 /**
  * Build the visible render order from a flat tracks array:
- *   1. Filter to user-visible kinds.
+ *   1. User-visible kinds (audio/instrument/folder/summing-stack) always
+ *      pass. Routing kinds (master/output/bus/aux/input) require both
+ *      `showAll` AND at least one insert — Logic emits ~256 default buses
+ *      whose descriptors flag as `is_active` (the bus number lives in
+ *      descriptor[4]), so an unfiltered "show all" balloons the list
+ *      with empty Bus 1…256 rows.
  *   2. Filter to is_active — Logic creates a default set of unused
  *      channel strips when a project starts; without this filter the
- *      list balloons with phantom Audio 1-3 / Inst 4 etc. The v1.1
- *      "Show all" toggle (bead `lpx-explorer-8fb`) will surface them.
+ *      list balloons with phantom Audio 1-3 / Inst 4 etc.
  *   3. Sort by byte offset (matches Logic's Tracks Area top-to-bottom).
  *   4. Nest tracks under summing-stack parents (depth = 1). Folder
  *      children stay flat — folder is a visual marker only in v1.
  */
-function buildRenderOrder(tracks: ReadonlyArray<Track>): ReadonlyArray<RenderItem> {
+function buildRenderOrder(
+  tracks: ReadonlyArray<Track>,
+  showAll: boolean,
+): ReadonlyArray<RenderItem> {
+  const kindFilter = (t: Track) => {
+    if (USER_VISIBLE.has(t.kind)) {
+      return true;
+    }
+    if (!showAll) {
+      return false;
+    }
+    return ROUTING_KINDS.has(t.kind) && hasAnyInsert(t);
+  };
   const visible = tracks
-    .filter((t) => USER_VISIBLE.has(t.kind) && t.is_active)
+    .filter((t) => kindFilter(t) && t.is_active)
     .slice()
     .sort((a, b) => a.offset - b.offset);
 
@@ -85,11 +117,27 @@ function groupChildrenUnderParents(
 }
 
 export function TrackList({ tracks }: Props) {
-  const items = useMemo(() => buildRenderOrder(tracks), [tracks]);
+  const showAll = useUIStore((s) => s.pluginChainsShowAll);
+  const togglePluginChainsShowAll = useUIStore((s) => s.togglePluginChainsShowAll);
+  const items = useMemo(
+    () => buildRenderOrder(tracks, showAll),
+    [tracks, showAll],
+  );
 
   return (
     <section aria-label="plug-in chains" className={sectionStyles.section}>
-      <h3 className={sectionStyles.sectionLabel}>Plug-in Chains</h3>
+      <div className={styles.header}>
+        <h3 className={sectionStyles.sectionLabel}>Plug-in Chains</h3>
+        <label className={styles.toggle}>
+          <input
+            type="checkbox"
+            checked={showAll}
+            onChange={togglePluginChainsShowAll}
+            aria-label="show routing kinds (master, output, bus, aux, input)"
+          />
+          <span>Show all</span>
+        </label>
+      </div>
       {items.length === 0 ? (
         <p className={sectionStyles.placeholder}>
           No plug-in chains detected.

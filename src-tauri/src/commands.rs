@@ -7,7 +7,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use lpx_parser::{AURef, ProjectMetadata, Track};
+use lpx_parser::{AURef, ProjectMetadata, Track, TrackRegistryEntry};
 use serde::Serialize;
 use thiserror::Error;
 
@@ -19,6 +19,7 @@ pub struct ProjectSummary {
     pub metadata: ProjectMetadata,
     pub stats: BundleStats,
     pub tracks: Vec<Track>,
+    pub tracks_registry: Vec<TrackRegistryEntry>,
 }
 
 #[derive(Debug, Error, Serialize)]
@@ -60,11 +61,14 @@ pub fn parse_project(path: String) -> Result<ProjectSummary, ParseError> {
     let clusters = lpx_parser::cluster_regions(&region_records);
     lpx_parser::assign_user_names(&mut tracks, &clusters);
 
+    let tracks_registry = lpx_parser::find_track_registry_records(&project_data_bytes);
+
     Ok(ProjectSummary {
         fingerprints,
         metadata,
         stats,
         tracks,
+        tracks_registry,
     })
 }
 

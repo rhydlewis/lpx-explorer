@@ -21,8 +21,21 @@ export interface LibraryState {
   clear: () => void;
 }
 
-const messageOf = (e: unknown): string =>
-  e instanceof Error ? e.message : String(e);
+const messageOf = (e: unknown): string => {
+  if (e instanceof Error) {
+    return e.message;
+  }
+  // Tauri rejects with a serialized `ScanError`: `{kind, message}`. Pull
+  // `.message` out so the inline ErrorCard reads "folder not found: …"
+  // instead of `[object Object]`.
+  if (typeof e === "object" && e !== null && "message" in e) {
+    const msg = (e as { message: unknown }).message;
+    if (typeof msg === "string") {
+      return msg;
+    }
+  }
+  return String(e);
+};
 
 function updateFolderStatus(
   folders: ReadonlyArray<FolderEntry>,

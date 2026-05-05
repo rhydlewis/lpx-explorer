@@ -13,12 +13,13 @@ const loaded: ProjectStatus = {
 };
 
 describe("<ProjectInspector />", () => {
-  it("renders all five Logic-terminology regions when a project is loaded", () => {
+  it("renders all six Logic-terminology regions when a project is loaded", () => {
     render(<ProjectInspector status={loaded} />);
 
     expect(screen.getByRole("region", { name: "project" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "compatibility" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "project info" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "tracks" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "plug-in chains" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "plug-ins" })).toBeInTheDocument();
   });
