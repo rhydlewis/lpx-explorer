@@ -1,0 +1,49 @@
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  width: 100%;
+  height: var(--row-height);
+  padding: 0 var(--s-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.row:hover {
+  background-color: var(--c-surface-2);
+}
+
+.row[aria-current="true"] {
+  background-color: var(--c-surface-2);
+  outline: 1px solid var(--c-accent);
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.name {
+  font-size: var(--fs-body);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.path {
+  font-size: var(--fs-secondary);
+  color: var(--c-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  /* Middle-ellipsis is hard with pure CSS; until Epic F.5 ships, the start
+   * is preserved (most informative for ~/Music/Logic-rooted paths). */
+  text-overflow: ellipsis;
+  direction: rtl;
+  text-align: left;
+}
