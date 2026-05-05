@@ -7,9 +7,11 @@
 //! The format is undocumented; offsets here mirror the empirically-derived
 //! Python implementation at `lpx-toolkit/lpx_inspect.py`.
 
+mod auval;
 mod metadata;
 mod tracks;
 
+pub use auval::{parse_auval_line, AuvalEntry};
 pub use metadata::{parse_metadata_plist, MetadataError, ProjectMetadata};
 pub use tracks::{assign_aus, find_tracks, Track, TrackKind};
 
