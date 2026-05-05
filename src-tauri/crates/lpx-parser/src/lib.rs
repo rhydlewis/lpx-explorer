@@ -8,8 +8,10 @@
 //! Python implementation at `lpx-toolkit/lpx_inspect.py`.
 
 mod metadata;
+mod tracks;
 
 pub use metadata::{parse_metadata_plist, MetadataError, ProjectMetadata};
+pub use tracks::{find_tracks, Track, TrackKind};
 
 use serde::Serialize;
 

@@ -1,0 +1,359 @@
+//! Track scanner — ports `find_tracks` from `lpx-toolkit/lpx_inspect.py:731-762`.
+//!
+//! Tracks are anchored on a 16-byte name field that opens with `0x20` (a
+//! leading space that's part of the format), then ASCII name, null-padded.
+//! Immediately after the name field sits an 8-byte descriptor whose final
+//! byte has the top two bits set (`0xC5` / `0xCD` / `0xCF` / `0xED`).
+//!
+//! Bytes-only contract: the parser crate cannot open files.
+
+use serde::Serialize;
+
+use crate::AURef;
+
+const NAME_FIELD_LEN: usize = 16;
+const DESCRIPTOR_LEN: usize = 8;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum TrackKind {
+    Audio,
+    Instrument,
+    Folder,
+    SummingStack,
+    Master,
+    Output,
+    Bus,
+    Aux,
+    Input,
+    Unknown,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct Track {
+    pub name: String,
+    pub kind: TrackKind,
+    pub offset: usize,
+    pub is_active: bool,
+    pub instrument: Option<AURef>,
+    pub midi_fx: Vec<AURef>,
+    pub audio_fx: Vec<AURef>,
+    pub sub_number: Option<u32>,
+    pub parent_offset: Option<usize>,
+}
+
+/// Map a descriptor's first 4 bytes to a [`TrackKind`]. Mirrors the
+/// `Track.kind` property in `lpx_inspect.py:69-82`.
+fn classify_descriptor(descriptor: &[u8; 8]) -> TrackKind {
+    let head = descriptor[0];
+    let b1 = descriptor[1];
+    let b2 = descriptor[2];
+    match head {
+        0x89 => TrackKind::Master,
+        0x49 => TrackKind::Output,
+        0xE9 => TrackKind::Bus,
+        0xAB => {
+            if b1 == 0xF5 {
+                TrackKind::Aux
+            } else {
+                TrackKind::Audio
+            }
+        }
+        0x29 => {
+            if b2 == 0xF3 || b2 == 0xF7 {
+                TrackKind::Instrument
+            } else {
+                TrackKind::Input
+            }
+        }
+        _ => TrackKind::Unknown,
+    }
+}
+
+/// Two independent activity signals — either flips a track to active.
+/// Mirrors `Track.is_active` in `lpx_inspect.py:88-94`.
+fn descriptor_is_active(descriptor: &[u8; 8]) -> bool {
+    descriptor[2] & 0x04 != 0 || descriptor[4] != 0
+}
+
+/// Decode the ASCII name out of a 16-byte name field starting with `0x20`.
+/// Returns `None` for empty / whitespace-only names so callers can skip
+/// them (matches the Python `if not name:` guard).
+fn decode_name(field: &[u8]) -> Option<String> {
+    if field.first() != Some(&0x20) {
+        return None;
+    }
+    // ASCII bytes 0x21..=0x7e starting at index 1, terminated by 0x00 or
+    // the field's end.
+    let mut name_bytes: Vec<u8> = Vec::new();
+    for &b in &field[1..NAME_FIELD_LEN] {
+        if b == 0x00 {
+            break;
+        }
+        if !(0x20..=0x7e).contains(&b) {
+            return None;
+        }
+        name_bytes.push(b);
+    }
+
+    // Everything after the name has to be NUL-padded.
+    let name_end = 1 + name_bytes.len();
+    if field[name_end..NAME_FIELD_LEN].iter().any(|&b| b != 0x00) {
+        return None;
+    }
+
+    let name = String::from_utf8(name_bytes).ok()?;
+    let trimmed = name.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+    Some(trimmed.to_owned())
+}
+
+pub fn find_tracks(raw: &[u8]) -> Vec<Track> {
+    let mut tracks: Vec<Track> = Vec::new();
+    let mut seen: std::collections::HashSet<usize> = std::collections::HashSet::new();
+
+    let mut i = 0;
+    // Need a NUL byte preceding the 0x20 name marker; loop from index 1.
+    while i + NAME_FIELD_LEN + DESCRIPTOR_LEN <= raw.len() {
+        if raw[i] != 0x20 {
+            i += 1;
+            continue;
+        }
+        if i == 0 || raw[i - 1] != 0x00 {
+            i += 1;
+            continue;
+        }
+
+        let field = &raw[i..i + NAME_FIELD_LEN];
+        let descriptor: [u8; 8] = match raw[i + NAME_FIELD_LEN..i + NAME_FIELD_LEN + DESCRIPTOR_LEN]
+            .try_into()
+        {
+            Ok(arr) => arr,
+            Err(_) => {
+                i += 1;
+                continue;
+            }
+        };
+
+        // Final byte of the type-code (descriptor[3]) must have the high two
+        // bits set — guards against random 0x20 bytes in the binary blob.
+        if descriptor[3] & 0xC0 != 0xC0 {
+            i += 1;
+            continue;
+        }
+
+        let name = match decode_name(field) {
+            Some(n) => n,
+            None => {
+                i += 1;
+                continue;
+            }
+        };
+
+        if seen.insert(i) {
+            tracks.push(Track {
+                name,
+                kind: classify_descriptor(&descriptor),
+                offset: i,
+                is_active: descriptor_is_active(&descriptor),
+                instrument: None,
+                midi_fx: Vec::new(),
+                audio_fx: Vec::new(),
+                sub_number: None,
+                parent_offset: None,
+            });
+        }
+        // Advance past the whole record so we don't re-match inside it.
+        i += NAME_FIELD_LEN;
+    }
+
+    tracks.sort_by_key(|t| t.offset);
+    tracks
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Build a 24-byte track record: 16-byte name field + 8-byte descriptor.
+    /// `descriptor` controls the kind via Python's Track.kind property
+    /// (`lpx_inspect.py:69-82`). The descriptor's final byte must have
+    /// `0xC0` set for the track to be recognised at all.
+    fn track_bytes(name: &str, descriptor: [u8; 8]) -> Vec<u8> {
+        assert!(name.len() <= 14, "name fits in the 14-byte ASCII window");
+        let mut bytes = Vec::with_capacity(NAME_FIELD_LEN + DESCRIPTOR_LEN);
+        bytes.push(0x20); // leading space
+        bytes.extend_from_slice(name.as_bytes());
+        // Pad with NULs to fill 16 bytes total.
+        while bytes.len() < NAME_FIELD_LEN {
+            bytes.push(0x00);
+        }
+        bytes.extend_from_slice(&descriptor);
+        bytes
+    }
+
+    fn fixture_with(records: &[(&str, [u8; 8])]) -> Vec<u8> {
+        let mut buf = vec![0u8; 8]; // 8 NULs of preceding context — TRACK_NAME_RE lookbehind needs a NUL before 0x20
+        for (name, desc) in records {
+            buf.extend_from_slice(&track_bytes(name, *desc));
+        }
+        buf
+    }
+
+    /// Descriptors per the `Track.kind` property in lpx_inspect.py:69-82.
+    /// Final byte 0xC0 mask is mandatory; the head byte selects kind.
+    const DESC_AUDIO: [u8; 8] = [0xAB, 0x00, 0x00, 0xC5, 0x00, 0x00, 0x00, 0x00];
+    const DESC_AUX: [u8; 8] = [0xAB, 0xF5, 0x00, 0xC5, 0x00, 0x00, 0x00, 0x00];
+    const DESC_INSTRUMENT: [u8; 8] = [0x29, 0x00, 0xF3, 0xCF, 0x00, 0x00, 0x00, 0x00];
+    const DESC_INPUT: [u8; 8] = [0x29, 0x00, 0x00, 0xC5, 0x00, 0x00, 0x00, 0x00];
+    const DESC_BUS: [u8; 8] = [0xE9, 0x00, 0x00, 0xCD, 0x00, 0x00, 0x00, 0x00];
+    const DESC_MASTER: [u8; 8] = [0x89, 0x00, 0x00, 0xED, 0x00, 0x00, 0x00, 0x00];
+    const DESC_OUTPUT: [u8; 8] = [0x49, 0x00, 0x00, 0xED, 0x00, 0x00, 0x00, 0x00];
+
+    #[test]
+    fn finds_an_audio_track() {
+        let bytes = fixture_with(&[("Audio 1", DESC_AUDIO)]);
+
+        let tracks = find_tracks(&bytes);
+
+        assert_eq!(tracks.len(), 1);
+        assert_eq!(tracks[0].name, "Audio 1");
+        assert_eq!(tracks[0].kind, TrackKind::Audio);
+    }
+
+    #[test]
+    fn classifies_each_descriptor_head_byte() {
+        let bytes = fixture_with(&[
+            ("Audio 1", DESC_AUDIO),
+            ("Aux 1", DESC_AUX),
+            ("Inst 1", DESC_INSTRUMENT),
+            ("Input 1", DESC_INPUT),
+            ("Bus 1", DESC_BUS),
+            ("Master", DESC_MASTER),
+            ("Output 1", DESC_OUTPUT),
+        ]);
+
+        let tracks = find_tracks(&bytes);
+        let kinds: Vec<TrackKind> = tracks.iter().map(|t| t.kind).collect();
+
+        assert_eq!(
+            kinds,
+            vec![
+                TrackKind::Audio,
+                TrackKind::Aux,
+                TrackKind::Instrument,
+                TrackKind::Input,
+                TrackKind::Bus,
+                TrackKind::Master,
+                TrackKind::Output,
+            ]
+        );
+    }
+
+    #[test]
+    fn rejects_records_with_garbage_in_the_null_padding() {
+        // Hand-build a fixture: 0x20 + "Audio" + GARBAGE bytes instead of NUL pad.
+        let mut buf = vec![0u8; 8];
+        buf.push(0x20);
+        buf.extend_from_slice(b"Audio");
+        // Should be NUL-padded; planting non-NUL bytes here violates the format.
+        buf.extend_from_slice(&[0xFF, 0xFE, 0xFD, 0xFC, 0xFB, 0xFA, 0xF9, 0xF8, 0xF7, 0xF6]);
+        buf.extend_from_slice(&DESC_AUDIO);
+
+        let tracks = find_tracks(&buf);
+
+        assert!(tracks.is_empty(), "expected no tracks; got {:?}", tracks);
+    }
+
+    #[test]
+    fn rejects_descriptor_without_high_two_bits_set() {
+        // Final byte 0x05 lacks the 0xC0 mask, so the candidate is not a
+        // valid track.
+        let bad = [0xAB, 0x00, 0x00, 0x05, 0x00, 0x00, 0x00, 0x00];
+        let bytes = fixture_with(&[("Audio 1", bad)]);
+
+        let tracks = find_tracks(&bytes);
+
+        assert!(tracks.is_empty());
+    }
+
+    #[test]
+    fn detects_active_via_descriptor_bit_0x04() {
+        let mut desc = DESC_AUDIO;
+        desc[2] = 0x04; // activity bit set
+        let bytes = fixture_with(&[("Audio 1", desc)]);
+
+        let tracks = find_tracks(&bytes);
+
+        assert_eq!(tracks.len(), 1);
+        assert!(tracks[0].is_active);
+    }
+
+    #[test]
+    fn detects_active_via_descriptor_byte_4_nonzero() {
+        let mut desc = DESC_AUDIO;
+        desc[4] = 0x42; // alternate activity signal
+        let bytes = fixture_with(&[("Audio 1", desc)]);
+
+        let tracks = find_tracks(&bytes);
+
+        assert_eq!(tracks.len(), 1);
+        assert!(tracks[0].is_active);
+    }
+
+    #[test]
+    fn inactive_when_neither_signal_set() {
+        let bytes = fixture_with(&[("Audio 1", DESC_AUDIO)]);
+
+        let tracks = find_tracks(&bytes);
+
+        assert_eq!(tracks.len(), 1);
+        assert!(!tracks[0].is_active);
+    }
+
+    #[test]
+    fn skips_empty_or_whitespace_only_names() {
+        // 0x20 + spaces + NULs produces an empty name after .strip()
+        let mut buf = vec![0u8; 8];
+        buf.push(0x20);
+        buf.extend_from_slice(b" ");
+        while buf.len() - 8 < NAME_FIELD_LEN {
+            buf.push(0x00);
+        }
+        buf.extend_from_slice(&DESC_AUDIO);
+
+        let tracks = find_tracks(&buf);
+
+        assert!(tracks.is_empty());
+    }
+
+    #[test]
+    fn returns_offsets_in_byte_order() {
+        let bytes = fixture_with(&[
+            ("Audio 1", DESC_AUDIO),
+            ("Audio 2", DESC_AUDIO),
+            ("Audio 3", DESC_AUDIO),
+        ]);
+
+        let tracks = find_tracks(&bytes);
+
+        assert_eq!(tracks.len(), 3);
+        assert!(tracks[0].offset < tracks[1].offset);
+        assert!(tracks[1].offset < tracks[2].offset);
+    }
+
+    #[test]
+    fn instrument_midi_audio_lists_start_empty() {
+        let bytes = fixture_with(&[("Audio 1", DESC_AUDIO)]);
+
+        let tracks = find_tracks(&bytes);
+
+        assert!(tracks[0].instrument.is_none());
+        assert!(tracks[0].midi_fx.is_empty());
+        assert!(tracks[0].audio_fx.is_empty());
+        assert!(tracks[0].sub_number.is_none());
+        assert!(tracks[0].parent_offset.is_none());
+    }
+}
