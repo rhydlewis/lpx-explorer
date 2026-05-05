@@ -20,11 +20,15 @@ function folderNameOf(path: string): string {
   return segments[segments.length - 1] ?? trimmed;
 }
 
-function statusLine(folder: FolderEntry): string | null {
+function statusLine(folder: FolderEntry, matchCount: number, query: string): string | null {
+  const filtering = query.trim() !== "";
   switch (folder.status.kind) {
     case "scanning":
       return `Scanning… (${folder.projects.length})`;
     case "done":
+      if (filtering) {
+        return `${matchCount} of ${folder.projects.length}`;
+      }
       return folder.projects.length === 1
         ? "1 project"
         : `${folder.projects.length} projects`;
@@ -35,14 +39,28 @@ function statusLine(folder: FolderEntry): string | null {
   }
 }
 
+function matchesQuery(path: string, query: string): boolean {
+  if (query.trim() === "") {
+    return true;
+  }
+  const needle = query.toLowerCase();
+  const trimmed = path.endsWith("/") ? path.slice(0, -1) : path;
+  const segments = trimmed.split("/").filter(Boolean);
+  const last = segments[segments.length - 1] ?? trimmed;
+  const name = last.replace(/\.logicx$/i, "").toLowerCase();
+  return name.includes(needle);
+}
+
 export function FolderNode({ folder }: Props) {
   const [open, setOpen] = useState(false);
   const removeFolder = useLibraryStore((s) => s.removeFolder);
+  const query = useLibraryStore((s) => s.query);
   const selectedPath = useProjectStore((s) =>
     s.current.kind === "idle" ? undefined : s.current.path,
   );
 
-  const status = statusLine(folder);
+  const visibleProjects = folder.projects.filter((p) => matchesQuery(p, query));
+  const status = statusLine(folder, visibleProjects.length, query);
   const name = folderNameOf(folder.path);
 
   return (
@@ -79,9 +97,9 @@ export function FolderNode({ folder }: Props) {
         <p className={styles.empty}>No .logicx projects found.</p>
       )}
 
-      {open && folder.projects.length > 0 && (
+      {open && visibleProjects.length > 0 && (
         <ul className={styles.list}>
-          {folder.projects.map((path) => (
+          {visibleProjects.map((path) => (
             <li key={path}>
               <ProjectRow
                 name={projectNameOf(path)}

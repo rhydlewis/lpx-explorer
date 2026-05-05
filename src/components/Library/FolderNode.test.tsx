@@ -111,6 +111,42 @@ describe("<FolderNode />", () => {
     expect(useLibraryStore.getState().folders).toHaveLength(0);
   });
 
+  it("filters folder children case-insensitively by the library-store query", () => {
+    const folder = entry({
+      status: { kind: "done" },
+      projects: [
+        "/Music/Logic/strings.logicx",
+        "/Music/Logic/Demo song.logicx",
+        "/Music/Logic/STRINGS sketch.logicx",
+      ],
+    });
+    useLibraryStore.getState().setQuery("strings");
+
+    render(<FolderNode folder={folder} />);
+
+    fireEvent.click(screen.getByRole("button", { expanded: false }));
+
+    expect(screen.queryByText("Demo song")).not.toBeInTheDocument();
+    expect(screen.getByText("strings")).toBeInTheDocument();
+    expect(screen.getByText("STRINGS sketch")).toBeInTheDocument();
+  });
+
+  it("counts matching projects when the query is non-empty", () => {
+    const folder = entry({
+      status: { kind: "done" },
+      projects: [
+        "/Music/Logic/a.logicx",
+        "/Music/Logic/b.logicx",
+        "/Music/Logic/c.logicx",
+      ],
+    });
+    useLibraryStore.getState().setQuery("b");
+
+    render(<FolderNode folder={folder} />);
+
+    expect(screen.getByText(/1 of 3/i)).toBeInTheDocument();
+  });
+
   it("adds the project to Recent when a folder-child row is clicked", () => {
     const folder = entry({
       status: { kind: "done" },
