@@ -10,6 +10,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             auval::load_au_registry,
+            auval::run_au_scan,
             commands::parse_project,
             library::scan_folder
         ])
