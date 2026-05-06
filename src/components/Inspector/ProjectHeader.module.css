@@ -22,7 +22,6 @@
 }
 
 .path {
-  font-family: var(--font-mono);
   font-size: var(--fs-secondary);
   color: var(--c-text-muted);
   margin: 0;
@@ -30,10 +29,47 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  cursor: default;
 }
 
 .revealButton {
   flex-shrink: 0;
   font-size: var(--fs-secondary);
   padding: var(--s-1) var(--s-3);
+}
+
+/*
+ * Right-click context menu on the path. Positioned via inline styles
+ * (top/left from the contextmenu event coords). Auto-dismissed by the
+ * window-level mousedown / Escape listeners in ProjectHeader.
+ */
+.contextMenu {
+  position: fixed;
+  z-index: var(--z-toast, 1000);
+  background-color: var(--c-bg);
+  border: 1px solid var(--c-divider);
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+  padding: var(--s-1) 0;
+  min-width: 140px;
+}
+
+.contextMenuItem {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  width: 100%;
+  text-align: left;
+  padding: var(--s-1) var(--s-3);
+  font-size: var(--fs-secondary);
+  color: var(--c-text);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.contextMenuItem:hover,
+.contextMenuItem:focus-visible {
+  background-color: var(--c-accent);
+  color: #fff;
+  outline: none;
 }
