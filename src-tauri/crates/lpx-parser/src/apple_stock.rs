@@ -43,6 +43,42 @@ const MARKER: &[u8; 4] = b"GAME";
 const SECOND_FLAG_BYTE: u8 = 0x02;
 const FX_FIRST_FLAG: u8 = 0x02;
 const INSTRUMENT_FIRST_FLAG: u8 = 0x00;
+const APPLE_MANUFACTURER: &str = "appl";
+
+/// Static lookup mapping the recovered 12-byte display name to the real
+/// `(type, subtype)` `auval -l` fingerprint pair. Manufacturer is always
+/// `"appl"` for Logic Pro stock plug-ins, so it isn't repeated here.
+///
+/// The GAME-marker storage shape doesn't carry the AU 4CC fingerprint —
+/// only the user-facing name. This table converts the name back into the
+/// fingerprint Logic registers with the AU host so it cross-references
+/// against `auval -l` output (and so two scanners detecting the same
+/// plug-in via different storage shapes agree on identity).
+///
+/// Entries are added only when verified against `auval -l` from a
+/// stock-Logic install — guessing a subtype risks false positives in
+/// CompatibilityVerdict's "missing" count. Names absent from this table
+/// fall through to [`synth_subtype`] and remain covered by the
+/// `display_name`-based "always installed" shortcut in CompatibilityVerdict.
+///
+/// Verified entries:
+/// - `Compressor → aufx/Comp/appl` (cross-checked against
+///   `lpx-toolkit/tests/test_diagnostics.py`).
+///
+/// Unverified names recovered from the repro project but absent here:
+/// `Bass Amp`, `Limiter`, `Phat FX`, `Graph EQ`, `ChromaGlow`, `Alchemy`.
+/// Filed as a follow-up issue.
+const STOCK_FINGERPRINTS: &[(&str, &str, &str)] =
+    &[("Compressor", "aufx", "Comp")];
+
+/// Look up the `(type, subtype)` for a known Apple stock plug-in display
+/// name. Case-sensitive — `auval -l` is too.
+fn lookup_stock_fingerprint(display_name: &str) -> Option<(&'static str, &'static str)> {
+    STOCK_FINGERPRINTS
+        .iter()
+        .find(|(name, _, _)| *name == display_name)
+        .map(|(_, type_code, subtype)| (*type_code, *subtype))
+}
 
 /// Scan `raw` for Apple stock plug-in slot records and return one
 /// [`AURef`] per match. Every match has `display_name = Some(<name>)`.
@@ -98,10 +134,14 @@ pub fn find_apple_stock_aus(raw: &[u8]) -> Vec<AURef> {
         let display_name = std::str::from_utf8(&name_bytes[..name_end])
             .expect("printable ASCII")
             .to_owned();
+        let (type_code, subtype) = match lookup_stock_fingerprint(&display_name) {
+            Some((t, s)) => (t.to_owned(), s.to_owned()),
+            None => (kind_type.into(), synth_subtype(&display_name)),
+        };
         out.push(AURef {
-            type_code: kind_type.into(),
-            subtype: synth_subtype(&display_name),
-            manufacturer: "appl".into(),
+            type_code,
+            subtype,
+            manufacturer: APPLE_MANUFACTURER.into(),
             offset: name_start,
             display_name: Some(display_name),
         });
@@ -255,6 +295,71 @@ mod tests {
         assert_eq!(synth_subtype("Graph EQ"), "grap");
         assert_eq!(synth_subtype("Hi"), "hixx");
         assert_eq!(synth_subtype(""), "xxxx");
+    }
+
+    #[test]
+    fn known_display_name_yields_real_auval_fingerprint() {
+        // Logic Pro registers its bundled Compressor as `aufx/Comp/appl`
+        // — the real fingerprint emitted by `auval -l`. Before the static
+        // lookup table the parser synthesised `aufx/comp/appl` (lowercase
+        // 'c'), which never matched the registry.
+        let bytes = record(FX_FIRST_FLAG, "Compressor", &[0u8; 8]);
+
+        let found = find_apple_stock_aus(&bytes);
+
+        assert_eq!(found.len(), 1);
+        assert_eq!(
+            found[0].fingerprint(),
+            "aufx/Comp/appl",
+            "Compressor must round-trip to the auval-published fingerprint",
+        );
+        assert_eq!(found[0].display_name.as_deref(), Some("Compressor"));
+    }
+
+    #[test]
+    fn unknown_display_name_falls_back_to_synthesised_fingerprint() {
+        // Names we haven't yet mapped (no entry in STOCK_FINGERPRINTS)
+        // keep the synthesised triple so they still surface in the UI
+        // — CompatibilityVerdict treats display_name-bearing AURefs as
+        // always installed, which masks the synthesised-fingerprint gap
+        // until we extend the table.
+        let bytes = record(FX_FIRST_FLAG, "MysteryAU", &[0u8; 8]);
+
+        let found = find_apple_stock_aus(&bytes);
+
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].fingerprint(), "aufx/myst/appl");
+        assert_eq!(found[0].display_name.as_deref(), Some("MysteryAU"));
+    }
+
+    #[test]
+    fn instrument_lookup_uses_table_type_not_flag_byte() {
+        // The 12-byte name field comes before the GAME marker; the type
+        // (instrument vs effect) is in the flag byte. The static lookup
+        // takes precedence — if the table maps "Compressor" → aufx, even
+        // a (corrupt) instrument-flagged record produces aufx output.
+        // Guards against the regression where a bit-flipped flag byte
+        // would silently misfile a known plug-in.
+        let bytes = record(INSTRUMENT_FIRST_FLAG, "Compressor", &[0u8; 8]);
+
+        let found = find_apple_stock_aus(&bytes);
+
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].type_code, "aufx");
+        assert_eq!(found[0].subtype, "Comp");
+    }
+
+    #[test]
+    fn lookup_stock_fingerprint_is_case_sensitive() {
+        // Display names recovered from the GAME field preserve Logic's
+        // exact capitalisation. The lookup must not accidentally lowercase
+        // — `auval -l` is case-sensitive too.
+        assert_eq!(
+            lookup_stock_fingerprint("Compressor"),
+            Some(("aufx", "Comp")),
+        );
+        assert_eq!(lookup_stock_fingerprint("compressor"), None);
+        assert_eq!(lookup_stock_fingerprint("COMPRESSOR"), None);
     }
 
     #[test]

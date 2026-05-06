@@ -23,14 +23,16 @@ function countMissing(
     return 0;
   }
   return fingerprints.filter((ref) => {
-    // Apple stock plug-ins (parser sets `display_name` for these) ship
-    // with Logic and are guaranteed installed on a Mac that has Logic.
-    // Their synthesised fingerprint won't match auval — skip the lookup.
-    if (ref.display_name !== undefined) {
+    const fingerprint = `${ref.type_code}/${ref.subtype}/${ref.manufacturer}`;
+    if (installStatusOf(fingerprint, registryStatus.registry) === "installed") {
       return false;
     }
-    const fingerprint = `${ref.type_code}/${ref.subtype}/${ref.manufacturer}`;
-    return installStatusOf(fingerprint, registryStatus.registry) === "missing";
+    // Apple stock plug-ins (parser sets `display_name` for these) ship
+    // with Logic and are guaranteed installed on a Mac that has Logic.
+    // Known stock plug-ins now carry their real auval fingerprint and
+    // match the registry above; this branch catches the residual unknown
+    // ones whose synthesised fingerprint won't match.
+    return ref.display_name === undefined;
   }).length;
 }
 
