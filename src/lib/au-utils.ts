@@ -29,6 +29,13 @@ export interface FingerprintGroup {
   readonly count: number;
   /** Byte offset of the first occurrence — used as a stable React key. */
   readonly first_offset: number;
+  /**
+   * Set when the parser identified the plug-in directly (Apple stock
+   * via `GAME` 4CC). Carried from the first AURef in the group. Callers
+   * use this to bypass the auval-fingerprint lookup and render the human
+   * name instead of the synthesised fingerprint.
+   */
+  readonly display_name?: string;
 }
 
 /**
@@ -44,13 +51,20 @@ export function groupFingerprints(
   refs: ReadonlyArray<AURef>,
 ): ReadonlyArray<FingerprintGroup> {
   const order: string[] = [];
-  const groups = new Map<string, { count: number; first_offset: number }>();
+  const groups = new Map<
+    string,
+    { count: number; first_offset: number; display_name?: string }
+  >();
   for (const ref of refs) {
     const fingerprint = `${ref.type_code}/${ref.subtype}/${ref.manufacturer}`;
     const existing = groups.get(fingerprint);
     if (existing === undefined) {
       order.push(fingerprint);
-      groups.set(fingerprint, { count: 1, first_offset: ref.offset });
+      groups.set(fingerprint, {
+        count: 1,
+        first_offset: ref.offset,
+        display_name: ref.display_name,
+      });
     } else {
       existing.count += 1;
     }
@@ -60,6 +74,11 @@ export function groupFingerprints(
     if (g === undefined) {
       throw new Error("invariant: ordered key has no group");
     }
-    return { fingerprint, count: g.count, first_offset: g.first_offset };
+    return {
+      fingerprint,
+      count: g.count,
+      first_offset: g.first_offset,
+      display_name: g.display_name,
+    };
   });
 }

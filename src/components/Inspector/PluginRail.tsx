@@ -51,6 +51,18 @@ function buildDisplayGroups(
 ): ReadonlyArray<DisplayGroup> {
   const groups = groupFingerprints(summary.fingerprints);
   return groups.map((group) => {
+    // Apple stock plug-ins arrive with a real display_name and a
+    // synthesised fingerprint that won't match auval. Treat them as
+    // installed-by-default (they ship with Logic) and render the human
+    // name without the synthesised fingerprint sub-line.
+    if (group.display_name !== undefined) {
+      return {
+        group,
+        status: "installed" as InstallStatus,
+        displayName: group.display_name,
+        hasRegistryEntry: false,
+      };
+    }
     const entry = registry?.entries.find(
       (e) => e.fingerprint === group.fingerprint,
     );

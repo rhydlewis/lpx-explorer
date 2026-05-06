@@ -121,6 +121,39 @@ describe("<PluginRail />", () => {
     expect(screen.getByText(/no matches/i)).toBeInTheDocument();
   });
 
+  it("renders Apple stock plug-ins by display_name (not synthesised fingerprint) and treats them as installed", () => {
+    // The parser surfaces Apple stock plug-ins (Compressor, Bass Amp,
+    // Alchemy, ...) with a synthesised fingerprint and the real name in
+    // `display_name`. The synthesised fingerprint won't match auval.
+    // Render the human name and skip the missing-from-registry verdict.
+    useAuRegistryStore.setState({
+      status: { kind: "loaded", registry: makeAuRegistry(["aumu/EZk2/Toon"]) },
+    });
+    const stockBassAmp: AURef = {
+      type_code: "aufx",
+      subtype: "bass",
+      manufacturer: "appl",
+      offset: 1,
+      display_name: "Bass Amp",
+    };
+    render(
+      <PluginRail
+        summary={makeSummary({
+          fingerprints: [stockBassAmp, ref("aumu", "EZk2", "Toon", 2)],
+        })}
+      />,
+    );
+
+    expect(screen.getByText("Bass Amp")).toBeInTheDocument();
+    // Synthesised fingerprint should NOT be rendered for stock plug-ins.
+    expect(screen.queryByText("aufx/bass/appl")).not.toBeInTheDocument();
+    // The Bass Amp row should be marked installed, not missing.
+    const bassAmpRow = screen
+      .getByText("Bass Amp")
+      .closest("li") as HTMLElement | null;
+    expect(bassAmpRow?.getAttribute("data-status")).toBe("installed");
+  });
+
   it("'Missing' chip narrows to plug-ins not in the AU registry", () => {
     useAuRegistryStore.setState({
       status: { kind: "loaded", registry: makeAuRegistry(["aufx/Comp/Yamh"]) },
