@@ -8,15 +8,6 @@ interface Props {
   readonly metadata: ProjectMetadata;
   readonly stats: BundleStats;
   /**
-   * Number of tracks the registry parser actually recovered. When less
-   * than `metadata.track_count` (NumberOfTracks from MetaData.plist),
-   * the gap is rendered inline next to the Tracks count so both numbers
-   * reconcile without scrolling. The remainder lives in NSKeyedArchive
-   * blobs not yet parsed (lpx-explorer-14d). Optional; falls back to
-   * showing only the metadata count.
-   */
-  readonly tracksRegistryCount?: number;
-  /**
    * Reference instant for relative-time formatting. Defaults to `new Date()`
    * — tests pin it for deterministic output.
    */
@@ -102,15 +93,8 @@ function formatBytes(n: number): string {
 export function ProjectInfo({
   metadata,
   stats,
-  tracksRegistryCount,
   now = new Date(),
 }: Props) {
-  const tracksGap =
-    typeof tracksRegistryCount === "number" &&
-    metadata.track_count > tracksRegistryCount
-      ? metadata.track_count - tracksRegistryCount
-      : 0;
-
   return (
     <section aria-label="project info" className={sectionStyles.section}>
       <h3 className={sectionStyles.sectionLabel}>Project</h3>
@@ -130,17 +114,7 @@ export function ProjectInfo({
           </>
         )}
         <dt>Tracks</dt>
-        <dd>
-          {metadata.track_count}
-          {tracksGap > 0 && (
-            <span
-              className={styles.coverageGap}
-              title="Some tracks live in NSKeyedArchive blobs not yet parsed (lpx-explorer-14d)"
-            >
-              {" "}({tracksRegistryCount} identified)
-            </span>
-          )}
-        </dd>
+        <dd>{metadata.track_count}</dd>
         <dt>Created</dt>
         <dd>{formatDateWithRelative(stats.created_at_unix, now)}</dd>
         <dt>Modified</dt>

@@ -125,9 +125,9 @@ export function TrackList({ tracks }: Props) {
   );
 
   return (
-    <section aria-label="plug-in chains" className={sectionStyles.section}>
+    <section aria-label="tracks" className={sectionStyles.section}>
       <div className={styles.header}>
-        <h3 className={sectionStyles.sectionLabel}>Plug-in Chains</h3>
+        <h3 className={sectionStyles.sectionLabel}>Tracks</h3>
         <label className={styles.toggle}>
           <input
             type="checkbox"
@@ -140,7 +140,7 @@ export function TrackList({ tracks }: Props) {
       </div>
       {items.length === 0 ? (
         <p className={sectionStyles.placeholder}>
-          No plug-in chains detected.
+          No tracks detected.
         </p>
       ) : (
         items.map(({ track, depth }) => (

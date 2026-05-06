@@ -116,35 +116,10 @@ describe("<ProjectInfo />", () => {
     expect(screen.getByText(/impulse responses/i)).toBeInTheDocument();
   });
 
-  it("annotates the Tracks count when registry recovered fewer than MetaData reports", () => {
-    const s = makeSummary({ metadata: { track_count: 6 } });
-    render(
-      <ProjectInfo
-        metadata={s.metadata}
-        stats={s.stats}
-        tracksRegistryCount={2}
-        now={fixedNow}
-      />,
-    );
-
-    expect(screen.getByText(/\(2 identified\)/)).toBeInTheDocument();
-  });
-
-  it("omits the coverage annotation when registry matches MetaData", () => {
-    const s = makeSummary({ metadata: { track_count: 6 } });
-    render(
-      <ProjectInfo
-        metadata={s.metadata}
-        stats={s.stats}
-        tracksRegistryCount={6}
-        now={fixedNow}
-      />,
-    );
-
-    expect(screen.queryByText(/identified/)).not.toBeInTheDocument();
-  });
-
-  it("omits the coverage annotation when no registry count is supplied", () => {
+  it("does not surface the parser-coverage gap (the '(N identified)' apology was removed in lpx-explorer-bul)", () => {
+    // The gap was a parser-mental-model leak — track-registry vs
+    // channel-strip extraction is an implementation seam, not a user
+    // concept. The bare track_count from MetaData stays.
     const s = makeSummary({ metadata: { track_count: 6 } });
     render(<ProjectInfo metadata={s.metadata} stats={s.stats} now={fixedNow} />);
 

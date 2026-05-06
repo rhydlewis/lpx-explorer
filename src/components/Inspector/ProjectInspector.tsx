@@ -6,7 +6,6 @@ import { InspectorSkeleton } from "./InspectorSkeleton";
 import { ProjectHeader } from "./ProjectHeader";
 import { ProjectInfo } from "./ProjectInfo";
 import { TrackList } from "./TrackList";
-import { TrackRegistry } from "./TrackRegistry";
 
 interface Props {
   readonly status: ProjectStatus;
@@ -41,11 +40,6 @@ export function ProjectInspector({ status }: Props) {
       <ProjectInfo
         metadata={status.summary.metadata}
         stats={status.summary.stats}
-        tracksRegistryCount={status.summary.tracks_registry.length}
-      />
-      <TrackRegistry
-        entries={status.summary.tracks_registry}
-        trackCount={status.summary.metadata.track_count}
       />
       <TrackList tracks={status.summary.tracks} />
     </>

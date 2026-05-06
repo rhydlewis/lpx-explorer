@@ -16,9 +16,9 @@ import type { TrackKind } from "./types";
 
 /**
  * Single source of truth mapping each `TrackKind` to a Lucide icon. Used
- * by `<TrackRow>` (Plug-in Chains rows) and `<TrackRegistry>` (Tracks
- * section). Two maps drifted apart in earlier iterations — keep this
- * one centralised.
+ * by `<TrackRow>` for the Tracks section. Originally also feeding the
+ * since-removed `<TrackRegistry>` — kept centralised against future
+ * track-shaped surfaces.
  *
  * Icons inherit the surrounding `currentColor` and font-size by default,
  * so theme-mode and zoom Just Work — callers don't need to pass props.

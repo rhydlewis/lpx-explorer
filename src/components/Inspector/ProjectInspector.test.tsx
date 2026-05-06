@@ -13,17 +13,20 @@ const loaded: ProjectStatus = {
 };
 
 describe("<ProjectInspector />", () => {
-  it("renders the five main-column regions when a project is loaded", () => {
-    // Plug-ins moved to the right rail (PluginRail) — App.tsx wires that
-    // up alongside the Inspector. ProjectInspector itself no longer
-    // renders the 'plug-ins' region.
+  it("renders the four main-column regions when a project is loaded", () => {
+    // Plug-ins moved to the right rail (PluginRail). 'Track Registry' and
+    // 'Plug-in Chains' merged into a single 'tracks' region in
+    // lpx-explorer-bul — the registry-vs-chains split was an
+    // implementation seam, not a user concept.
     render(<ProjectInspector status={loaded} />);
 
     expect(screen.getByRole("region", { name: "project" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "compatibility" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "project info" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "tracks" })).toBeInTheDocument();
-    expect(screen.getByRole("region", { name: "plug-in chains" })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("region", { name: "plug-in chains" }),
+    ).not.toBeInTheDocument();
     expect(
       screen.queryByRole("region", { name: "plug-ins" }),
     ).not.toBeInTheDocument();
@@ -74,7 +77,7 @@ describe("<ProjectInspector />", () => {
     expect(screen.getByText(/parsing/i)).toBeInTheDocument();
     // No section regions yet during loading — the verdict-and-tracks shape is
     // for the loaded state. (Skeleton sections are aria-hidden.)
-    expect(screen.queryByRole("region", { name: "plug-in chains" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "tracks" })).not.toBeInTheDocument();
   });
 
   it("replaces the sections with an error card when parse fails", () => {
@@ -89,6 +92,6 @@ describe("<ProjectInspector />", () => {
     );
 
     expect(screen.getByRole("alert")).toHaveTextContent(/projectdata not found/i);
-    expect(screen.queryByRole("region", { name: "plug-in chains" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "tracks" })).not.toBeInTheDocument();
   });
 });

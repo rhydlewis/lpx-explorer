@@ -33,18 +33,18 @@ describe("<TrackList />", () => {
     useUIStore.setState({ pluginChainsShowAll: false });
   });
 
-  it("exposes the section under aria-label='plug-in chains'", () => {
+  it("exposes the section under aria-label='tracks'", () => {
     render(<TrackList tracks={[]} />);
 
     expect(
-      screen.getByRole("region", { name: "plug-in chains" }),
+      screen.getByRole("region", { name: "tracks" }),
     ).toBeInTheDocument();
   });
 
   it("renders 'No tracks detected.' when the list is empty", () => {
     render(<TrackList tracks={[]} />);
 
-    expect(screen.getByText(/no plug-in chains detected/i)).toBeInTheDocument();
+    expect(screen.getByText(/no tracks detected/i)).toBeInTheDocument();
   });
 
   it("renders 'No tracks detected.' when only routing kinds are present", () => {
@@ -58,7 +58,7 @@ describe("<TrackList />", () => {
       />,
     );
 
-    expect(screen.getByText(/no plug-in chains detected/i)).toBeInTheDocument();
+    expect(screen.getByText(/no tracks detected/i)).toBeInTheDocument();
   });
 
   it("renders user-visible kinds and hides routing kinds", () => {
@@ -145,7 +145,7 @@ describe("<TrackList />", () => {
       />,
     );
 
-    expect(screen.getByText(/no plug-in chains detected/i)).toBeInTheDocument();
+    expect(screen.getByText(/no tracks detected/i)).toBeInTheDocument();
   });
 
   it("renders folders flat — children do NOT nest under folders", () => {
