@@ -1,7 +1,8 @@
 import { useMemo } from "react";
 
-import type { AURef, AuvalEntry, Track, TrackKind } from "../../lib/types";
+import type { AURef, AuvalEntry, Track } from "../../lib/types";
 import { displayNameOf } from "../../lib/track-display";
+import { TrackIcon } from "../../lib/track-icon";
 import { useAuRegistryStore } from "../../store/au-registry-store";
 import { StatusDot } from "../StatusDot";
 
@@ -11,19 +12,6 @@ interface Props {
   readonly track: Track;
   readonly depth: number;
 }
-
-const KIND_GLYPH: Record<TrackKind, string> = {
-  audio: "🎤",
-  instrument: "🎹",
-  folder: "🗀",
-  "summing-stack": "⊞",
-  master: "M",
-  output: "→",
-  bus: "B",
-  aux: "A",
-  input: "←",
-  unknown: "?",
-};
 
 function fingerprintOf(au: AURef): string {
   return `${au.type_code}/${au.subtype}/${au.manufacturer}`;
@@ -81,7 +69,7 @@ export function TrackRow({ track, depth }: Props) {
     >
       <div className={styles.header}>
         <span className={styles.icon} aria-hidden="true">
-          {KIND_GLYPH[track.kind]}
+          <TrackIcon kind={track.kind} />
         </span>
         <span className={styles.name} title={name}>
           {name}

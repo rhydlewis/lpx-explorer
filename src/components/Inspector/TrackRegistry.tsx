@@ -1,4 +1,5 @@
-import type { TrackKind, TrackRegistryEntry } from "../../lib/types";
+import type { TrackRegistryEntry } from "../../lib/types";
+import { TrackIcon } from "../../lib/track-icon";
 
 import sectionStyles from "./Inspector.module.css";
 import styles from "./TrackRegistry.module.css";
@@ -13,19 +14,6 @@ interface Props {
    */
   readonly trackCount?: number;
 }
-
-const KIND_GLYPH: Record<TrackKind, string> = {
-  audio: "🎤",
-  instrument: "🎹",
-  folder: "🗀",
-  "summing-stack": "⊞",
-  master: "M",
-  output: "→",
-  bus: "B",
-  aux: "A",
-  input: "←",
-  unknown: "?",
-};
 
 export function TrackRegistry({ entries, trackCount }: Props) {
   const sorted = [...entries].sort((a, b) => a.offset - b.offset);
@@ -49,7 +37,7 @@ export function TrackRegistry({ entries, trackCount }: Props) {
               data-track-kind={entry.kind}
             >
               <span className={styles.icon} aria-hidden="true">
-                {KIND_GLYPH[entry.kind]}
+                <TrackIcon kind={entry.kind} />
               </span>
               <span className={styles.name} title={entry.name}>
                 {entry.name}

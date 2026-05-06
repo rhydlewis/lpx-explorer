@@ -1,5 +1,7 @@
 import { useState } from "react";
 
+import { X } from "lucide-react";
+
 import { openProject } from "../../lib/open-project";
 import { projectNameOf } from "../../lib/path-utils";
 import type { FolderEntry } from "../../lib/types";
@@ -99,7 +101,7 @@ export function FolderNode({ folder }: Props) {
           className={styles.remove}
           onClick={() => removeFolder(folder.path)}
         >
-          ✕
+          <X size="1em" aria-hidden="true" />
         </button>
       </div>
 
