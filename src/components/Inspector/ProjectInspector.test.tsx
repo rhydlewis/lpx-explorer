@@ -29,6 +29,24 @@ describe("<ProjectInspector />", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("renders the compatibility band immediately after the project header, before project info", () => {
+    // The verdict is the JTBD payload — it sits as a hero band directly
+    // under the project name, above all metadata sections. Locked in by
+    // the 2026-05-06 PM/Whimsy review.
+    const { container } = render(<ProjectInspector status={loaded} />);
+
+    const regions = Array.from(
+      container.querySelectorAll("section[aria-label]"),
+    ).map((el) => el.getAttribute("aria-label"));
+
+    const projectIdx = regions.indexOf("project");
+    const compatIdx = regions.indexOf("compatibility");
+    const infoIdx = regions.indexOf("project info");
+    expect(projectIdx).toBeGreaterThanOrEqual(0);
+    expect(compatIdx).toBe(projectIdx + 1);
+    expect(compatIdx).toBeLessThan(infoIdx);
+  });
+
   it("renders the bundle path inside the project header", () => {
     render(<ProjectInspector status={loaded} />);
 

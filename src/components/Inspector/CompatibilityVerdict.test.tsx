@@ -171,23 +171,25 @@ describe("<CompatibilityVerdict />", () => {
     expect(container.querySelector("[data-status='clean']")).not.toBeNull();
   });
 
-  it("renders 'AU registry not yet scanned' + Run AU scan button when status is 'absent'", () => {
+  it("renders 'Haven't checked your AUs yet' + Run AU scan button when status is 'absent'", () => {
     useAuRegistryStore.setState({ status: { kind: "absent" } });
 
     render(<CompatibilityVerdict />);
 
-    expect(screen.getByText(/au registry not yet scanned/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/haven'?t checked your AUs yet/i),
+    ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /run au scan/i }),
     ).toBeInTheDocument();
   });
 
-  it("renders the live count 'Scanning installed AUs… (47)' while scanning", () => {
+  it("renders the live count 'Reading your AU library… (47)' while scanning", () => {
     useAuRegistryStore.setState({ status: { kind: "scanning", found: 47 } });
 
     render(<CompatibilityVerdict />);
 
-    expect(screen.getByText(/scanning installed aus/i)).toBeInTheDocument();
+    expect(screen.getByText(/reading your au library/i)).toBeInTheDocument();
     expect(screen.getByText(/47/)).toBeInTheDocument();
   });
 
@@ -226,7 +228,10 @@ describe("<CompatibilityVerdict />", () => {
     expect(runScan).toHaveBeenCalled();
   });
 
-  it("makes the pill a clickable button when missing plug-ins exist", () => {
+  it("exposes a primary 'Show what's missing' CTA when missing plug-ins exist", () => {
+    // Per the 2026-05-06 PM/Whimsy review: the action must be the loudest
+    // element on the band, not the verdict word. The clickable affordance
+    // is now an explicit CTA button — not the status badge itself.
     useAuRegistryStore.setState({
       status: { kind: "loaded", registry: makeAuRegistry([]) },
     });
@@ -244,10 +249,12 @@ describe("<CompatibilityVerdict />", () => {
 
     render(<CompatibilityVerdict />);
 
-    expect(screen.getByRole("button", { name: /will not open/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /show what'?s missing/i }),
+    ).toBeInTheDocument();
   });
 
-  it("clicking the pill bumps the rail's jump-to-missing nonce", () => {
+  it("clicking the missing-CTA bumps the rail's jump-to-missing nonce", () => {
     useAuRegistryStore.setState({
       status: {
         kind: "loaded",
@@ -269,11 +276,44 @@ describe("<CompatibilityVerdict />", () => {
     const before = useUIStore.getState().pluginRailJumpToMissingNonce;
 
     render(<CompatibilityVerdict />);
-    fireEvent.click(screen.getByRole("button", { name: /1 plug-ins missing/i }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /show what'?s missing/i }),
+    );
 
     expect(useUIStore.getState().pluginRailJumpToMissingNonce).toBe(before + 1);
     expect(useUIStore.getState().pluginRailChip).toBe("missing");
     expect(useUIStore.getState().pluginRailFilter).toBe("");
+  });
+
+  it("renders as a band — no 'Compatibility' section heading", () => {
+    // Per the 2026-05-06 review the verdict is promoted from a labelled
+    // section to a hero band directly under the project header. The
+    // 'Compatibility' h3 is gone; the section is still aria-labelled for
+    // screen readers.
+    useAuRegistryStore.setState({
+      status: {
+        kind: "loaded",
+        registry: makeAuRegistry(["aumu/EZk2/Toon"]),
+      },
+    });
+    useProjectStore.setState({
+      current: {
+        kind: "loaded",
+        path: "/x.logicx",
+        summary: makeSummary({
+          fingerprints: [
+            { type_code: "aumu", subtype: "EZk2", manufacturer: "Toon", offset: 1 },
+          ],
+        }),
+      },
+    });
+
+    render(<CompatibilityVerdict />);
+
+    expect(
+      screen.queryByRole("heading", { name: /^compatibility$/i }),
+    ).toBeNull();
+    expect(screen.getByRole("region", { name: "compatibility" })).toBeInTheDocument();
   });
 
   it("renders the clean status as a non-button span (no jump affordance needed)", () => {
