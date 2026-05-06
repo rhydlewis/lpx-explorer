@@ -62,6 +62,7 @@ pub fn parse_project(path: String) -> Result<ProjectSummary, ParseError> {
     lpx_parser::assign_user_names(&mut tracks, &clusters);
 
     let tracks_registry = lpx_parser::find_track_registry_records(&project_data_bytes);
+    lpx_parser::assign_registry_names(&mut tracks, &tracks_registry);
 
     Ok(ProjectSummary {
         fingerprints,

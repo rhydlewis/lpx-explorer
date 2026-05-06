@@ -43,13 +43,16 @@ const TRACK_SIGNATURE_KIND: &[([u8; 2], TrackKind)] = &[
 ];
 
 /// Names that show up under track signatures but are Logic-internal
-/// placeholders or system buses, not user-named tracks.
+/// placeholders or system buses, not user-named tracks. Note that
+/// `"Untitled"` is *not* in this list: an unrenamed instrument track
+/// in Logic's UI is labelled `Untitled`, so the registry record carries
+/// real user-facing intent (and the count needs to match channel-strip
+/// records for [`assign_registry_names`] to align by ordinal position).
 const REGISTRY_NOISE: &[&str] = &[
     "@ (=Context Name)",
     "(Folder)",
     "Not Assigned",
     "Transform Parameter Set",
-    "Untitled",
     "Unused",
     "Click",
     "MIDI Click",
@@ -346,11 +349,28 @@ mod tests {
 
     #[test]
     fn filters_out_known_noise_names() {
-        let bytes = record([0x22, 0x12], "Untitled", &[0u8; 8], None);
+        // "Click" is a Logic-internal system track — never user-named.
+        let bytes = record([0x22, 0x12], "Click", &[0u8; 8], None);
 
         let found = find_track_registry_records(&bytes);
 
         assert!(found.is_empty());
+    }
+
+    #[test]
+    fn keeps_untitled_records_so_join_alignment_works() {
+        // Logic's default name for an unrenamed instrument track is
+        // "Untitled" — that's a real user-facing name (matches what
+        // appears in the Tracks Area), and it has to flow through the
+        // registry list so [`assign_registry_names`] can ordinally
+        // pair registry entries with channel-strip records 1:1.
+        let bytes = record([0x22, 0x12], "Untitled", &[0u8; 8], None);
+
+        let found = find_track_registry_records(&bytes);
+
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].name, "Untitled");
+        assert_eq!(found[0].kind, TrackKind::Instrument);
     }
 
     #[test]

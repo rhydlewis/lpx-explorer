@@ -9,7 +9,7 @@
 
 use serde::Serialize;
 
-use crate::{is_auto_track_name, AURef, RegionCluster};
+use crate::{is_auto_track_name, AURef, RegionCluster, TrackRegistryEntry};
 
 const NAME_FIELD_LEN: usize = 16;
 const DESCRIPTOR_LEN: usize = 8;
@@ -81,6 +81,61 @@ pub fn assign_user_names(tracks: &mut [Track], clusters: &[RegionCluster]) {
         let owner = &mut tracks[owner_idx];
         if owner.user_name.is_none() {
             owner.user_name = Some(cluster.base_name.clone());
+        }
+    }
+}
+
+/// Fill `user_name` from the track-registry list for tracks that don't
+/// already have a name from a region cluster. Pairs registry entries to
+/// channel-strip records by ordinal position within each track kind:
+/// the Nth instrument-kind registry entry (sorted by offset) matches
+/// the Nth instrument-kind active channel strip (sorted by offset).
+///
+/// The byte-level join (registry `track_id` → channel-strip record) is
+/// unsolved upstream (see lpx-toolkit/CLAUDE.md "UI track-row order").
+/// Channel-strip storage order empirically matches registry storage
+/// order on every project verified so far — both are written by Logic
+/// in track-creation order — so ordinal pairing is the working
+/// approximation. This is a P3 working approximation; misalignments in
+/// projects with non-standard track ordering are tolerated until the
+/// real join key surfaces.
+///
+/// Existing `user_name` values (set by [`assign_user_names`] from
+/// region clusters) are not overwritten. Audio-track strips are paired
+/// against `Audio`-kind registry entries; instrument-track strips
+/// against `Instrument`-kind entries.
+pub fn assign_registry_names(
+    tracks: &mut [Track],
+    registry: &[TrackRegistryEntry],
+) {
+    if tracks.is_empty() || registry.is_empty() {
+        return;
+    }
+    pair_in_kind(tracks, registry, TrackKind::Instrument);
+    pair_in_kind(tracks, registry, TrackKind::Audio);
+}
+
+fn pair_in_kind(
+    tracks: &mut [Track],
+    registry: &[TrackRegistryEntry],
+    kind: TrackKind,
+) {
+    let mut strip_indices: Vec<usize> = tracks
+        .iter()
+        .enumerate()
+        .filter(|(_, t)| t.kind == kind && t.is_active)
+        .map(|(i, _)| i)
+        .collect();
+    strip_indices.sort_by_key(|&i| tracks[i].offset);
+
+    let mut registry_entries: Vec<&TrackRegistryEntry> =
+        registry.iter().filter(|e| e.kind == kind).collect();
+    registry_entries.sort_by_key(|e| e.offset);
+
+    for (i, entry) in strip_indices.iter().zip(registry_entries.iter()) {
+        let track = &mut tracks[*i];
+        if track.user_name.is_none() {
+            track.user_name = Some(entry.name.clone());
         }
     }
 }
@@ -667,6 +722,140 @@ mod tests {
         assign_user_names(&mut tracks, &clusters);
 
         assert_eq!(tracks[0].user_name.as_deref(), Some("Acoustic GTR"));
+    }
+
+    // ─── assign_registry_names ─────────────────────────────────────────
+
+    fn registry_entry(offset: usize, name: &str, kind: TrackKind) -> TrackRegistryEntry {
+        TrackRegistryEntry {
+            offset,
+            name: name.into(),
+            kind,
+            track_id: 0,
+            strip_id: 0,
+        }
+    }
+
+    fn active_track(name: &str, kind: TrackKind, offset: usize) -> Track {
+        Track {
+            name: name.into(),
+            user_name: None,
+            kind,
+            offset,
+            is_active: true,
+            instrument: None,
+            midi_fx: Vec::new(),
+            audio_fx: Vec::new(),
+            sub_number: None,
+            parent_offset: None,
+        }
+    }
+
+    #[test]
+    fn pairs_registry_entries_with_channel_strips_in_offset_order() {
+        let mut tracks = vec![
+            active_track("Inst 1", TrackKind::Instrument, 100),
+            active_track("Inst 2", TrackKind::Instrument, 300),
+            active_track("Inst 3", TrackKind::Instrument, 500),
+        ];
+        let registry = vec![
+            registry_entry(1000, "Piano", TrackKind::Instrument),
+            registry_entry(1100, "Drums", TrackKind::Instrument),
+            registry_entry(1200, "Bass", TrackKind::Instrument),
+        ];
+
+        assign_registry_names(&mut tracks, &registry);
+
+        assert_eq!(tracks[0].user_name.as_deref(), Some("Piano"));
+        assert_eq!(tracks[1].user_name.as_deref(), Some("Drums"));
+        assert_eq!(tracks[2].user_name.as_deref(), Some("Bass"));
+    }
+
+    #[test]
+    fn pairs_within_kind_so_audio_strips_only_match_audio_registry_entries() {
+        let mut tracks = vec![
+            active_track("Audio 1", TrackKind::Audio, 100),
+            active_track("Inst 1", TrackKind::Instrument, 200),
+        ];
+        let registry = vec![
+            registry_entry(1000, "Piano", TrackKind::Instrument),
+            registry_entry(1100, "Acoustic GTR", TrackKind::Audio),
+        ];
+
+        assign_registry_names(&mut tracks, &registry);
+
+        assert_eq!(tracks[0].user_name.as_deref(), Some("Acoustic GTR"));
+        assert_eq!(tracks[1].user_name.as_deref(), Some("Piano"));
+    }
+
+    #[test]
+    fn does_not_overwrite_user_name_set_by_region_clusters() {
+        // Region-cluster source-of-truth wins — assign_user_names runs
+        // first and the registry pairing must not clobber its results.
+        let mut tracks = vec![active_track("Inst 1", TrackKind::Instrument, 100)];
+        tracks[0].user_name = Some("Pocket Strings".into());
+        let registry = vec![registry_entry(1000, "Piano", TrackKind::Instrument)];
+
+        assign_registry_names(&mut tracks, &registry);
+
+        assert_eq!(tracks[0].user_name.as_deref(), Some("Pocket Strings"));
+    }
+
+    #[test]
+    fn drops_extra_registry_entries_when_more_registry_than_strips() {
+        let mut tracks = vec![active_track("Inst 1", TrackKind::Instrument, 100)];
+        let registry = vec![
+            registry_entry(1000, "Piano", TrackKind::Instrument),
+            registry_entry(1100, "Bass", TrackKind::Instrument),
+        ];
+
+        assign_registry_names(&mut tracks, &registry);
+
+        assert_eq!(tracks[0].user_name.as_deref(), Some("Piano"));
+    }
+
+    #[test]
+    fn leaves_extra_strips_unnamed_when_more_strips_than_registry() {
+        let mut tracks = vec![
+            active_track("Inst 1", TrackKind::Instrument, 100),
+            active_track("Inst 2", TrackKind::Instrument, 200),
+        ];
+        let registry = vec![registry_entry(1000, "Piano", TrackKind::Instrument)];
+
+        assign_registry_names(&mut tracks, &registry);
+
+        assert_eq!(tracks[0].user_name.as_deref(), Some("Piano"));
+        assert!(tracks[1].user_name.is_none());
+    }
+
+    #[test]
+    fn skips_inactive_strips_when_pairing() {
+        // Inactive strips (Logic emits ~256 default channel strips that
+        // aren't user-visible) shouldn't consume a registry entry slot.
+        let mut tracks = vec![
+            Track {
+                is_active: false,
+                ..active_track("Inst 1", TrackKind::Instrument, 100)
+            },
+            active_track("Inst 2", TrackKind::Instrument, 200),
+        ];
+        let registry = vec![registry_entry(1000, "Piano", TrackKind::Instrument)];
+
+        assign_registry_names(&mut tracks, &registry);
+
+        assert!(tracks[0].user_name.is_none());
+        assert_eq!(tracks[1].user_name.as_deref(), Some("Piano"));
+    }
+
+    #[test]
+    fn empty_inputs_are_a_no_op() {
+        let mut tracks: Vec<Track> = Vec::new();
+        assign_registry_names(&mut tracks, &[]);
+        assert!(tracks.is_empty());
+
+        let mut tracks = vec![active_track("Inst 1", TrackKind::Instrument, 100)];
+        assign_registry_names(&mut tracks, &[]);
+        assert!(tracks[0].user_name.is_none());
     }
 
     #[test]
