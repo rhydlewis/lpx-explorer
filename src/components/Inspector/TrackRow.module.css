@@ -40,9 +40,26 @@
   color: var(--c-text-muted);
 }
 
+.disclosure {
+  margin-left: var(--s-5);
+}
+
+.summary {
+  cursor: pointer;
+  font-size: var(--fs-secondary);
+  color: var(--c-text-muted);
+  list-style: revert;
+  user-select: none;
+  padding: var(--s-1) 0;
+}
+
+.summary:hover {
+  color: var(--c-text-secondary);
+}
+
 .inserts {
   list-style: none;
-  margin: var(--s-1) 0 0 var(--s-5);
+  margin: var(--s-1) 0 0 0;
   padding: 0;
   font-family: var(--font-mono);
   font-size: var(--fs-secondary);

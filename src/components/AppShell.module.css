@@ -17,6 +17,20 @@
     "main";
 }
 
+.shell.withRightRail {
+  grid-template-columns: var(--rail-width) 1fr var(--plugin-rail-width);
+  grid-template-areas:
+    "topbar topbar topbar"
+    "rail   main   rightRail";
+}
+
+.shell.noRail.withRightRail {
+  grid-template-columns: 1fr var(--plugin-rail-width);
+  grid-template-areas:
+    "topbar topbar"
+    "main   rightRail";
+}
+
 .topbar {
   grid-area: topbar;
   border-bottom: 1px solid var(--c-divider);
@@ -38,4 +52,12 @@
   grid-area: main;
   overflow-y: auto;
   padding: var(--s-5);
+}
+
+.rightRail {
+  grid-area: rightRail;
+  border-left: 1px solid var(--c-divider);
+  background-color: var(--c-surface);
+  overflow-y: auto;
+  padding: var(--s-3);
 }

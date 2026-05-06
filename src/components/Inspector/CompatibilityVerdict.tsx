@@ -2,6 +2,7 @@ import type { AURef } from "../../lib/types";
 import { installStatusOf } from "../../lib/au-utils";
 import { useAuRegistryStore, type RegistryStatus } from "../../store/au-registry-store";
 import { useProjectStore } from "../../store/project-store";
+import { useUIStore } from "../../store/ui-store";
 
 import sectionStyles from "./Inspector.module.css";
 import styles from "./CompatibilityVerdict.module.css";
@@ -67,6 +68,7 @@ export function CompatibilityVerdict() {
   const projectStatus = useProjectStore((s) => s.current);
   const registryStatus = useAuRegistryStore((s) => s.status);
   const runScan = useAuRegistryStore((s) => s.runScan);
+  const requestJumpToMissing = useUIStore((s) => s.requestJumpToMissing);
 
   const fingerprints =
     projectStatus.kind === "loaded" ? projectStatus.summary.fingerprints : [];
@@ -78,6 +80,7 @@ export function CompatibilityVerdict() {
         fingerprints={fingerprints}
         registryStatus={registryStatus}
         onRunScan={() => void runScan()}
+        onJumpToMissing={requestJumpToMissing}
       />
     </section>
   );
@@ -87,9 +90,15 @@ interface BodyProps {
   readonly fingerprints: ReadonlyArray<AURef>;
   readonly registryStatus: RegistryStatus;
   readonly onRunScan: () => void;
+  readonly onJumpToMissing: () => void;
 }
 
-function CompatibilityBody({ fingerprints, registryStatus, onRunScan }: BodyProps) {
+function CompatibilityBody({
+  fingerprints,
+  registryStatus,
+  onRunScan,
+  onJumpToMissing,
+}: BodyProps) {
   if (registryStatus.kind === "scanning") {
     return (
       <p className={styles.scanning}>
@@ -127,11 +136,25 @@ function CompatibilityBody({ fingerprints, registryStatus, onRunScan }: BodyProp
 
   // registryStatus.kind === 'loaded'
   const verdict = renderVerdict(fingerprints, registryStatus);
+  const isClickable =
+    verdict.status === "warnings" || verdict.status === "will-not-open";
   return (
     <>
-      <span data-status={verdict.status} className={styles.pill}>
-        {verdict.headline}
-      </span>
+      {isClickable ? (
+        <button
+          type="button"
+          data-status={verdict.status}
+          className={`${styles.pill} ${styles.pillButton}`}
+          onClick={onJumpToMissing}
+          title="Jump to first missing plug-in"
+        >
+          {verdict.headline}
+        </button>
+      ) : (
+        <span data-status={verdict.status} className={styles.pill}>
+          {verdict.headline}
+        </span>
+      )}
       {verdict.summary !== undefined && (
         <p className={styles.summary}>{verdict.summary}</p>
       )}

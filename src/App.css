@@ -14,3 +14,24 @@
   z-index: var(--z-toast);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
+
+/* Topbar plug-in rail toggle — visible only when the viewport collapses
+ * the right rail (per RIGHT_RAIL_BREAKPOINT_PX in App.tsx). */
+.plugin-rail-toggle {
+  margin-left: auto;
+  appearance: none;
+  background: var(--c-bg);
+  border: 1px solid var(--c-divider);
+  border-radius: var(--radius-sm);
+  color: var(--c-text);
+  font-family: inherit;
+  font-size: var(--fs-secondary);
+  padding: 2px var(--s-3);
+  cursor: pointer;
+}
+
+.plugin-rail-toggle[aria-pressed="true"] {
+  background: var(--c-accent);
+  border-color: var(--c-accent);
+  color: var(--c-bg);
+}

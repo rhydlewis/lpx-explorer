@@ -51,6 +51,7 @@
   /* ─── Layout ─────────────────────────────────────────────────────── */
   --row-height: 30px;
   --rail-width: 260px;
+  --plugin-rail-width: 320px;
   --topbar-height: 36px;
   --radius-sm: 4px;
   --radius-md: 8px;

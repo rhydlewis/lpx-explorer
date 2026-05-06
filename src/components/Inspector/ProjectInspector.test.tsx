@@ -13,7 +13,10 @@ const loaded: ProjectStatus = {
 };
 
 describe("<ProjectInspector />", () => {
-  it("renders all six Logic-terminology regions when a project is loaded", () => {
+  it("renders the five main-column regions when a project is loaded", () => {
+    // Plug-ins moved to the right rail (PluginRail) — App.tsx wires that
+    // up alongside the Inspector. ProjectInspector itself no longer
+    // renders the 'plug-ins' region.
     render(<ProjectInspector status={loaded} />);
 
     expect(screen.getByRole("region", { name: "project" })).toBeInTheDocument();
@@ -21,7 +24,9 @@ describe("<ProjectInspector />", () => {
     expect(screen.getByRole("region", { name: "project info" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "tracks" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "plug-in chains" })).toBeInTheDocument();
-    expect(screen.getByRole("region", { name: "plug-ins" })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("region", { name: "plug-ins" }),
+    ).not.toBeInTheDocument();
   });
 
   it("renders the bundle path inside the project header", () => {

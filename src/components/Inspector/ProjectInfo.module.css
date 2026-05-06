@@ -17,3 +17,9 @@
   color: var(--c-text);
   font-variant-numeric: tabular-nums;
 }
+
+.coverageGap {
+  color: var(--c-text-muted);
+  font-style: italic;
+  cursor: help;
+}

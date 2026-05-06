@@ -115,4 +115,41 @@ describe("<TrackRow />", () => {
     // No <ul> for inserts when nothing to render.
     expect(container.querySelector("ul")).toBeNull();
   });
+
+  it("renders no <details> widget when track has no inserts", () => {
+    const { container } = render(<TrackRow track={track()} depth={0} />);
+
+    expect(container.querySelector("details")).toBeNull();
+  });
+
+  it("collapses inserts inside a <details> closed by default", () => {
+    const t = track({ kind: "audio", audio_fx: [aufx("Comp"), aufx("Verb")] });
+    const { container } = render(<TrackRow track={t} depth={0} />);
+
+    const details = container.querySelector("details");
+    expect(details).not.toBeNull();
+    expect(details?.hasAttribute("open")).toBe(false);
+  });
+
+  it("summary shows '<N> inserts' with a kind breakdown", () => {
+    const t = track({
+      kind: "instrument",
+      instrument: inst("EZk2"),
+      midi_fx: [aumf("FXR ")],
+      audio_fx: [aufx("Comp"), aufx("Verb")],
+    });
+    render(<TrackRow track={t} depth={0} />);
+
+    // Total 4 inserts: 1 instrument + 1 MIDI + 2 audio fx
+    expect(
+      screen.getByText("4 inserts · 1 instr · 1 midi · 2 fx"),
+    ).toBeInTheDocument();
+  });
+
+  it("summary uses the singular 'insert' when there's only one", () => {
+    const t = track({ kind: "audio", audio_fx: [aufx("Comp")] });
+    render(<TrackRow track={t} depth={0} />);
+
+    expect(screen.getByText("1 insert · 1 fx")).toBeInTheDocument();
+  });
 });

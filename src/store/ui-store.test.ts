@@ -4,10 +4,24 @@ import { useUIStore } from "./ui-store";
 
 describe("useUIStore", () => {
   beforeEach(() => {
-    useUIStore.setState({ railVisible: false, pluginChainsShowAll: false });
+    useUIStore.setState({
+      railVisible: false,
+      pluginChainsShowAll: false,
+      pluginRailFilter: "",
+      pluginRailChip: "all",
+      pluginRailJumpToMissingNonce: 0,
+      pluginRailOpen: false,
+    });
   });
   afterEach(() => {
-    useUIStore.setState({ railVisible: false, pluginChainsShowAll: false });
+    useUIStore.setState({
+      railVisible: false,
+      pluginChainsShowAll: false,
+      pluginRailFilter: "",
+      pluginRailChip: "all",
+      pluginRailJumpToMissingNonce: 0,
+      pluginRailOpen: false,
+    });
   });
 
   it("starts with the rail hidden — first launch lands on EmptyState", () => {
@@ -44,5 +58,66 @@ describe("useUIStore", () => {
 
     useUIStore.getState().togglePluginChainsShowAll();
     expect(useUIStore.getState().pluginChainsShowAll).toBe(false);
+  });
+
+  // ─── PluginRail filter + chip ───────────────────────────────────────
+
+  it("starts with empty plug-in filter and 'all' chip", () => {
+    expect(useUIStore.getState().pluginRailFilter).toBe("");
+    expect(useUIStore.getState().pluginRailChip).toBe("all");
+  });
+
+  it("setPluginRailFilter and setPluginRailChip update independently", () => {
+    useUIStore.getState().setPluginRailFilter("comp");
+    useUIStore.getState().setPluginRailChip("missing");
+
+    expect(useUIStore.getState().pluginRailFilter).toBe("comp");
+    expect(useUIStore.getState().pluginRailChip).toBe("missing");
+  });
+
+  // ─── Compatibility-pill jump-to-missing ─────────────────────────────
+
+  it("requestJumpToMissing bumps the nonce, sets chip='missing', clears filter", () => {
+    useUIStore.setState({
+      pluginRailFilter: "stale",
+      pluginRailChip: "all",
+      pluginRailJumpToMissingNonce: 0,
+    });
+
+    useUIStore.getState().requestJumpToMissing();
+
+    expect(useUIStore.getState().pluginRailJumpToMissingNonce).toBe(1);
+    expect(useUIStore.getState().pluginRailChip).toBe("missing");
+    expect(useUIStore.getState().pluginRailFilter).toBe("");
+  });
+
+  it("repeat requestJumpToMissing keeps incrementing the nonce", () => {
+    useUIStore.getState().requestJumpToMissing();
+    useUIStore.getState().requestJumpToMissing();
+    useUIStore.getState().requestJumpToMissing();
+
+    expect(useUIStore.getState().pluginRailJumpToMissingNonce).toBe(3);
+  });
+
+  it("requestJumpToMissing also opens the rail (so narrow-window users see it)", () => {
+    useUIStore.setState({ pluginRailOpen: false });
+
+    useUIStore.getState().requestJumpToMissing();
+
+    expect(useUIStore.getState().pluginRailOpen).toBe(true);
+  });
+
+  // ─── Narrow-window rail toggle ──────────────────────────────────────
+
+  it("starts with pluginRailOpen=false (closed at narrow widths until user clicks)", () => {
+    expect(useUIStore.getState().pluginRailOpen).toBe(false);
+  });
+
+  it("togglePluginRailOpen flips the value", () => {
+    useUIStore.getState().togglePluginRailOpen();
+    expect(useUIStore.getState().pluginRailOpen).toBe(true);
+
+    useUIStore.getState().togglePluginRailOpen();
+    expect(useUIStore.getState().pluginRailOpen).toBe(false);
   });
 });

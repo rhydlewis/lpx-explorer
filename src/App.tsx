@@ -12,22 +12,36 @@ import {
   persistLibrary,
   setRecentMenu,
 } from "./lib/persistence";
+import { useMediaQuery } from "./lib/use-media-query";
 import { useAuRegistryStore } from "./store/au-registry-store";
 import { useLibraryStore } from "./store/library-store";
 import { useProjectStore } from "./store/project-store";
+import { useUIStore } from "./store/ui-store";
 import { AppShell } from "./components/AppShell";
 import { EmptyState } from "./components/EmptyState";
 import { ProjectInspector } from "./components/Inspector/ProjectInspector";
+import { PluginRail } from "./components/Inspector/PluginRail";
 import { LibraryRail } from "./components/Library/LibraryRail";
 
 import "./App.css";
 
 const HINT_DISMISS_MS = 4000;
+/**
+ * Below this viewport width the right Plug-ins rail collapses to a
+ * topbar toggle — at narrower widths a 320px rail crowds the
+ * Inspector main column past usability. Picked empirically against
+ * the existing `--rail-width` (260px) plus `--plugin-rail-width`
+ * (320px) plus a working min-width for the main pane (~520px).
+ */
+const RIGHT_RAIL_BREAKPOINT_PX = 1100;
 
 function App() {
   const status = useProjectStore((s) => s.current);
   const recentCount = useLibraryStore((s) => s.recent.length);
   const folderCount = useLibraryStore((s) => s.folders.length);
+  const pluginRailOpen = useUIStore((s) => s.pluginRailOpen);
+  const togglePluginRailOpen = useUIStore((s) => s.togglePluginRailOpen);
+  const isNarrow = useMediaQuery(`(max-width: ${RIGHT_RAIL_BREAKPOINT_PX - 1}px)`);
   const [hint, setHint] = useState<string | null>(null);
 
   async function pickProject() {
@@ -153,9 +167,34 @@ function App() {
       />
     : <ProjectInspector status={status} />;
 
+  // Right rail is project-scoped — only visible once a project is
+  // loaded. At narrow widths the rail collapses to a topbar toggle so
+  // the main column has room; the toggle's open/closed state lives in
+  // ui-store (in-session) per lpx-explorer-fom.
+  const projectLoaded = status.kind === "loaded";
+  const rightRailVisible = projectLoaded && (!isNarrow || pluginRailOpen);
+  const rightRail = rightRailVisible ? (
+    <PluginRail summary={status.summary} />
+  ) : undefined;
+
+  // Topbar shows the rail toggle only when narrow + a project is loaded.
+  // Above the breakpoint the rail is always visible, so a toggle would
+  // be cosmetic; below it the user needs a way back to the rail.
+  const topBar =
+    isNarrow && projectLoaded ? (
+      <button
+        type="button"
+        onClick={togglePluginRailOpen}
+        aria-pressed={pluginRailOpen}
+        className="plugin-rail-toggle"
+      >
+        {pluginRailOpen ? "Hide plug-ins" : "Show plug-ins"}
+      </button>
+    ) : undefined;
+
   return (
     <>
-      <AppShell rail={rail} main={main} />
+      <AppShell topBar={topBar} rail={rail} rightRail={rightRail} main={main} />
       {hint !== null && (
         <div role="status" aria-live="polite" className="drop-hint">
           {hint}

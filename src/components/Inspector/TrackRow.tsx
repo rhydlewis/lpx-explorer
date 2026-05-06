@@ -39,6 +39,18 @@ function collectInserts(track: Track): readonly AURef[] {
   return out;
 }
 
+function summarizeInserts(track: Track): string {
+  const instr = track.instrument !== null ? 1 : 0;
+  const midi = track.midi_fx.length;
+  const fx = track.audio_fx.length;
+  const total = instr + midi + fx;
+  const parts: string[] = [];
+  if (instr > 0) parts.push(`${instr} instr`);
+  if (midi > 0) parts.push(`${midi} midi`);
+  if (fx > 0) parts.push(`${fx} fx`);
+  return `${total} insert${total === 1 ? "" : "s"} · ${parts.join(" · ")}`;
+}
+
 export function TrackRow({ track, depth }: Props) {
   const registryStatus = useAuRegistryStore((s) => s.status);
   const byFingerprint = useMemo<ReadonlyMap<string, AuvalEntry>>(() => {
@@ -70,13 +82,18 @@ export function TrackRow({ track, depth }: Props) {
         <StatusDot status={track.is_active ? "clean" : "neutral"} />
       </div>
       {inserts.length > 0 && (
-        <ul className={styles.inserts}>
-          {inserts.map((au) => (
-            <li key={`${au.offset}:${fingerprintOf(au)}`}>
-              {fingerprintOf(au)}
-            </li>
-          ))}
-        </ul>
+        <details className={styles.disclosure}>
+          <summary className={styles.summary}>
+            {summarizeInserts(track)}
+          </summary>
+          <ul className={styles.inserts}>
+            {inserts.map((au) => (
+              <li key={`${au.offset}:${fingerprintOf(au)}`}>
+                {fingerprintOf(au)}
+              </li>
+            ))}
+          </ul>
+        </details>
       )}
     </div>
   );

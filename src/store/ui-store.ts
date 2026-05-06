@@ -1,5 +1,8 @@
 import { create } from "zustand";
 
+/** Plug-in rail chip filter — narrows the project's deduped plug-in list. */
+export type PluginRailChip = "all" | "installed" | "missing" | "duplicated";
+
 export interface UIState {
   railVisible: boolean;
   setRailVisible: (visible: boolean) => void;
@@ -14,6 +17,30 @@ export interface UIState {
   pluginChainsShowAll: boolean;
   setPluginChainsShowAll: (showAll: boolean) => void;
   togglePluginChainsShowAll: () => void;
+  /** Text filter on the right-rail plug-in list (substring, case-insensitive). */
+  pluginRailFilter: string;
+  setPluginRailFilter: (q: string) => void;
+  /** Chip filter on the right-rail plug-in list. */
+  pluginRailChip: PluginRailChip;
+  setPluginRailChip: (chip: PluginRailChip) => void;
+  /**
+   * Bump-counter the Compatibility pill increments to ask the rail to
+   * scroll/highlight its first missing plug-in. PluginRail subscribes
+   * via useEffect on this nonce. (Counter rather than boolean because
+   * back-to-back clicks need to fire the effect each time.)
+   */
+  pluginRailJumpToMissingNonce: number;
+  requestJumpToMissing: () => void;
+  /**
+   * In-session toggle for the right rail visibility at narrow window
+   * widths. Above the breakpoint the rail is always visible; below it,
+   * this controls whether the rail (and its topbar toggle button shows
+   * it) is shown. Defaults closed so narrow first launches don't paint
+   * a rail-over-main collision.
+   */
+  pluginRailOpen: boolean;
+  setPluginRailOpen: (open: boolean) => void;
+  togglePluginRailOpen: () => void;
 }
 
 export const useUIStore = create<UIState>((set) => ({
@@ -25,4 +52,25 @@ export const useUIStore = create<UIState>((set) => ({
     set({ pluginChainsShowAll: showAll }),
   togglePluginChainsShowAll: () =>
     set((s) => ({ pluginChainsShowAll: !s.pluginChainsShowAll })),
+  pluginRailFilter: "",
+  setPluginRailFilter: (q: string) => set({ pluginRailFilter: q }),
+  pluginRailChip: "all",
+  setPluginRailChip: (chip: PluginRailChip) => set({ pluginRailChip: chip }),
+  pluginRailJumpToMissingNonce: 0,
+  requestJumpToMissing: () =>
+    set((s) => ({
+      // Bump a nonce — PluginRail subscribes and scrolls/highlights its
+      // first 'missing' row each time it changes. Also force-reset the
+      // chip + filter so the missing row is in fact visible.
+      pluginRailJumpToMissingNonce: s.pluginRailJumpToMissingNonce + 1,
+      pluginRailChip: "missing",
+      pluginRailFilter: "",
+      // If the rail is closed at narrow width, open it so the user can
+      // see the row we just scrolled to.
+      pluginRailOpen: true,
+    })),
+  pluginRailOpen: false,
+  setPluginRailOpen: (open: boolean) => set({ pluginRailOpen: open }),
+  togglePluginRailOpen: () =>
+    set((s) => ({ pluginRailOpen: !s.pluginRailOpen })),
 }));

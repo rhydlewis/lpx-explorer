@@ -3,6 +3,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 
 import { useAuRegistryStore } from "../../store/au-registry-store";
 import { useProjectStore } from "../../store/project-store";
+import { useUIStore } from "../../store/ui-store";
 import { makeAuRegistry, makeSummary } from "../../test/fixtures";
 
 import { CompatibilityVerdict } from "./CompatibilityVerdict";
@@ -186,5 +187,80 @@ describe("<CompatibilityVerdict />", () => {
     fireEvent.click(screen.getByRole("button", { name: /run au scan/i }));
 
     expect(runScan).toHaveBeenCalled();
+  });
+
+  it("makes the pill a clickable button when missing plug-ins exist", () => {
+    useAuRegistryStore.setState({
+      status: { kind: "loaded", registry: makeAuRegistry([]) },
+    });
+    useProjectStore.setState({
+      current: {
+        kind: "loaded",
+        path: "/x.logicx",
+        summary: makeSummary({
+          fingerprints: [
+            { type_code: "aumu", subtype: "Miss", manufacturer: "Mfgr", offset: 1 },
+          ],
+        }),
+      },
+    });
+
+    render(<CompatibilityVerdict />);
+
+    expect(screen.getByRole("button", { name: /will not open/i })).toBeInTheDocument();
+  });
+
+  it("clicking the pill bumps the rail's jump-to-missing nonce", () => {
+    useAuRegistryStore.setState({
+      status: {
+        kind: "loaded",
+        registry: makeAuRegistry(["aumu/EZk2/Toon"]),
+      },
+    });
+    useProjectStore.setState({
+      current: {
+        kind: "loaded",
+        path: "/x.logicx",
+        summary: makeSummary({
+          fingerprints: [
+            { type_code: "aumu", subtype: "EZk2", manufacturer: "Toon", offset: 1 },
+            { type_code: "aufx", subtype: "Miss", manufacturer: "Mfgr", offset: 2 },
+          ],
+        }),
+      },
+    });
+    const before = useUIStore.getState().pluginRailJumpToMissingNonce;
+
+    render(<CompatibilityVerdict />);
+    fireEvent.click(screen.getByRole("button", { name: /1 plug-ins missing/i }));
+
+    expect(useUIStore.getState().pluginRailJumpToMissingNonce).toBe(before + 1);
+    expect(useUIStore.getState().pluginRailChip).toBe("missing");
+    expect(useUIStore.getState().pluginRailFilter).toBe("");
+  });
+
+  it("renders the clean status as a non-button span (no jump affordance needed)", () => {
+    useAuRegistryStore.setState({
+      status: {
+        kind: "loaded",
+        registry: makeAuRegistry(["aumu/EZk2/Toon"]),
+      },
+    });
+    useProjectStore.setState({
+      current: {
+        kind: "loaded",
+        path: "/x.logicx",
+        summary: makeSummary({
+          fingerprints: [
+            { type_code: "aumu", subtype: "EZk2", manufacturer: "Toon", offset: 1 },
+          ],
+        }),
+      },
+    });
+
+    render(<CompatibilityVerdict />);
+
+    expect(screen.queryByRole("button", { name: /opens cleanly/i })).not.toBeInTheDocument();
+    expect(screen.getByText(/opens cleanly/i)).toBeInTheDocument();
   });
 });

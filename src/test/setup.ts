@@ -24,3 +24,22 @@ vi.mock("@tauri-apps/api/event", () => ({
     // no-op unlisten
   }),
 }));
+
+// jsdom does not implement window.matchMedia. The PluginRail
+// "narrow window collapses rail to topbar toggle" path uses it; tests
+// default to the wide branch (matches: false) and override per-test.
+if (typeof window !== "undefined" && typeof window.matchMedia !== "function") {
+  Object.defineProperty(window, "matchMedia", {
+    writable: true,
+    value: (query: string) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      dispatchEvent: () => false,
+    }),
+  });
+}

@@ -1,0 +1,150 @@
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+
+.header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s-2);
+}
+
+.header > h3 {
+  margin: 0;
+}
+
+.count {
+  font-size: var(--fs-secondary);
+  color: var(--c-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.search {
+  width: 100%;
+  background-color: var(--c-bg);
+  border: 1px solid var(--c-divider);
+  border-radius: var(--radius-sm);
+  padding: var(--s-2) var(--s-3);
+  font-size: var(--fs-secondary);
+  font-family: inherit;
+  color: var(--c-text);
+}
+
+.search:focus {
+  outline: none;
+  border-color: var(--c-accent);
+}
+
+.search::placeholder {
+  color: var(--c-text-muted);
+}
+
+.chips {
+  display: flex;
+  gap: var(--s-1);
+  flex-wrap: wrap;
+}
+
+.chip {
+  appearance: none;
+  background: var(--c-bg);
+  border: 1px solid var(--c-divider);
+  border-radius: var(--radius-sm);
+  padding: 2px var(--s-2);
+  font-size: var(--fs-secondary);
+  color: var(--c-text-secondary);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.chip:hover {
+  color: var(--c-text);
+  border-color: var(--c-text-muted);
+}
+
+.chip[data-active="true"] {
+  background: var(--c-accent);
+  border-color: var(--c-accent);
+  color: var(--c-bg);
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s-2);
+  padding: var(--s-1) 0;
+  border-bottom: 1px solid var(--c-divider);
+  scroll-margin-top: var(--s-3);
+}
+
+.row:last-child {
+  border-bottom: 0;
+}
+
+/**
+ * Transient highlight applied when the Compatibility pill jumps to the
+ * first missing plug-in. CSS-only via @keyframes so we don't need a JS
+ * timer to remove the class — the animation runs once and ends.
+ */
+.row[data-highlight="true"] {
+  animation: highlight 2s ease-out;
+}
+
+@keyframes highlight {
+  0% { background: rgba(255, 200, 87, 0.5); }
+  100% { background: transparent; }
+}
+
+.name {
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: var(--fs-body);
+}
+
+.fingerprint {
+  font-family: var(--font-mono);
+  font-size: var(--fs-secondary);
+  color: var(--c-text-muted);
+  flex-shrink: 0;
+}
+
+.countBadge {
+  font-size: var(--fs-secondary);
+  font-weight: 500;
+  color: var(--c-text-secondary);
+  background-color: var(--c-surface-2);
+  padding: 1px var(--s-2);
+  border-radius: var(--radius-sm);
+}
+
+.installBadge {
+  font-size: var(--fs-secondary);
+  font-weight: 500;
+  padding: 1px var(--s-2);
+  border-radius: var(--radius-sm);
+}
+
+.installBadge[data-status="installed"] {
+  color: var(--c-status-clean);
+  background-color: rgba(52, 199, 89, 0.12);
+}
+
+.installBadge[data-status="missing"] {
+  color: var(--c-status-fail);
+  background-color: rgba(255, 69, 58, 0.12);
+}
