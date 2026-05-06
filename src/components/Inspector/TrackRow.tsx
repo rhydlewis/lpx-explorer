@@ -1,9 +1,10 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
 import type { AURef, AuvalEntry, Track } from "../../lib/types";
 import { displayNameOf } from "../../lib/track-display";
 import { TrackIcon } from "../../lib/track-icon";
 import { useAuRegistryStore } from "../../store/au-registry-store";
+import { useUIStore } from "../../store/ui-store";
 import { StatusDot } from "../StatusDot";
 
 import styles from "./TrackRow.module.css";
@@ -13,50 +14,50 @@ interface Props {
   readonly depth: number;
 }
 
+type InsertKind = "instrument" | "midi" | "fx";
+
+interface InsertItem {
+  readonly au: AURef;
+  readonly kind: InsertKind;
+}
+
+const TYPE_LABEL: Record<InsertKind, string> = {
+  instrument: "Instrument",
+  midi: "MIDI",
+  fx: "FX",
+};
+
 function fingerprintOf(au: AURef): string {
   return `${au.type_code}/${au.subtype}/${au.manufacturer}`;
 }
 
 function labelOf(au: AURef, byFingerprint: ReadonlyMap<string, AuvalEntry>): string {
-  // Apple stock plug-ins carry their real display name (Compressor,
-  // Bass Amp, ...). Their synthesised fingerprint is intentionally
-  // unhelpful — render the human name instead.
   if (au.display_name !== undefined) {
     return au.display_name;
   }
-  // 3rd-party AUs: consult the auval registry so a project sees
-  // 'Plugin Boutique: ScalerControl 2' instead of `aumi/S2lc/eMai`.
-  // PluginRail does the same lookup (PluginRail.tsx:66-72); keep the
-  // two surfaces in sync. Falls through to the raw fingerprint when no
-  // registry entry exists (registry not loaded, or unknown plug-in).
   const fp = fingerprintOf(au);
   return byFingerprint.get(fp)?.name ?? fp;
 }
 
-function collectInserts(track: Track): readonly AURef[] {
+function collectInserts(track: Track): readonly InsertItem[] {
   // Logic's signal flow: instrument first, then MIDI FX, then audio FX.
-  const out: AURef[] = [];
+  const out: InsertItem[] = [];
   if (track.instrument !== null) {
-    out.push(track.instrument);
+    out.push({ au: track.instrument, kind: "instrument" });
   }
-  out.push(...track.midi_fx, ...track.audio_fx);
+  for (const au of track.midi_fx) {
+    out.push({ au, kind: "midi" });
+  }
+  for (const au of track.audio_fx) {
+    out.push({ au, kind: "fx" });
+  }
   return out;
-}
-
-function summarizeInserts(track: Track): string {
-  const instr = track.instrument !== null ? 1 : 0;
-  const midi = track.midi_fx.length;
-  const fx = track.audio_fx.length;
-  const total = instr + midi + fx;
-  const parts: string[] = [];
-  if (instr > 0) parts.push(`${instr} instr`);
-  if (midi > 0) parts.push(`${midi} midi`);
-  if (fx > 0) parts.push(`${fx} fx`);
-  return `${total} insert${total === 1 ? "" : "s"} · ${parts.join(" · ")}`;
 }
 
 export function TrackRow({ track, depth }: Props) {
   const registryStatus = useAuRegistryStore((s) => s.status);
+  const tracksAllExpanded = useUIStore((s) => s.tracksAllExpanded);
+  const tracksExpansionNonce = useUIStore((s) => s.tracksExpansionNonce);
   const byFingerprint = useMemo<ReadonlyMap<string, AuvalEntry>>(() => {
     if (registryStatus.kind !== "loaded") {
       return new Map();
@@ -69,6 +70,18 @@ export function TrackRow({ track, depth }: Props) {
   }, [registryStatus]);
   const inserts = collectInserts(track);
   const name = displayNameOf(track, byFingerprint);
+  const detailsRef = useRef<HTMLDetailsElement | null>(null);
+
+  // Sync this row's <details> to the project-level expand/collapse signal
+  // each time the nonce bumps. Skip nonce 0 so a fresh project load
+  // doesn't auto-open every disclosure.
+  useEffect(() => {
+    if (tracksExpansionNonce === 0) return;
+    const el = detailsRef.current;
+    if (el === null) return;
+    el.open = tracksAllExpanded;
+  }, [tracksExpansionNonce, tracksAllExpanded]);
+
   return (
     <div
       className={styles.row}
@@ -86,17 +99,30 @@ export function TrackRow({ track, depth }: Props) {
         <StatusDot status={track.is_active ? "clean" : "neutral"} />
       </div>
       {inserts.length > 0 && (
-        <details className={styles.disclosure}>
+        <details ref={detailsRef} className={styles.disclosure}>
           <summary className={styles.summary}>
-            {summarizeInserts(track)}
+            {inserts.length} insert{inserts.length === 1 ? "" : "s"}
           </summary>
-          <ul className={styles.inserts}>
-            {inserts.map((au) => (
-              <li key={`${au.offset}:${fingerprintOf(au)}`}>
-                {labelOf(au, byFingerprint)}
-              </li>
-            ))}
-          </ul>
+          <table className={styles.insertsTable}>
+            <thead className={styles.srOnly}>
+              <tr>
+                <th scope="col">Insert</th>
+                <th scope="col">Type</th>
+              </tr>
+            </thead>
+            <tbody>
+              {inserts.map(({ au, kind }) => (
+                <tr key={`${au.offset}:${fingerprintOf(au)}`}>
+                  <td>
+                    <span data-kind={kind} className={styles.pill}>
+                      {labelOf(au, byFingerprint)}
+                    </span>
+                  </td>
+                  <td className={styles.typeCell}>{TYPE_LABEL[kind]}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </details>
       )}
     </div>

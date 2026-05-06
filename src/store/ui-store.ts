@@ -41,6 +41,18 @@ export interface UIState {
   pluginRailOpen: boolean;
   setPluginRailOpen: (open: boolean) => void;
   togglePluginRailOpen: () => void;
+  /**
+   * Project-level expand/collapse for all TrackRow disclosure widgets.
+   * `tracksAllExpanded` is the headline state (drives the toggle label);
+   * `tracksExpansionNonce` increments on each request so TrackRow's
+   * useEffect fires even when the value didn't change. Same pattern as
+   * `pluginRailJumpToMissingNonce`.
+   */
+  tracksAllExpanded: boolean;
+  tracksExpansionNonce: number;
+  expandAllTracks: () => void;
+  collapseAllTracks: () => void;
+  toggleAllTracks: () => void;
 }
 
 export const useUIStore = create<UIState>((set) => ({
@@ -73,4 +85,21 @@ export const useUIStore = create<UIState>((set) => ({
   setPluginRailOpen: (open: boolean) => set({ pluginRailOpen: open }),
   togglePluginRailOpen: () =>
     set((s) => ({ pluginRailOpen: !s.pluginRailOpen })),
+  tracksAllExpanded: false,
+  tracksExpansionNonce: 0,
+  expandAllTracks: () =>
+    set((s) => ({
+      tracksAllExpanded: true,
+      tracksExpansionNonce: s.tracksExpansionNonce + 1,
+    })),
+  collapseAllTracks: () =>
+    set((s) => ({
+      tracksAllExpanded: false,
+      tracksExpansionNonce: s.tracksExpansionNonce + 1,
+    })),
+  toggleAllTracks: () =>
+    set((s) => ({
+      tracksAllExpanded: !s.tracksAllExpanded,
+      tracksExpansionNonce: s.tracksExpansionNonce + 1,
+    })),
 }));

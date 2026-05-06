@@ -57,14 +57,74 @@
   color: var(--c-text-secondary);
 }
 
-.inserts {
-  list-style: none;
+/*
+ * Inserts table — two columns (pill + type label). Pill colours mirror
+ * Logic's track-kind palette: instrument green, FX blue, MIDI yellow.
+ * Per the m6n bead's table-style rendering — the table speaks for
+ * itself, no per-row count breakdown text.
+ */
+.insertsTable {
+  width: 100%;
   margin: var(--s-1) 0 0 0;
-  padding: 0;
-  font-family: var(--font-mono);
+  border-collapse: collapse;
+}
+
+.insertsTable td {
+  padding: 2px 0;
+  vertical-align: middle;
   font-size: var(--fs-secondary);
+}
+
+.typeCell {
+  width: 5em;
+  color: var(--c-text-muted);
+  font-size: var(--fs-secondary);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.pill {
+  display: inline-block;
+  padding: 1px var(--s-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-secondary);
+  font-weight: 500;
+  background-color: var(--c-surface-2);
   color: var(--c-text-secondary);
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pill[data-kind="instrument"] {
+  color: var(--c-status-clean);
+  background-color: rgba(52, 199, 89, 0.14);
+}
+
+.pill[data-kind="fx"] {
+  color: #3a8dde;
+  background-color: rgba(58, 141, 222, 0.14);
+}
+
+.pill[data-kind="midi"] {
+  color: var(--c-status-warn);
+  background-color: rgba(255, 159, 10, 0.16);
+}
+
+/*
+ * Visually hidden but present for screen readers. Used on the table's
+ * <thead> so SR users hear 'Insert' / 'Type' column context without the
+ * headers competing visually with the row's existing track name.
+ */
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }

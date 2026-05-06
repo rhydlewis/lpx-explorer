@@ -240,4 +240,32 @@ describe("<TrackList />", () => {
     // channel strips the user has never touched).
     expect(screen.queryByText("Phantom Bus")).not.toBeInTheDocument();
   });
+
+  it("exposes an 'Expand all' button when no tracks are expanded", () => {
+    useUIStore.setState({ tracksAllExpanded: false, tracksExpansionNonce: 0 });
+    render(<TrackList tracks={[track({ name: "Audio 1", offset: 1 })]} />);
+
+    expect(
+      screen.getByRole("button", { name: /expand all/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("the button label flips to 'Collapse all' once tracks are expanded", () => {
+    useUIStore.setState({ tracksAllExpanded: true, tracksExpansionNonce: 1 });
+    render(<TrackList tracks={[track({ name: "Audio 1", offset: 1 })]} />);
+
+    expect(
+      screen.getByRole("button", { name: /collapse all/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("clicking the expand/collapse button toggles the store + bumps the nonce", () => {
+    useUIStore.setState({ tracksAllExpanded: false, tracksExpansionNonce: 0 });
+    render(<TrackList tracks={[track({ name: "Audio 1", offset: 1 })]} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /expand all/i }));
+
+    expect(useUIStore.getState().tracksAllExpanded).toBe(true);
+    expect(useUIStore.getState().tracksExpansionNonce).toBe(1);
+  });
 });

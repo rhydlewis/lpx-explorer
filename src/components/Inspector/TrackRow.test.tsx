@@ -1,8 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 
 import type { AURef, Track } from "../../lib/types";
 import { useAuRegistryStore } from "../../store/au-registry-store";
+import { useUIStore } from "../../store/ui-store";
 import { makeAuRegistry } from "../../test/fixtures";
 
 import { TrackRow } from "./TrackRow";
@@ -45,9 +46,11 @@ const aumf = (subtype: string): AURef => ({
 describe("<TrackRow />", () => {
   beforeEach(() => {
     useAuRegistryStore.setState({ status: { kind: "idle" } });
+    useUIStore.setState({ tracksAllExpanded: false, tracksExpansionNonce: 0 });
   });
   afterEach(() => {
     useAuRegistryStore.setState({ status: { kind: "idle" } });
+    useUIStore.setState({ tracksAllExpanded: false, tracksExpansionNonce: 0 });
   });
 
   it("renders the track name", () => {
@@ -216,25 +219,78 @@ describe("<TrackRow />", () => {
     expect(details?.hasAttribute("open")).toBe(false);
   });
 
-  it("summary shows '<N> inserts' with a kind breakdown", () => {
+  it("renders inserts as a 2-column table (Insert | Type)", () => {
     const t = track({
       kind: "instrument",
       instrument: inst("EZk2"),
       midi_fx: [aumf("FXR ")],
-      audio_fx: [aufx("Comp"), aufx("Verb")],
+      audio_fx: [aufx("Comp")],
     });
     render(<TrackRow track={t} depth={0} />);
 
-    // Total 4 inserts: 1 instrument + 1 MIDI + 2 audio fx
-    expect(
-      screen.getByText("4 inserts · 1 instr · 1 midi · 2 fx"),
-    ).toBeInTheDocument();
+    const table = screen.getByRole("table");
+    expect(table).toBeInTheDocument();
+    // Column headers are read by SR but visually hidden — assert they
+    // exist for accessibility.
+    expect(screen.getByRole("columnheader", { name: /insert/i })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: /type/i })).toBeInTheDocument();
   });
 
-  it("summary uses the singular 'insert' when there's only one", () => {
-    const t = track({ kind: "audio", audio_fx: [aufx("Comp")] });
+  it("renders each insert with a kind-coloured pill (data-kind attribute)", () => {
+    const t = track({
+      kind: "instrument",
+      instrument: inst("EZk2"),
+      midi_fx: [aumf("FXR ")],
+      audio_fx: [aufx("Comp")],
+    });
+    const { container } = render(<TrackRow track={t} depth={0} />);
+
+    expect(container.querySelector('[data-kind="instrument"]')).not.toBeNull();
+    expect(container.querySelector('[data-kind="midi"]')).not.toBeNull();
+    expect(container.querySelector('[data-kind="fx"]')).not.toBeNull();
+  });
+
+  it("renders the type label next to each pill ('Instrument' / 'MIDI' / 'FX')", () => {
+    const t = track({
+      kind: "instrument",
+      instrument: inst("EZk2"),
+      midi_fx: [aumf("FXR ")],
+      audio_fx: [aufx("Comp")],
+    });
     render(<TrackRow track={t} depth={0} />);
 
-    expect(screen.getByText("1 insert · 1 fx")).toBeInTheDocument();
+    expect(screen.getByText("Instrument")).toBeInTheDocument();
+    expect(screen.getByText("MIDI")).toBeInTheDocument();
+    expect(screen.getByText("FX")).toBeInTheDocument();
+  });
+
+  it("opens its <details> when the project-level expand-all signal fires", () => {
+    const t = track({ kind: "audio", audio_fx: [aufx("Comp")] });
+    const { container } = render(<TrackRow track={t} depth={0} />);
+    const details = container.querySelector("details");
+    expect(details?.hasAttribute("open")).toBe(false);
+
+    act(() => {
+      useUIStore.getState().expandAllTracks();
+    });
+
+    expect(details?.hasAttribute("open")).toBe(true);
+  });
+
+  it("closes its <details> when the project-level collapse-all signal fires", () => {
+    const t = track({ kind: "audio", audio_fx: [aufx("Comp")] });
+    const { container } = render(<TrackRow track={t} depth={0} />);
+
+    act(() => {
+      useUIStore.getState().expandAllTracks();
+    });
+    const details = container.querySelector("details");
+    expect(details?.hasAttribute("open")).toBe(true);
+
+    act(() => {
+      useUIStore.getState().collapseAllTracks();
+    });
+
+    expect(details?.hasAttribute("open")).toBe(false);
   });
 });

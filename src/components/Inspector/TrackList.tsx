@@ -119,6 +119,8 @@ function groupChildrenUnderParents(
 export function TrackList({ tracks }: Props) {
   const showAll = useUIStore((s) => s.pluginChainsShowAll);
   const togglePluginChainsShowAll = useUIStore((s) => s.togglePluginChainsShowAll);
+  const tracksAllExpanded = useUIStore((s) => s.tracksAllExpanded);
+  const toggleAllTracks = useUIStore((s) => s.toggleAllTracks);
   const items = useMemo(
     () => buildRenderOrder(tracks, showAll),
     [tracks, showAll],
@@ -128,15 +130,24 @@ export function TrackList({ tracks }: Props) {
     <section aria-label="tracks" className={sectionStyles.section}>
       <div className={styles.header}>
         <h3 className={sectionStyles.sectionLabel}>Tracks</h3>
-        <label className={styles.toggle}>
-          <input
-            type="checkbox"
-            checked={showAll}
-            onChange={togglePluginChainsShowAll}
-            aria-label="show routing kinds (master, output, bus, aux, input)"
-          />
-          <span>Show all</span>
-        </label>
+        <div className={styles.headerActions}>
+          <button
+            type="button"
+            className={styles.expandAllButton}
+            onClick={toggleAllTracks}
+          >
+            {tracksAllExpanded ? "Collapse all" : "Expand all"}
+          </button>
+          <label className={styles.toggle}>
+            <input
+              type="checkbox"
+              checked={showAll}
+              onChange={togglePluginChainsShowAll}
+              aria-label="show routing kinds (master, output, bus, aux, input)"
+            />
+            <span>Show all</span>
+          </label>
+        </div>
       </div>
       {items.length === 0 ? (
         <p className={sectionStyles.placeholder}>

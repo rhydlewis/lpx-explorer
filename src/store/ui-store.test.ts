@@ -11,6 +11,8 @@ describe("useUIStore", () => {
       pluginRailChip: "all",
       pluginRailJumpToMissingNonce: 0,
       pluginRailOpen: false,
+      tracksAllExpanded: false,
+      tracksExpansionNonce: 0,
     });
   });
   afterEach(() => {
@@ -21,6 +23,8 @@ describe("useUIStore", () => {
       pluginRailChip: "all",
       pluginRailJumpToMissingNonce: 0,
       pluginRailOpen: false,
+      tracksAllExpanded: false,
+      tracksExpansionNonce: 0,
     });
   });
 
@@ -119,5 +123,35 @@ describe("useUIStore", () => {
 
     useUIStore.getState().togglePluginRailOpen();
     expect(useUIStore.getState().pluginRailOpen).toBe(false);
+  });
+
+  it("expandAllTracks sets tracksAllExpanded=true and bumps the nonce", () => {
+    const before = useUIStore.getState().tracksExpansionNonce;
+    useUIStore.getState().expandAllTracks();
+
+    expect(useUIStore.getState().tracksAllExpanded).toBe(true);
+    expect(useUIStore.getState().tracksExpansionNonce).toBe(before + 1);
+  });
+
+  it("collapseAllTracks sets tracksAllExpanded=false and bumps the nonce", () => {
+    useUIStore.setState({
+      tracksAllExpanded: true,
+      tracksExpansionNonce: 5,
+    });
+
+    useUIStore.getState().collapseAllTracks();
+
+    expect(useUIStore.getState().tracksAllExpanded).toBe(false);
+    expect(useUIStore.getState().tracksExpansionNonce).toBe(6);
+  });
+
+  it("toggleAllTracks flips the value and bumps the nonce on every call", () => {
+    useUIStore.getState().toggleAllTracks();
+    expect(useUIStore.getState().tracksAllExpanded).toBe(true);
+    expect(useUIStore.getState().tracksExpansionNonce).toBe(1);
+
+    useUIStore.getState().toggleAllTracks();
+    expect(useUIStore.getState().tracksAllExpanded).toBe(false);
+    expect(useUIStore.getState().tracksExpansionNonce).toBe(2);
   });
 });
