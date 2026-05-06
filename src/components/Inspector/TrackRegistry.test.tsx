@@ -68,7 +68,6 @@ describe("<TrackRegistry />", () => {
 
     const note = screen.getByRole("note");
     expect(note).toHaveTextContent(/2 of 6 tracks identified/);
-    expect(note).toHaveTextContent(/NSKeyedArchive/i);
   });
 
   it("does not show a coverage note when no track_count is supplied", () => {

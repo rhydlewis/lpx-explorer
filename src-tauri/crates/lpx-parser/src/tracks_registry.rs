@@ -29,6 +29,8 @@ const PREAMBLE_LEN: usize = 16;
 const TRACK_SIGNATURE_KIND: &[([u8; 2], TrackKind)] = &[
     ([0x22, 0x12], TrackKind::Instrument),   // MIDI / instrument tracks
     ([0xa8, 0x11], TrackKind::Instrument),   // single-instrument tracks (Dome Kick)
+    ([0xda, 0x11], TrackKind::Instrument),   // Apple stock-instrument tracks (Bass)
+    ([0xe7, 0x10], TrackKind::Instrument),   // Alchemy / sampler instrument tracks
     ([0x23, 0x12], TrackKind::Audio),        // audio tracks (some)
     ([0xdc, 0x11], TrackKind::Audio),        // audio tracks (some)
     ([0xdf, 0x11], TrackKind::Audio),        // audio tracks (Slide GTR / Intro Lead GTR)
@@ -278,6 +280,8 @@ mod tests {
         let cases: &[([u8; 2], TrackKind, &str)] = &[
             ([0x22, 0x12], TrackKind::Instrument, "I22"),
             ([0xa8, 0x11], TrackKind::Instrument, "Ia8"),
+            ([0xda, 0x11], TrackKind::Instrument, "Ida"),
+            ([0xe7, 0x10], TrackKind::Instrument, "Ie7lo"),
             ([0x23, 0x12], TrackKind::Audio, "A23"),
             ([0xdc, 0x11], TrackKind::Audio, "Adc"),
             ([0xdf, 0x11], TrackKind::Audio, "Adf"),
@@ -286,7 +290,7 @@ mod tests {
             ([0xe3, 0x11], TrackKind::Folder, "Fe3"),
             ([0xe4, 0x10], TrackKind::Folder, "Fe4"),
             ([0xeb, 0x11], TrackKind::Folder, "Feb"),
-            ([0xe7, 0x11], TrackKind::Folder, "Fe7"),
+            ([0xe7, 0x11], TrackKind::Folder, "Fe7hi"),
         ];
         for (sig, _, name) in cases {
             buf.extend_from_slice(&record(*sig, name, &[0u8; 8], None));
@@ -299,6 +303,35 @@ mod tests {
             assert_eq!(found[i].kind, *expected_kind, "case {}: {}", i, expected_name);
             assert_eq!(found[i].name, *expected_name);
         }
+    }
+
+    #[test]
+    fn recognises_da_11_as_instrument_signature() {
+        // Real-world example: track named "Bass" (Apple Logic stock instrument)
+        // in `~/Music/Logic/ new idea.logicx` lives under signature 0xda 0x11.
+        // Before this whitelist entry the registry scanner skipped it.
+        let bytes = record([0xda, 0x11], "Bass", &[0u8; 8], None);
+
+        let found = find_track_registry_records(&bytes);
+
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].name, "Bass");
+        assert_eq!(found[0].kind, TrackKind::Instrument);
+    }
+
+    #[test]
+    fn recognises_e7_10_as_instrument_signature() {
+        // Real-world example: track named "Luscious Arp Layers" (Alchemy
+        // instrument) lives under signature 0xe7 0x10. Note the close
+        // collision with the existing folder signature 0xe7 0x11 — only
+        // the high byte distinguishes the two kinds.
+        let bytes = record([0xe7, 0x10], "Luscious Arp Layers", &[0u8; 8], None);
+
+        let found = find_track_registry_records(&bytes);
+
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].name, "Luscious Arp Layers");
+        assert_eq!(found[0].kind, TrackKind::Instrument);
     }
 
     #[test]

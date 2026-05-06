@@ -7,10 +7,9 @@ interface Props {
   readonly entries: ReadonlyArray<TrackRegistryEntry>;
   /**
    * `track_count` from `MetaData.plist`. When present and strictly greater
-   * than the recovered registry-entry count, we surface the gap explicitly
-   * — Logic's binary stores some user-visible tracks (notably Apple-stock
-   * instrument tracks like Bass / Alchemy) in NSKeyedArchive blobs that
-   * neither lpx-toolkit nor lpx-explorer parses yet (bead lpx-explorer-14d).
+   * than the recovered registry-entry count, we surface the gap explicitly.
+   * Common cause: a track signature byte-pair our whitelist doesn't yet
+   * recognise, or a genuinely-named-Untitled track (filtered as noise).
    */
   readonly trackCount?: number;
 }
@@ -61,8 +60,7 @@ export function TrackRegistry({ entries, trackCount }: Props) {
       )}
       {gap > 0 && (
         <p className={styles.coverageNote} role="note">
-          {recovered} of {trackCount} tracks identified — the rest live in
-          NSKeyedArchive blobs not yet parsed.
+          {recovered} of {trackCount} tracks identified.
         </p>
       )}
     </section>
