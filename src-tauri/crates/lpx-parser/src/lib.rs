@@ -7,6 +7,7 @@
 //! The format is undocumented; offsets here mirror the empirically-derived
 //! Python implementation at `lpx-toolkit/lpx_inspect.py`.
 
+mod apple_drummer;
 mod apple_stock;
 mod auval;
 mod metadata;
@@ -76,7 +77,7 @@ fn reverse_4cc(bytes: [u8; 4]) -> String {
 /// Scan `raw` for Audio Unit component descriptors and return one
 /// [`AURef`] per match.
 ///
-/// Two storage shapes are recognised:
+/// Three storage shapes are recognised:
 /// 1. **Standard 4CC triple** — three contiguous 4-byte codes laid out
 ///    as `manufacturer | type | subtype`, all little-endian. The type
 ///    field is the anchor: we scan for `umua` / `xfua` / `fmua` /
@@ -85,6 +86,11 @@ fn reverse_4cc(bytes: [u8; 4]) -> String {
 ///    on the `GAME` 4CC marker. Returned `AURef`s carry a synthesised
 ///    `(type, subtype, manufacturer)` triple plus the real
 ///    user-facing name in `display_name`.
+/// 3. **Apple Drummer / Bass Player** (see [`apple_drummer`]) —
+///    identified by embedded JSON state with the
+///    `"selectedPersistentCharacterTypeIdentifier":"Type_..."` key.
+///    Per-region snapshots are clustered into one AURef per plug-in
+///    instance.
 pub fn find_aus(raw: &[u8]) -> Vec<AURef> {
     let mut found = Vec::new();
     for tag in AU_TYPE_TAGS_LE {
@@ -118,6 +124,7 @@ pub fn find_aus(raw: &[u8]) -> Vec<AURef> {
         }
     }
     found.extend(apple_stock::find_apple_stock_aus(raw));
+    found.extend(apple_drummer::find_apple_drummer_aus(raw));
     found.sort_by_key(|a| a.offset);
     found
 }
