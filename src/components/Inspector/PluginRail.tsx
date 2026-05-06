@@ -211,23 +211,33 @@ interface RowProps {
 
 function PluginRow({ group }: RowProps) {
   const { displayName, hasRegistryEntry, status } = group;
+  const showSecondLine = hasRegistryEntry;
   return (
     <li
       className={styles.row}
       data-fingerprint={group.group.fingerprint}
       data-status={status}
     >
-      <span className={styles.name}>{displayName}</span>
-      {hasRegistryEntry && (
-        <span className={styles.fingerprint}>{group.group.fingerprint}</span>
-      )}
-      {group.group.count > 1 && (
-        <span className={styles.countBadge}>×{group.group.count}</span>
-      )}
-      {status !== "unknown" && (
-        <span data-status={status} className={styles.installBadge}>
-          {INSTALL_LABEL[status]}
-        </span>
+      <div className={styles.line}>
+        <span className={styles.name}>{displayName}</span>
+        {!showSecondLine && group.group.count > 1 && (
+          <span className={styles.countBadge}>×{group.group.count}</span>
+        )}
+        {status !== "unknown" && (
+          <span data-status={status} className={styles.installBadge}>
+            {INSTALL_LABEL[status]}
+          </span>
+        )}
+      </div>
+      {showSecondLine && (
+        <div className={styles.line}>
+          <span className={styles.fingerprint}>
+            {group.group.fingerprint}
+          </span>
+          {group.group.count > 1 && (
+            <span className={styles.countBadge}>×{group.group.count}</span>
+          )}
+        </div>
       )}
     </li>
   );

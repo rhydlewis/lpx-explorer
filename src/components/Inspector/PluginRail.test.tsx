@@ -121,6 +121,61 @@ describe("<PluginRail />", () => {
     expect(screen.getByText(/no matches/i)).toBeInTheDocument();
   });
 
+  it("renders fingerprinted plug-ins as a 2-line row (name + status / fingerprint + count)", () => {
+    // Layout contract: line 1 carries the user-visible name and the
+    // install-status badge (right-aligned). Line 2 carries the
+    // fingerprint and — when count > 1 — the duplicate badge. This
+    // pairing keeps the status badge column-aligned across rows.
+    useAuRegistryStore.setState({
+      status: { kind: "loaded", registry: makeAuRegistry(["aufx/Comp/Yamh"]) },
+    });
+    const { container } = render(
+      <PluginRail
+        summary={makeSummary({
+          fingerprints: [
+            ref("aufx", "Comp", "Yamh", 1),
+            ref("aufx", "Comp", "Yamh", 2), // duplicate -> ×2
+          ],
+        })}
+      />,
+    );
+
+    const row = container.querySelector("li");
+    expect(row).not.toBeNull();
+    const lines = row?.querySelectorAll(":scope > div") ?? [];
+    expect(lines.length).toBe(2);
+    // Line 1: name + status badge.
+    expect(lines[0].textContent).toContain("aufx/Comp/Yamh");
+    expect(lines[0].textContent).toContain("Installed");
+    // Line 2: fingerprint + count.
+    expect(lines[1].textContent).toContain("aufx/Comp/Yamh");
+    expect(lines[1].textContent).toContain("×2");
+  });
+
+  it("renders Apple stock plug-ins as a 1-line row (no second line, no synthesised fingerprint)", () => {
+    // No fingerprint to show on line 2 → the row collapses to one line.
+    useAuRegistryStore.setState({
+      status: { kind: "loaded", registry: makeAuRegistry([]) },
+    });
+    const stockBassAmp: AURef = {
+      type_code: "aufx",
+      subtype: "bass",
+      manufacturer: "appl",
+      offset: 1,
+      display_name: "Bass Amp",
+    };
+    const { container } = render(
+      <PluginRail summary={makeSummary({ fingerprints: [stockBassAmp] })} />,
+    );
+
+    const row = container.querySelector("li");
+    expect(row).not.toBeNull();
+    const lines = row?.querySelectorAll(":scope > div") ?? [];
+    expect(lines.length).toBe(1);
+    expect(lines[0].textContent).toContain("Bass Amp");
+    expect(lines[0].textContent).toContain("Installed");
+  });
+
   it("renders Apple stock plug-ins by display_name (not synthesised fingerprint) and treats them as installed", () => {
     // The parser surfaces Apple stock plug-ins (Compressor, Bass Amp,
     // Alchemy, ...) with a synthesised fingerprint and the real name in

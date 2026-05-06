@@ -81,12 +81,21 @@
 
 .row {
   display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--s-2);
+  flex-direction: column;
+  gap: 2px;
   padding: var(--s-1) 0;
   border-bottom: 1px solid var(--c-divider);
   scroll-margin-top: var(--s-3);
+}
+
+/* Each row is one or two `.line` children. Within a line, the first
+ * text child flexes to fill; trailing badges stay at the right edge.
+ * Putting the badges in a flex line (not on the row) keeps line 1's
+ * status badge column-aligned with line 2's count badge. */
+.line {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-2);
 }
 
 .row:last-child {
@@ -117,10 +126,14 @@
 }
 
 .fingerprint {
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-family: var(--font-mono);
   font-size: var(--fs-secondary);
   color: var(--c-text-muted);
-  flex-shrink: 0;
 }
 
 .countBadge {
