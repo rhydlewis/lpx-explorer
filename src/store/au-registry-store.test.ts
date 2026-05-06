@@ -123,6 +123,54 @@ describe("useAuRegistryStore", () => {
     }
   });
 
+  it("autoScanIfAbsent triggers a scan when the cache is missing", async () => {
+    // First call — no cache. Should auto-kick the scan instead of leaving
+    // the user on a non-actionable 'absent' pill.
+    mockedLoad.mockResolvedValueOnce(null);
+    let resolveScan!: () => void;
+    mockedRun.mockImplementationOnce(async () => {
+      await new Promise<void>((r) => {
+        resolveScan = r;
+      });
+    });
+    mockedLoad.mockResolvedValueOnce(makeAuRegistry(["aufx/Cmpr/appl"]));
+
+    const promise = useAuRegistryStore.getState().autoScanIfAbsent();
+    // Should be scanning by the time loadFromCache resolves with null.
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(useAuRegistryStore.getState().status).toEqual({
+      kind: "scanning",
+      found: 0,
+    });
+
+    resolveScan();
+    await promise;
+
+    expect(useAuRegistryStore.getState().status.kind).toBe("loaded");
+    expect(mockedRun).toHaveBeenCalledTimes(1);
+  });
+
+  it("autoScanIfAbsent does NOT scan when the cache already exists", async () => {
+    mockedLoad.mockResolvedValueOnce(makeAuRegistry(["aufx/Cmpr/appl"]));
+
+    await useAuRegistryStore.getState().autoScanIfAbsent();
+
+    expect(useAuRegistryStore.getState().status.kind).toBe("loaded");
+    expect(mockedRun).not.toHaveBeenCalled();
+  });
+
+  it("autoScanIfAbsent does NOT scan when loadFromCache errors", async () => {
+    // A disk-read error shouldn't trigger an expensive scan automatically
+    // — error states should be visible, not papered over with side effects.
+    mockedLoad.mockRejectedValueOnce(new Error("disk read fail"));
+
+    await useAuRegistryStore.getState().autoScanIfAbsent();
+
+    expect(useAuRegistryStore.getState().status.kind).toBe("error");
+    expect(mockedRun).not.toHaveBeenCalled();
+  });
+
   it("byFingerprint returns an empty map when not loaded", () => {
     expect(useAuRegistryStore.getState().byFingerprint().size).toBe(0);
   });

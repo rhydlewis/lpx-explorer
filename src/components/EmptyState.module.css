@@ -45,3 +45,11 @@
   color: var(--c-text-muted);
   margin-top: var(--s-2);
 }
+
+.scanStatus {
+  font-size: var(--fs-secondary);
+  color: var(--c-text-secondary);
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  min-height: 1.4em;
+}

@@ -39,6 +39,7 @@ function App() {
   const status = useProjectStore((s) => s.current);
   const recentCount = useLibraryStore((s) => s.recent.length);
   const folderCount = useLibraryStore((s) => s.folders.length);
+  const auRegistryStatus = useAuRegistryStore((s) => s.status);
   const pluginRailOpen = useUIStore((s) => s.pluginRailOpen);
   const togglePluginRailOpen = useUIStore((s) => s.togglePluginRailOpen);
   const isNarrow = useMediaQuery(`(max-width: ${RIGHT_RAIL_BREAKPOINT_PX - 1}px)`);
@@ -58,7 +59,7 @@ function App() {
   }
 
   useEffect(() => {
-    void useAuRegistryStore.getState().loadFromCache();
+    void useAuRegistryStore.getState().autoScanIfAbsent();
   }, []);
 
   // Persistence: hydrate from disk, then sync writes + native menu on every
@@ -164,6 +165,7 @@ function App() {
     ? <EmptyState
         onPickProject={pickProject}
         onOpenFolder={() => void pickAndAddFolder()}
+        auRegistryStatus={auRegistryStatus}
       />
     : <ProjectInspector status={status} />;
 

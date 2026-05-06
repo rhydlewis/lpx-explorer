@@ -15,6 +15,14 @@ export interface AuRegistryState {
   status: RegistryStatus;
   loadFromCache: () => Promise<void>;
   runScan: () => Promise<void>;
+  /**
+   * Cold-start sequence: load the cached registry, and if there isn't one
+   * (`absent`), kick the AU scan straight away so the user doesn't sit
+   * on a non-actionable empty verdict. No-op when the cache loads cleanly
+   * or when the disk read errors — those states should remain visible
+   * rather than be papered over with side effects.
+   */
+  autoScanIfAbsent: () => Promise<void>;
   byFingerprint: () => Map<string, AuvalEntry>;
   reset: () => void;
 }
@@ -70,6 +78,13 @@ export const useAuRegistryStore = create<AuRegistryState>((set, get) => ({
       await get().loadFromCache();
     } catch (e) {
       set({ status: { kind: "error", message: messageOf(e) } });
+    }
+  },
+
+  autoScanIfAbsent: async () => {
+    await get().loadFromCache();
+    if (get().status.kind === "absent") {
+      await get().runScan();
     }
   },
 
