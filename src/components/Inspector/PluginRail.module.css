@@ -180,11 +180,12 @@
   background: transparent;
   border: 1px solid var(--c-divider);
   border-radius: var(--radius-sm);
-  padding: 2px var(--s-2);
+  padding: var(--s-1) var(--s-2);
   font-size: var(--fs-secondary);
   color: var(--c-text-secondary);
   cursor: pointer;
   font-family: inherit;
+  line-height: 1.4;
 }
 
 .actionButton:hover {
