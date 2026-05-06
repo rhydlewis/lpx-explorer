@@ -17,11 +17,20 @@ function fingerprintOf(au: AURef): string {
   return `${au.type_code}/${au.subtype}/${au.manufacturer}`;
 }
 
-function labelOf(au: AURef): string {
+function labelOf(au: AURef, byFingerprint: ReadonlyMap<string, AuvalEntry>): string {
   // Apple stock plug-ins carry their real display name (Compressor,
   // Bass Amp, ...). Their synthesised fingerprint is intentionally
   // unhelpful — render the human name instead.
-  return au.display_name ?? fingerprintOf(au);
+  if (au.display_name !== undefined) {
+    return au.display_name;
+  }
+  // 3rd-party AUs: consult the auval registry so a project sees
+  // 'Plugin Boutique: ScalerControl 2' instead of `aumi/S2lc/eMai`.
+  // PluginRail does the same lookup (PluginRail.tsx:66-72); keep the
+  // two surfaces in sync. Falls through to the raw fingerprint when no
+  // registry entry exists (registry not loaded, or unknown plug-in).
+  const fp = fingerprintOf(au);
+  return byFingerprint.get(fp)?.name ?? fp;
 }
 
 function collectInserts(track: Track): readonly AURef[] {
@@ -84,7 +93,7 @@ export function TrackRow({ track, depth }: Props) {
           <ul className={styles.inserts}>
             {inserts.map((au) => (
               <li key={`${au.offset}:${fingerprintOf(au)}`}>
-                {labelOf(au)}
+                {labelOf(au, byFingerprint)}
               </li>
             ))}
           </ul>

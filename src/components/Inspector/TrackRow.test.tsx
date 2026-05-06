@@ -1,7 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 
 import type { AURef, Track } from "../../lib/types";
+import { useAuRegistryStore } from "../../store/au-registry-store";
+import { makeAuRegistry } from "../../test/fixtures";
 
 import { TrackRow } from "./TrackRow";
 
@@ -41,6 +43,13 @@ const aumf = (subtype: string): AURef => ({
 });
 
 describe("<TrackRow />", () => {
+  beforeEach(() => {
+    useAuRegistryStore.setState({ status: { kind: "idle" } });
+  });
+  afterEach(() => {
+    useAuRegistryStore.setState({ status: { kind: "idle" } });
+  });
+
   it("renders the track name", () => {
     render(<TrackRow track={track({ name: "Drums" })} depth={0} />);
 
@@ -107,6 +116,64 @@ describe("<TrackRow />", () => {
       "aufx/Comp/Yamh",
       "aufx/Verb/Yamh",
     ]);
+  });
+
+  it("renders the auval registry name for 3rd-party inserts (not the raw fingerprint)", () => {
+    // lpx-explorer-o5k: the previous labelOf() fell straight through to
+    // the fingerprint string for any AURef without display_name,
+    // ignoring the loaded registry. Verified end-to-end: Scaler 2's
+    // ScalerControl 2 plug-in (aumi/S2lc/eMai) is in auval but used to
+    // render as 'aumi/S2lc/eMai' inside the Track disclosure.
+    useAuRegistryStore.setState({
+      status: {
+        kind: "loaded",
+        registry: {
+          scanned_at_unix: 0,
+          entries: [
+            {
+              fingerprint: "aumi/S2lc/eMai",
+              type_4cc: "aumi",
+              subtype_4cc: "S2lc",
+              manufacturer_4cc: "eMai",
+              name: "Plugin Boutique: ScalerControl 2",
+            },
+          ],
+        },
+      },
+    });
+    const scalerControl: AURef = {
+      type_code: "aumi",
+      subtype: "S2lc",
+      manufacturer: "eMai",
+      offset: 600,
+    };
+    const t = track({ kind: "instrument", midi_fx: [scalerControl] });
+
+    render(<TrackRow track={t} depth={0} />);
+
+    expect(
+      screen.getByText("Plugin Boutique: ScalerControl 2"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("aumi/S2lc/eMai")).not.toBeInTheDocument();
+  });
+
+  it("falls back to the raw fingerprint when the registry has no entry", () => {
+    // No registry hit — render the fingerprint string verbatim. This
+    // path was correct before lpx-explorer-o5k; locking it in.
+    useAuRegistryStore.setState({
+      status: { kind: "loaded", registry: makeAuRegistry([]) },
+    });
+    const unknown: AURef = {
+      type_code: "aufx",
+      subtype: "Vrb2",
+      manufacturer: "Mfgr",
+      offset: 700,
+    };
+    const t = track({ kind: "audio", audio_fx: [unknown] });
+
+    render(<TrackRow track={t} depth={0} />);
+
+    expect(screen.getByText("aufx/Vrb2/Mfgr")).toBeInTheDocument();
   });
 
   it("renders display_name instead of fingerprint for stock plug-ins", () => {
