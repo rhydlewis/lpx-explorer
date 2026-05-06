@@ -73,8 +73,9 @@ describe("<ProjectInspector />", () => {
       />,
     );
 
-    // 'Parsing /x.logicx…' is the aria-live announcement.
-    expect(screen.getByText(/parsing/i)).toBeInTheDocument();
+    // 'Reading project…' is the aria-live announcement (path is not
+    // shown — the skeleton blocks already imply where it's coming from).
+    expect(screen.getByText(/reading project/i)).toBeInTheDocument();
     // No section regions yet during loading — the verdict-and-tracks shape is
     // for the loaded state. (Skeleton sections are aria-hidden.)
     expect(screen.queryByRole("region", { name: "tracks" })).not.toBeInTheDocument();

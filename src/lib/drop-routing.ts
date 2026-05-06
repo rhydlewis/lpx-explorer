@@ -24,7 +24,7 @@ export async function routeDrop(
   if (paths.length > 1) {
     return {
       kind: "unsupported",
-      reason: "Drop one project or folder at a time.",
+      reason: "One project at a time.",
     };
   }
 
@@ -41,6 +41,6 @@ export async function routeDrop(
 
   return {
     kind: "unsupported",
-    reason: "Drop a .logicx project or a folder of projects.",
+    reason: "That's not a .logicx.",
   };
 }

@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef } from "react";
 
+import { Ghost } from "lucide-react";
+
 import {
   groupFingerprints,
   installStatusOf,
@@ -8,6 +10,16 @@ import {
 } from "../../lib/au-utils";
 import { copyFingerprint, searchPluginOnWeb } from "../../lib/plugin-actions";
 import type { AuRegistry, ProjectSummary } from "../../lib/types";
+
+/**
+ * Apple's stock metronome AU. Klopfgeist is German for poltergeist /
+ * knocker — the in-joke Apple's hidden in plain sight. Logic auto-loads
+ * it into every project (most users never hear it). Triggers a small
+ * `<Ghost />` mark next to the row name; the row is the only place this
+ * easter egg surfaces, fires on the canonical fingerprint only, never
+ * as decoration.
+ */
+const KLOPFGEIST_FINGERPRINT = "aumu/klop/appl";
 import { useAuRegistryStore } from "../../store/au-registry-store";
 import {
   useUIStore,
@@ -221,6 +233,15 @@ function PluginRow({ group }: RowProps) {
     >
       <div className={styles.line}>
         <span className={styles.name}>{displayName}</span>
+        {group.group.fingerprint === KLOPFGEIST_FINGERPRINT && (
+          <span
+            className={styles.klopfgeist}
+            aria-label="Klopfgeist (Logic's stock metronome)"
+            title="Klopfgeist — Logic's stock metronome (German: poltergeist)"
+          >
+            <Ghost size="0.85em" aria-hidden="true" />
+          </span>
+        )}
         {!showSecondLine && group.group.count > 1 && (
           <span className={styles.countBadge}>×{group.group.count}</span>
         )}

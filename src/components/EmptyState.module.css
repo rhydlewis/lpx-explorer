@@ -15,6 +15,12 @@
   letter-spacing: -0.01em;
 }
 
+.headingAccent {
+  font-style: italic;
+  font-weight: 400;
+  color: var(--c-text-secondary);
+}
+
 .tagline {
   font-size: var(--fs-h2);
   color: var(--c-text-secondary);
@@ -52,4 +58,11 @@
   margin: 0;
   font-variant-numeric: tabular-nums;
   min-height: 1.4em;
+}
+
+.dropHint {
+  font-size: var(--fs-secondary);
+  color: var(--c-text-muted);
+  margin: 0;
+  margin-top: calc(var(--s-2) * -1);
 }

@@ -25,9 +25,11 @@ export function EmptyState({
 }: Props) {
   return (
     <div className={styles.empty}>
-      <h1 className={styles.heading}>LPX Explorer</h1>
+      <h1 className={styles.heading}>
+        LPX <em className={styles.headingAccent}>Explorer</em>
+      </h1>
       <p className={styles.tagline}>
-        Inspect Logic Pro projects without opening Logic.
+        Check whether a project will open before you launch Logic.
       </p>
       <div className={styles.actions}>
         <button
@@ -41,6 +43,7 @@ export function EmptyState({
           Open folder
         </button>
       </div>
+      <p className={styles.dropHint}>or drag a .logicx anywhere</p>
       <ScanStatusLine status={auRegistryStatus} />
       <p className={styles.reassurance}>
         Read-only. We never write to your projects.

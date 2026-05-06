@@ -6,14 +6,24 @@ import { makeAuRegistry } from "../test/fixtures";
 import { EmptyState } from "./EmptyState";
 
 describe("<EmptyState />", () => {
-  it("renders the tagline and reassurance copy", () => {
+  it("renders the JTBD-led tagline and reassurance copy", () => {
     render(<EmptyState onPickProject={vi.fn()} onOpenFolder={vi.fn()} />);
 
     expect(
-      screen.getByText(/Inspect Logic Pro projects without opening Logic\./i),
+      screen.getByText(
+        /Check whether a project will open before you launch Logic\./i,
+      ),
     ).toBeInTheDocument();
     expect(
       screen.getByText(/Read-only\. We never write to your projects\./i),
+    ).toBeInTheDocument();
+  });
+
+  it("surfaces the drag-anywhere hint", () => {
+    render(<EmptyState onPickProject={vi.fn()} onOpenFolder={vi.fn()} />);
+
+    expect(
+      screen.getByText(/or drag a \.logicx anywhere/i),
     ).toBeInTheDocument();
   });
 

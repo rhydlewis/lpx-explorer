@@ -17,7 +17,7 @@ export function ProjectInspector({ status }: Props) {
   }
 
   if (status.kind === "loading") {
-    return <InspectorSkeleton path={status.path} />;
+    return <InspectorSkeleton />;
   }
 
   if (status.kind === "error") {

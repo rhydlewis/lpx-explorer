@@ -369,4 +369,43 @@ describe("<PluginRail />", () => {
     expect(mockedSearch).toHaveBeenCalledTimes(1);
     expect(mockedSearch).toHaveBeenCalledWith("aumu/EZk2/Toon");
   });
+
+  it("renders a quiet ghost mark next to a Klopfgeist row (Logic's stock metronome)", () => {
+    // Easter egg per the 2026-05-06 Whimsy review — Klopfgeist is German
+    // for poltergeist; Apple's silent in-joke as the metronome plug-in
+    // name. Fires on the canonical fingerprint, never as decoration.
+    useAuRegistryStore.setState({
+      status: {
+        kind: "loaded",
+        registry: makeAuRegistry(["aumu/klop/appl"]),
+      },
+    });
+    render(
+      <PluginRail
+        summary={makeSummary({
+          fingerprints: [ref("aumu", "klop", "appl", 1)],
+        })}
+      />,
+    );
+
+    expect(screen.getByLabelText(/klopfgeist/i)).toBeInTheDocument();
+  });
+
+  it("does NOT render the ghost mark on rows that aren't Klopfgeist", () => {
+    useAuRegistryStore.setState({
+      status: {
+        kind: "loaded",
+        registry: makeAuRegistry(["aumu/EZk2/Toon"]),
+      },
+    });
+    render(
+      <PluginRail
+        summary={makeSummary({
+          fingerprints: [ref("aumu", "EZk2", "Toon", 1)],
+        })}
+      />,
+    );
+
+    expect(screen.queryByLabelText(/klopfgeist/i)).toBeNull();
+  });
 });

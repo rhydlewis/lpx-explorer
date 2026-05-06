@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { X } from "lucide-react";
+import { ChevronRight, X } from "lucide-react";
 
 import { openProject } from "../../lib/open-project";
 import { projectNameOf } from "../../lib/path-utils";
@@ -89,8 +89,11 @@ export function FolderNode({ folder }: Props) {
           }}
           title={folder.path}
         >
-          <span className={`${styles.disclosure} ${open ? styles.open : ""}`}>
-            ▶
+          <span
+            className={`${styles.disclosure} ${open ? styles.open : ""}`}
+            aria-hidden="true"
+          >
+            <ChevronRight size="1em" />
           </span>
           <span className={styles.name}>{name}</span>
           {status !== null && <span className={styles.status}>{status}</span>}
