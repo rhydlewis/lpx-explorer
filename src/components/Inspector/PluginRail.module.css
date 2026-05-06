@@ -161,3 +161,39 @@
   color: var(--c-status-fail);
   background-color: rgba(255, 69, 58, 0.12);
 }
+
+/*
+ * Action row on a missing plug-in. The Whimsy review explicitly called
+ * for the action to outweigh the 'missing' badge — buttons are
+ * always-visible (no hover-reveal) and use a subtle accent treatment
+ * so they read as obvious next steps without shouting.
+ */
+.actions {
+  display: flex;
+  gap: var(--s-2);
+  margin-top: var(--s-1);
+  flex-wrap: wrap;
+}
+
+.actionButton {
+  appearance: none;
+  background: transparent;
+  border: 1px solid var(--c-divider);
+  border-radius: var(--radius-sm);
+  padding: 2px var(--s-2);
+  font-size: var(--fs-secondary);
+  color: var(--c-text-secondary);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.actionButton:hover {
+  color: var(--c-text);
+  border-color: var(--c-text-muted);
+  background-color: var(--c-surface-2);
+}
+
+.actionButton:focus-visible {
+  outline: 2px solid var(--c-accent);
+  outline-offset: 2px;
+}

@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 
 import type { AURef } from "../../lib/types";
@@ -6,7 +6,17 @@ import { useAuRegistryStore } from "../../store/au-registry-store";
 import { useUIStore } from "../../store/ui-store";
 import { makeAuRegistry, makeSummary } from "../../test/fixtures";
 
+vi.mock("../../lib/plugin-actions", () => ({
+  copyFingerprint: vi.fn().mockResolvedValue(undefined),
+  searchPluginOnWeb: vi.fn().mockResolvedValue(undefined),
+}));
+
+import { copyFingerprint, searchPluginOnWeb } from "../../lib/plugin-actions";
+
 import { PluginRail } from "./PluginRail";
+
+const mockedCopy = vi.mocked(copyFingerprint);
+const mockedSearch = vi.mocked(searchPluginOnWeb);
 
 function ref(
   type: string,
@@ -21,6 +31,8 @@ describe("<PluginRail />", () => {
   beforeEach(() => {
     useUIStore.setState({ pluginRailFilter: "", pluginRailChip: "all" });
     useAuRegistryStore.setState({ status: { kind: "idle" } });
+    mockedCopy.mockClear();
+    mockedSearch.mockClear();
   });
   afterEach(() => {
     useUIStore.setState({ pluginRailFilter: "", pluginRailChip: "all" });
@@ -271,5 +283,90 @@ describe("<PluginRail />", () => {
 
     // Filtered: shows visible / total
     expect(screen.getByText("1 / 3")).toBeInTheDocument();
+  });
+
+  it("missing rows expose 'Copy fingerprint' and 'Search the web' action buttons", () => {
+    // Per the 2026-05-06 PM/Whimsy review: the JTBD hole is 'what do I do
+    // about a missing plug-in'. Each missing row carries phase-1 actions —
+    // copy the fingerprint, search the web for the plug-in name.
+    useAuRegistryStore.setState({
+      status: { kind: "loaded", registry: makeAuRegistry([]) },
+    });
+    render(
+      <PluginRail
+        summary={makeSummary({
+          fingerprints: [ref("aufx", "Miss", "Mfgr", 1)],
+        })}
+      />,
+    );
+
+    expect(
+      screen.getByRole("button", { name: /copy fingerprint/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /search the web/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("installed rows do NOT expose the missing-plug-in action buttons", () => {
+    useAuRegistryStore.setState({
+      status: {
+        kind: "loaded",
+        registry: makeAuRegistry(["aufx/Comp/Yamh"]),
+      },
+    });
+    render(
+      <PluginRail
+        summary={makeSummary({
+          fingerprints: [ref("aufx", "Comp", "Yamh", 1)],
+        })}
+      />,
+    );
+
+    expect(
+      screen.queryByRole("button", { name: /copy fingerprint/i }),
+    ).toBeNull();
+    expect(screen.queryByRole("button", { name: /search the web/i })).toBeNull();
+  });
+
+  it("clicking 'Copy fingerprint' on a missing row copies the canonical fingerprint", () => {
+    useAuRegistryStore.setState({
+      status: { kind: "loaded", registry: makeAuRegistry([]) },
+    });
+    render(
+      <PluginRail
+        summary={makeSummary({
+          // Soundtoys-style fingerprint to lock in trailing-space preservation.
+          fingerprints: [ref("aufx", "EB  ", "SToy", 1)],
+        })}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /copy fingerprint/i }));
+
+    expect(mockedCopy).toHaveBeenCalledTimes(1);
+    expect(mockedCopy).toHaveBeenCalledWith("aufx/EB  /SToy");
+  });
+
+  it("clicking 'Search the web' on a missing row searches by the row's display name", () => {
+    // When the fingerprint is in auval-registry-but-display-name-only world
+    // (we don't have a registry hit because it's missing), the row's
+    // displayName falls back to the fingerprint. Search runs on whatever
+    // the user sees — so the displayed name is what we hand to the helper.
+    useAuRegistryStore.setState({
+      status: { kind: "loaded", registry: makeAuRegistry([]) },
+    });
+    render(
+      <PluginRail
+        summary={makeSummary({
+          fingerprints: [ref("aumu", "EZk2", "Toon", 1)],
+        })}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /search the web/i }));
+
+    expect(mockedSearch).toHaveBeenCalledTimes(1);
+    expect(mockedSearch).toHaveBeenCalledWith("aumu/EZk2/Toon");
   });
 });

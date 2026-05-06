@@ -6,6 +6,7 @@ import {
   type FingerprintGroup,
   type InstallStatus,
 } from "../../lib/au-utils";
+import { copyFingerprint, searchPluginOnWeb } from "../../lib/plugin-actions";
 import type { AuRegistry, ProjectSummary } from "../../lib/types";
 import { useAuRegistryStore } from "../../store/au-registry-store";
 import {
@@ -239,6 +240,38 @@ function PluginRow({ group }: RowProps) {
           )}
         </div>
       )}
+      {status === "missing" && (
+        <MissingRowActions
+          fingerprint={group.group.fingerprint}
+          displayName={displayName}
+        />
+      )}
     </li>
+  );
+}
+
+interface MissingActionsProps {
+  readonly fingerprint: string;
+  readonly displayName: string;
+}
+
+function MissingRowActions({ fingerprint, displayName }: MissingActionsProps) {
+  return (
+    <div className={styles.actions}>
+      <button
+        type="button"
+        className={styles.actionButton}
+        onClick={() => void copyFingerprint(fingerprint)}
+      >
+        Copy fingerprint
+      </button>
+      <button
+        type="button"
+        className={styles.actionButton}
+        onClick={() => void searchPluginOnWeb(displayName)}
+      >
+        Search the web
+      </button>
+    </div>
   );
 }
