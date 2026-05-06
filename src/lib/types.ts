@@ -6,6 +6,13 @@ export interface AURef {
   subtype: string;
   manufacturer: string;
   offset: number;
+  /**
+   * User-facing plug-in name. Set when the parser recovers the full name
+   * directly (e.g. Apple stock plug-ins identified via the `GAME` 4CC
+   * marker). Absent for 3rd-party AUs detected via the standard 4CC
+   * triple — their display name comes from the `auval -l` lookup table.
+   */
+  display_name?: string;
 }
 
 export interface ProjectMetadata {

@@ -93,6 +93,43 @@ describe("<CompatibilityVerdict />", () => {
     expect(container.querySelector("[data-status='warnings']")).not.toBeNull();
   });
 
+  it("treats Apple stock plug-ins (display_name set) as installed even when not in auval", () => {
+    // Apple stock plug-ins ship with Logic — guaranteed installed on
+    // any Mac that has Logic. Their parser-synthesised fingerprint
+    // (e.g. `aufx/comp/appl` for Compressor) won't match auval's real
+    // fingerprint (`aufx/cmpr/appl`), but `display_name` flags them so
+    // we skip the registry lookup entirely.
+    useAuRegistryStore.setState({
+      status: {
+        kind: "loaded",
+        registry: makeAuRegistry(["aumu/EZk2/Toon"]),
+      },
+    });
+    useProjectStore.setState({
+      current: {
+        kind: "loaded",
+        path: "/x.logicx",
+        summary: makeSummary({
+          fingerprints: [
+            { type_code: "aumu", subtype: "EZk2", manufacturer: "Toon", offset: 1 },
+            {
+              type_code: "aufx",
+              subtype: "comp",
+              manufacturer: "appl",
+              offset: 2,
+              display_name: "Compressor",
+            },
+          ],
+        }),
+      },
+    });
+
+    const { container } = render(<CompatibilityVerdict />);
+
+    expect(screen.getByText(/opens cleanly/i)).toBeInTheDocument();
+    expect(container.querySelector("[data-status='clean']")).not.toBeNull();
+  });
+
   it("renders 'Will not open' (red) when ALL fingerprints are missing", () => {
     useAuRegistryStore.setState({
       status: { kind: "loaded", registry: makeAuRegistry([]) },

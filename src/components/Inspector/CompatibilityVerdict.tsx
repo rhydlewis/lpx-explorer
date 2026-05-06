@@ -23,6 +23,12 @@ function countMissing(
     return 0;
   }
   return fingerprints.filter((ref) => {
+    // Apple stock plug-ins (parser sets `display_name` for these) ship
+    // with Logic and are guaranteed installed on a Mac that has Logic.
+    // Their synthesised fingerprint won't match auval — skip the lookup.
+    if (ref.display_name !== undefined) {
+      return false;
+    }
     const fingerprint = `${ref.type_code}/${ref.subtype}/${ref.manufacturer}`;
     return installStatusOf(fingerprint, registryStatus.registry) === "missing";
   }).length;

@@ -111,7 +111,7 @@ pub fn assign_aus(tracks: &mut Vec<Track>, aus: &[AURef]) {
                     owner.instrument = Some(au.clone());
                 }
             }
-            "aumf" => owner.midi_fx.push(au.clone()),
+            "aumf" | "aumi" => owner.midi_fx.push(au.clone()),
             _ => owner.audio_fx.push(au.clone()),
         }
     }
@@ -441,6 +441,7 @@ mod tests {
             subtype: "Subt".into(),
             manufacturer: "Mfgr".into(),
             offset,
+            display_name: None,
         }
     }
 
@@ -474,6 +475,20 @@ mod tests {
     fn assigns_midi_effect_to_midi_fx() {
         let mut tracks = vec![track("Inst 1", TrackKind::Instrument, 100)];
         let aus = vec![au_at(150, "aumf")];
+
+        assign_aus(&mut tracks, &aus);
+
+        assert_eq!(tracks[0].midi_fx.len(), 1);
+        assert!(tracks[0].audio_fx.is_empty());
+    }
+
+    #[test]
+    fn assigns_aumi_midi_processor_to_midi_fx() {
+        // `aumi` is kAudioUnitType_MIDIProcessor — same UI bucket as
+        // `aumf` (Music Effect). Without this match arm the AU falls
+        // through the catch-all and lands in audio_fx, which is wrong.
+        let mut tracks = vec![track("Inst 1", TrackKind::Instrument, 100)];
+        let aus = vec![au_at(150, "aumi")];
 
         assign_aus(&mut tracks, &aus);
 

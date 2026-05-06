@@ -29,6 +29,13 @@ function fingerprintOf(au: AURef): string {
   return `${au.type_code}/${au.subtype}/${au.manufacturer}`;
 }
 
+function labelOf(au: AURef): string {
+  // Apple stock plug-ins carry their real display name (Compressor,
+  // Bass Amp, ...). Their synthesised fingerprint is intentionally
+  // unhelpful — render the human name instead.
+  return au.display_name ?? fingerprintOf(au);
+}
+
 function collectInserts(track: Track): readonly AURef[] {
   // Logic's signal flow: instrument first, then MIDI FX, then audio FX.
   const out: AURef[] = [];
@@ -89,7 +96,7 @@ export function TrackRow({ track, depth }: Props) {
           <ul className={styles.inserts}>
             {inserts.map((au) => (
               <li key={`${au.offset}:${fingerprintOf(au)}`}>
-                {fingerprintOf(au)}
+                {labelOf(au)}
               </li>
             ))}
           </ul>

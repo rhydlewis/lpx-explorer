@@ -167,6 +167,7 @@ mod tests {
             subtype: "EZk2".into(),
             manufacturer: "Toon".into(),
             offset: 0,
+            display_name: None,
         };
 
         assert_eq!(entry.fingerprint, au_ref.fingerprint());

@@ -7,6 +7,7 @@
 //! The format is undocumented; offsets here mirror the empirically-derived
 //! Python implementation at `lpx-toolkit/lpx_inspect.py`.
 
+mod apple_stock;
 mod auval;
 mod metadata;
 mod regions;
@@ -30,7 +31,7 @@ use serde::Serialize;
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct AURef {
     /// AU type code, e.g. `"aumu"` (instrument), `"aufx"` (audio fx),
-    /// `"aumf"` (MIDI fx).
+    /// `"aumf"` (MIDI fx), `"aumi"` (MIDI processor).
     pub type_code: String,
     /// AU subtype 4CC, e.g. `"EZk2"`.
     pub subtype: String,
@@ -38,6 +39,13 @@ pub struct AURef {
     pub manufacturer: String,
     /// Byte offset of the type-code 4CC in the input.
     pub offset: usize,
+    /// User-facing plug-in name, set when the parser can recover the
+    /// full name directly (e.g. Apple stock plug-ins identified via the
+    /// `GAME` 4CC marker in [`apple_stock`]). `None` for 3rd-party AUs
+    /// detected via the standard 4CC triple — their display name comes
+    /// from the `auval -l` lookup table at the application layer.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub display_name: Option<String>,
 }
 
 impl AURef {
@@ -49,11 +57,13 @@ impl AURef {
 }
 
 /// AU type 4CCs as they appear *in the file* — i.e. little-endian, so
-/// the human-readable names (`"aumu"`, `"aufx"`, `"aumf"`) are reversed.
-const AU_TYPE_TAGS_LE: [&[u8; 4]; 3] = [
+/// the human-readable names (`"aumu"`, `"aufx"`, `"aumf"`, `"aumi"`)
+/// are reversed.
+const AU_TYPE_TAGS_LE: [&[u8; 4]; 4] = [
     b"umua", // aumu — instrument
     b"xfua", // aufx — audio effect
-    b"fmua", // aumf — MIDI effect
+    b"fmua", // aumf — MIDI effect (kAudioUnitType_MusicEffect)
+    b"imua", // aumi — MIDI processor (kAudioUnitType_MIDIProcessor)
 ];
 
 /// Reverse a 4-byte little-endian 4CC into its human-readable form.
@@ -66,10 +76,15 @@ fn reverse_4cc(bytes: [u8; 4]) -> String {
 /// Scan `raw` for Audio Unit component descriptors and return one
 /// [`AURef`] per match.
 ///
-/// Each descriptor is three contiguous 4-byte codes laid out as
-/// `manufacturer | type | subtype`, all little-endian. The type field
-/// is the anchor: we look for `umua` / `xfua` / `fmua` and read 4 bytes
-/// either side to recover manufacturer + subtype.
+/// Two storage shapes are recognised:
+/// 1. **Standard 4CC triple** — three contiguous 4-byte codes laid out
+///    as `manufacturer | type | subtype`, all little-endian. The type
+///    field is the anchor: we scan for `umua` / `xfua` / `fmua` /
+///    `imua` and read 4 bytes either side. Used by 3rd-party AUs.
+/// 2. **Apple stock plug-in slots** (see [`apple_stock`]) — anchored
+///    on the `GAME` 4CC marker. Returned `AURef`s carry a synthesised
+///    `(type, subtype, manufacturer)` triple plus the real
+///    user-facing name in `display_name`.
 pub fn find_aus(raw: &[u8]) -> Vec<AURef> {
     let mut found = Vec::new();
     for tag in AU_TYPE_TAGS_LE {
@@ -98,9 +113,12 @@ pub fn find_aus(raw: &[u8]) -> Vec<AURef> {
                 subtype: reverse_4cc(sub_le),
                 manufacturer: reverse_4cc(mfr_le),
                 offset: off,
+                display_name: None,
             });
         }
     }
+    found.extend(apple_stock::find_apple_stock_aus(raw));
+    found.sort_by_key(|a| a.offset);
     found
 }
 
@@ -198,6 +216,27 @@ mod tests {
         bytes.extend_from_slice(&[0xAA, 0xBB, 0xCC, 0xDD]);
 
         bytes
+    }
+
+    #[test]
+    fn finds_aumi_midi_processor_descriptor() {
+        // Real-world example: Plugin Boutique's Scaler 2 in
+        // `~/Music/Logic/ new idea.logicx` is stored as type `aumi`
+        // (kAudioUnitType_MIDIProcessor — distinct from `aumf`
+        // kAudioUnitType_MusicEffect). Before this fix the scanner
+        // ignored the `imua` byte sequence entirely.
+        let mut bytes = Vec::new();
+        bytes.extend_from_slice(b"PADDING_"); // 8-byte name region
+        bytes.extend_from_slice(b"eMai");     // manufacturer LE -> "iaMe"
+        bytes.extend_from_slice(b"imua");     // type LE -> "aumi"
+        bytes.extend_from_slice(b"cl2S");     // subtype LE -> "S2lc"
+
+        let found = find_aus(&bytes);
+
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].type_code, "aumi");
+        assert_eq!(found[0].subtype, "S2lc");
+        assert_eq!(found[0].manufacturer, "iaMe");
     }
 
     #[test]

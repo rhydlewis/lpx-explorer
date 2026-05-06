@@ -109,6 +109,24 @@ describe("<TrackRow />", () => {
     ]);
   });
 
+  it("renders display_name instead of fingerprint for stock plug-ins", () => {
+    // Apple stock plug-ins arrive with synthesised 4CCs and a real
+    // human name in display_name. The synthesised fingerprint is
+    // intentionally unhelpful — render the human name instead.
+    const stockBassAmp: AURef = {
+      type_code: "aufx",
+      subtype: "bass",
+      manufacturer: "appl",
+      offset: 500,
+      display_name: "Bass Amp",
+    };
+    const t = track({ kind: "instrument", audio_fx: [stockBassAmp] });
+    render(<TrackRow track={t} depth={0} />);
+
+    expect(screen.getByText("Bass Amp")).toBeInTheDocument();
+    expect(screen.queryByText("aufx/bass/appl")).not.toBeInTheDocument();
+  });
+
   it("renders no insert list when track has no inserts", () => {
     const { container } = render(<TrackRow track={track()} depth={0} />);
 
