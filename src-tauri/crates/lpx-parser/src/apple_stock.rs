@@ -40,7 +40,14 @@ use crate::AURef;
 
 const NAME_FIELD_LEN: usize = 12;
 const MARKER: &[u8; 4] = b"GAME";
-const SECOND_FLAG_BYTE: u8 = 0x02;
+/// Acceptable values for the byte at `name_start - 1`. The bulk of stock
+/// plug-ins use `0x02`; Klopfgeist uses `0x01` (different slot kind —
+/// it's the system metronome, not a regular instrument). Everything else
+/// in real ProjectData has filtered out by the printable-name + null-pad
+/// guards (verified empirically against the repro project — only the 7
+/// known stock plug-ins + Klopfgeist survive).
+const FX_FLAG2: u8 = 0x02;
+const KLOPFGEIST_FLAG2: u8 = 0x01;
 const FX_FIRST_FLAG: u8 = 0x02;
 const INSTRUMENT_FIRST_FLAG: u8 = 0x00;
 const APPLE_MANUFACTURER: &str = "appl";
@@ -96,7 +103,7 @@ pub fn find_apple_stock_aus(raw: &[u8]) -> Vec<AURef> {
         let name_start = i - NAME_FIELD_LEN;
         let flag1 = raw[name_start - 2];
         let flag2 = raw[name_start - 1];
-        if flag2 != SECOND_FLAG_BYTE {
+        if flag2 != FX_FLAG2 && flag2 != KLOPFGEIST_FLAG2 {
             i += 1;
             continue;
         }
@@ -174,11 +181,17 @@ mod tests {
     /// Build a GAME-pattern record:
     ///   [pad][flag1][flag2=0x02][12-byte name field, null-padded][GAME][trailer]
     fn record(flag1: u8, name: &str, trailer: &[u8]) -> Vec<u8> {
+        record_with_flags(flag1, FX_FLAG2, name, trailer)
+    }
+
+    /// As [`record`], but lets the caller pick `flag2`. Klopfgeist uses
+    /// `flag2 = 0x01` in real ProjectData; everything else uses `0x02`.
+    fn record_with_flags(flag1: u8, flag2: u8, name: &str, trailer: &[u8]) -> Vec<u8> {
         assert!(name.len() <= NAME_FIELD_LEN);
         let mut buf = Vec::new();
         buf.extend_from_slice(&[0u8; 8]); // leading pad — index room for flags
         buf.push(flag1);
-        buf.push(SECOND_FLAG_BYTE);
+        buf.push(flag2);
         buf.extend_from_slice(name.as_bytes());
         // null-pad the name field to NAME_FIELD_LEN bytes
         for _ in name.len()..NAME_FIELD_LEN {
@@ -231,7 +244,7 @@ mod tests {
         // (instead of nulls) + GAME. The 0xff bytes corrupt the name field.
         let mut buf = vec![0u8; 8];
         buf.push(FX_FIRST_FLAG);
-        buf.push(SECOND_FLAG_BYTE);
+        buf.push(FX_FLAG2);
         buf.extend_from_slice(b"Hi");
         for _ in 2..NAME_FIELD_LEN {
             buf.push(0xff);
@@ -245,9 +258,11 @@ mod tests {
 
     #[test]
     fn rejects_wrong_second_flag_byte() {
+        // Only 0x01 and 0x02 are accepted at name_start - 1. 0x05 sits
+        // outside both the FX-insert pattern and the Klopfgeist pattern.
         let mut buf = vec![0u8; 8];
         buf.push(FX_FIRST_FLAG);
-        buf.push(0x05); // not 0x02
+        buf.push(0x05);
         buf.extend_from_slice(b"Compressor\0\0");
         buf.extend_from_slice(MARKER);
 
@@ -347,6 +362,25 @@ mod tests {
         assert_eq!(found.len(), 1);
         assert_eq!(found[0].type_code, "aufx");
         assert_eq!(found[0].subtype, "Comp");
+    }
+
+    #[test]
+    fn finds_klopfgeist_with_flag2_0x01() {
+        // Klopfgeist (Logic's stock metronome) lives in a different slot
+        // shape than the FX-insert stock plug-ins: flag1=0x00 (instrument
+        // family), flag2=0x01 (not 0x02). Empirically derived from
+        // ~/Music/Logic/ new idea.logicx 2026-05-06 — bytes immediately
+        // before 'Klopfgeist' are `c6 01 00 01`, so name_start-1 = 0x01.
+        let bytes = record_with_flags(0x00, 0x01, "Klopfgeist", &[0u8; 8]);
+
+        let found = find_apple_stock_aus(&bytes);
+
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].type_code, "aumu");
+        assert_eq!(found[0].subtype, "klop");
+        assert_eq!(found[0].manufacturer, "appl");
+        assert_eq!(found[0].fingerprint(), "aumu/klop/appl");
+        assert_eq!(found[0].display_name.as_deref(), Some("Klopfgeist"));
     }
 
     #[test]
