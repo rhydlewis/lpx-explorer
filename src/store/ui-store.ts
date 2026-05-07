@@ -2,6 +2,15 @@ import { create } from "zustand";
 
 import type { AuFineCategory } from "../lib/au-categories";
 
+/**
+ * App theme mode (lpx-explorer-klh, sme epic). 'system' auto-follows
+ * the OS via `prefers-color-scheme`; 'light' / 'dark' are explicit
+ * pins. Default is 'system'. The actual data-theme attribute on
+ * documentElement only ever holds 'light' or 'dark' — 'system' is
+ * resolved at install time by `installThemeWatcher`.
+ */
+export type ThemeMode = "system" | "light" | "dark";
+
 /** Plug-in rail chip filter — narrows the project's deduped plug-in list. */
 export type PluginRailChip = "all" | "installed" | "missing" | "duplicated";
 
@@ -14,6 +23,13 @@ export type PluginRailChip = "all" | "installed" | "missing" | "duplicated";
 export type PluginRailScope = "project" | "library";
 
 export interface UIState {
+  /**
+   * App theme — System / Light / Dark. The View menu writes this;
+   * the lib/theme.ts watcher mirrors it onto documentElement
+   * data-theme. Hydrated from disk by lpx-explorer-6zn.
+   */
+  theme: ThemeMode;
+  setTheme: (mode: ThemeMode) => void;
   railVisible: boolean;
   setRailVisible: (visible: boolean) => void;
   toggleRail: () => void;
@@ -112,6 +128,8 @@ function clampZoom(z: number): number {
 }
 
 export const useUIStore = create<UIState>((set) => ({
+  theme: "system",
+  setTheme: (mode: ThemeMode) => set({ theme: mode }),
   railVisible: false,
   setRailVisible: (visible: boolean) => set({ railVisible: visible }),
   toggleRail: () => set((s) => ({ railVisible: !s.railVisible })),

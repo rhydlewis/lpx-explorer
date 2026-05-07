@@ -4,9 +4,11 @@
  * reference these via var(--name); never hard-code colour or spacing values
  * inside component CSS modules.
  *
- * Palette mirrors Logic Pro 11's near-black UI with a hint of warmth, plus
- * macOS system status colours. Light mode is deferred — see
- * lpx-explorer-sme.
+ * Dark palette mirrors Logic Pro 11's near-black UI with a hint of warmth,
+ * plus macOS system status colours. Light palette mirrors Logic Pro 11
+ * light + macOS system colours; the [data-theme="light"] block below
+ * overrides every colour-bearing token. Theme is driven by a 'theme'
+ * attribute on documentElement set by `useUIStore` (lpx-explorer-klh).
  */
 
 :root {
@@ -103,7 +105,54 @@
   --z-drag-overlay: 300;
 }
 
-/* App-wide base styles. Single dark theme — no @media (prefers-color-scheme). */
+/* Light theme overrides (lpx-explorer-712). Activated by setting
+ * `<html data-theme="light">`. Status hues keep their semantic
+ * colours; tint alphas are lifted so they read with the same
+ * perceived weight against a light background. Final tonal
+ * refinements happen in the visual-QA pass (lpx-explorer-jwy). */
+:root[data-theme="light"] {
+  /* Surface */
+  --c-bg: #f5f5f7;
+  --c-surface: #ffffff;
+  --c-surface-2: #ececec;
+  --c-divider: #d2d2d7;
+
+  /* Text */
+  --c-text: #1d1d1f;
+  --c-text-secondary: rgba(29, 29, 31, 0.7);
+  --c-text-muted: rgba(29, 29, 31, 0.5);
+
+  /* Accent + status — hues unchanged, neutral inverts. */
+  --c-status-neutral: rgba(29, 29, 31, 0.4);
+
+  /* Status tints — bumped from dark-mode alphas (0.06/0.12/0.15) so
+   * the same visual weight comes through against a light surface.
+   * The dark-mode alphas were tuned to register against #1d1d1f;
+   * unchanged on white they wash out. */
+  --c-band-clean: rgba(52, 199, 89, 0.10);
+  --c-band-warn: rgba(255, 159, 10, 0.12);
+  --c-band-fail: rgba(255, 69, 58, 0.10);
+  --c-band-neutral: rgba(0, 0, 0, 0.04);
+  --c-badge-installed: rgba(52, 199, 89, 0.16);
+  --c-badge-missing: rgba(255, 69, 58, 0.16);
+  --c-pill-clean: rgba(52, 199, 89, 0.20);
+  --c-pill-warn: rgba(255, 159, 10, 0.22);
+  --c-pill-fail: rgba(255, 69, 58, 0.20);
+
+  /* Track-kind tints — similar lift. */
+  --c-track-instrument-bg: rgba(52, 199, 89, 0.18);
+  --c-track-fx-bg: rgba(58, 141, 222, 0.18);
+  --c-track-midi-bg: rgba(255, 159, 10, 0.20);
+
+  /* Misc — shimmer flips polarity (dark uses white over dark; light
+   * uses black over white). Shadow stays the same RGBA — black-at-low-
+   * alpha works against either surface. Highlight flash is bright
+   * yellow against either. */
+  --c-shimmer: rgba(0, 0, 0, 0.04);
+}
+
+/* App-wide base styles. The body background/text use the tokens above,
+ * so they switch automatically when [data-theme] changes. */
 html,
 body,
 #root {

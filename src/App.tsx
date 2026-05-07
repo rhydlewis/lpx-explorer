@@ -10,6 +10,7 @@ import {
   hydrateParseCacheAsync,
   installScanIdleGate,
 } from "./lib/scan-scheduler";
+import { installThemeWatcher } from "./lib/theme";
 import { openProject } from "./lib/open-project";
 import { pickAndAddFolder } from "./lib/open-folder";
 import { routeDrop } from "./lib/drop-routing";
@@ -79,6 +80,7 @@ function App() {
 
   useEffect(() => hydrateParseCacheAsync(), []);
   useEffect(() => installScanIdleGate(), []);
+  useEffect(() => installThemeWatcher(), []);
 
   // Text zoom — Cmd-+ / Cmd-- / Cmd-0. Hydrate from disk on mount, then
   // sync the CSS custom property + persist on every change. Keyboard
