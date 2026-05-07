@@ -135,6 +135,30 @@ function App() {
         return;
       }
 
+      // First-launch convenience: when the user has nothing in their
+      // library yet, auto-add ~/Music/Logic if it exists. Logic Pro's
+      // default project location is the de-facto library for most
+      // users — landing them on a populated tile grid is friendlier
+      // than asking them to pick a folder. Per lpx-explorer-3mo.
+      if (
+        persisted.recent.length === 0 &&
+        persisted.recentFolders.length === 0
+      ) {
+        const home = await invoke<string | null>("home_dir");
+        if (home !== null && !cancelled) {
+          const defaultLib = `${home}/Music/Logic`;
+          if (await invoke<boolean>("is_dir", { path: defaultLib })) {
+            if (cancelled) return;
+            await useLibraryStore.getState().addFolder(defaultLib);
+            // Make the auto-added folder the active library-browse
+            // target so the main area surfaces the tile grid (1di)
+            // straight away on first launch.
+            useUIStore.getState().setSelectedLibraryFolder(defaultLib);
+          }
+        }
+      }
+      if (cancelled) return;
+
       let prevRecent = persisted.recent;
       let prevRecentFolders = persisted.recentFolders;
       unsubscribe = useLibraryStore.subscribe((state) => {

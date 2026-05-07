@@ -91,6 +91,16 @@ pub fn is_dir(path: String) -> bool {
     PathBuf::from(path).is_dir()
 }
 
+/// Tauri command: the user's HOME directory as a string, or `None`
+/// when the env var is unset (e.g. sandboxed contexts where $HOME is
+/// blank). The frontend uses it to build the default-library path
+/// `~/Music/Logic` on first launch (lpx-explorer-3mo) — see
+/// `App.tsx`'s persistence-hydration effect.
+#[tauri::command]
+pub fn home_dir() -> Option<String> {
+    std::env::var("HOME").ok().filter(|s| !s.is_empty())
+}
+
 /// First `<bundle>/Alternatives/<n>/` directory containing ProjectData.
 fn locate_alternative(bundle: &Path) -> Option<PathBuf> {
     let alternatives = bundle.join("Alternatives");
