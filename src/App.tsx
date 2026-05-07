@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 
 import { openProject } from "./lib/open-project";
@@ -28,6 +29,8 @@ import { LibraryRail } from "./components/Library/LibraryRail";
 import "./App.css";
 
 const HINT_DISMISS_MS = 4000;
+const REPORT_ISSUE_URL = "https://github.com/rhydlewis/lpx-explorer/issues";
+const BUY_ME_COFFEE_URL = "https://buymeacoffee.com/rhyd";
 /**
  * Below this viewport width the right Plug-ins rail collapses to a
  * topbar toggle — at narrower widths a 320px rail crowds the
@@ -193,6 +196,10 @@ function App() {
         useLibraryStore.getState().clearRecent();
       } else if (id === "clear_recent_folders") {
         useLibraryStore.getState().clearRecentFolders();
+      } else if (id === "help_report_issue") {
+        void openUrl(REPORT_ISSUE_URL);
+      } else if (id === "help_buy_me_coffee") {
+        void openUrl(BUY_ME_COFFEE_URL);
       } else if (id.startsWith("recent_project::")) {
         void openProject(id.slice("recent_project::".length));
       } else if (id.startsWith("recent_folder::")) {

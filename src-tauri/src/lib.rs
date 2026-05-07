@@ -11,6 +11,8 @@ const MENU_OPEN_PROJECT: &str = "menu_open_project";
 const MENU_OPEN_FOLDER: &str = "menu_open_folder";
 const MENU_CLEAR_RECENT_PROJECTS: &str = "clear_recent_projects";
 const MENU_CLEAR_RECENT_FOLDERS: &str = "clear_recent_folders";
+const MENU_REPORT_ISSUE: &str = "help_report_issue";
+const MENU_BUY_ME_COFFEE: &str = "help_buy_me_coffee";
 const PREFIX_RECENT_PROJECT: &str = "recent_project::";
 const PREFIX_RECENT_FOLDER: &str = "recent_folder::";
 const MENU_EVENT: &str = "menu-event";
@@ -136,7 +138,32 @@ fn build_menu(
         ],
     )?;
 
-    Menu::with_items(app, &[&app_menu, &file_menu, &edit_menu])
+    // Help menu — frontend handles MENU_EVENT for these IDs and dispatches
+    // to tauri-plugin-opener::openUrl. lpx-explorer-5hf.
+    let help_menu = Submenu::with_items(
+        app,
+        "Help",
+        true,
+        &[
+            &MenuItem::with_id(
+                app,
+                MENU_REPORT_ISSUE,
+                "Report an Issue…",
+                true,
+                None::<&str>,
+            )?,
+            &PredefinedMenuItem::separator(app)?,
+            &MenuItem::with_id(
+                app,
+                MENU_BUY_ME_COFFEE,
+                "Buy Me a Coffee…",
+                true,
+                None::<&str>,
+            )?,
+        ],
+    )?;
+
+    Menu::with_items(app, &[&app_menu, &file_menu, &edit_menu, &help_menu])
 }
 
 /// Frontend-invoked rebuild: called whenever the recent-projects or
