@@ -1,3 +1,18 @@
+import {
+  Activity,
+  AudioLines,
+  Calendar,
+  Clock4,
+  FileAudio,
+  Film,
+  HardDrive,
+  History,
+  Layers,
+  Music,
+  Radio,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+
 import type { BundleStats, ProjectMetadata } from "../../lib/types";
 import { formatRelative } from "../../lib/time-utils";
 
@@ -12,6 +27,12 @@ interface Props {
    * — tests pin it for deterministic output.
    */
   readonly now?: Date;
+}
+
+interface MetaItem {
+  readonly label: string;
+  readonly value: string | number;
+  readonly icon: LucideIcon;
 }
 
 function formatKey(meta: ProjectMetadata): string {
@@ -90,46 +111,95 @@ function formatBytes(n: number): string {
   return `${(n / GB).toFixed(1)} GB`;
 }
 
+function buildItems(
+  metadata: ProjectMetadata,
+  stats: BundleStats,
+  now: Date,
+): ReadonlyArray<MetaItem> {
+  const items: MetaItem[] = [
+    { label: "Key", value: formatKey(metadata), icon: Music },
+    { label: "BPM", value: formatBpm(metadata.bpm), icon: Activity },
+    { label: "Time signature", value: formatSig(metadata), icon: Clock4 },
+    {
+      label: "Sample rate",
+      value: formatSampleRate(metadata.sample_rate),
+      icon: AudioLines,
+    },
+  ];
+  const fr = formatFrameRate(metadata.frame_rate_index);
+  if (fr !== null) {
+    items.push({ label: "Frame rate", value: fr, icon: Film });
+  }
+  items.push(
+    { label: "Tracks", value: metadata.track_count, icon: Layers },
+    {
+      label: "Created",
+      value: formatDateWithRelative(stats.created_at_unix, now),
+      icon: Calendar,
+    },
+    {
+      label: "Modified",
+      value: formatDateWithRelative(stats.modified_at_unix, now),
+      icon: History,
+    },
+    {
+      label: "Bundle size",
+      value: formatBytes(stats.size_bytes),
+      icon: HardDrive,
+    },
+    {
+      label: "Audio files",
+      value: metadata.audio_file_count,
+      icon: FileAudio,
+    },
+  );
+  if (metadata.impulse_response_count > 0) {
+    items.push({
+      label: "Impulse responses",
+      value: metadata.impulse_response_count,
+      icon: Radio,
+    });
+  }
+  return items;
+}
+
 export function ProjectInfo({
   metadata,
   stats,
   now = new Date(),
 }: Props) {
+  const items = buildItems(metadata, stats, now);
   return (
     <section aria-label="project info" className={sectionStyles.section}>
       <h3 className={sectionStyles.sectionLabel}>Project</h3>
       <dl className={styles.grid}>
-        <dt>Key</dt>
-        <dd>{formatKey(metadata)}</dd>
-        <dt>BPM</dt>
-        <dd>{formatBpm(metadata.bpm)}</dd>
-        <dt>Time signature</dt>
-        <dd>{formatSig(metadata)}</dd>
-        <dt>Sample rate</dt>
-        <dd>{formatSampleRate(metadata.sample_rate)}</dd>
-        {formatFrameRate(metadata.frame_rate_index) !== null && (
-          <>
-            <dt>Frame rate</dt>
-            <dd>{formatFrameRate(metadata.frame_rate_index)}</dd>
-          </>
-        )}
-        <dt>Tracks</dt>
-        <dd>{metadata.track_count}</dd>
-        <dt>Created</dt>
-        <dd>{formatDateWithRelative(stats.created_at_unix, now)}</dd>
-        <dt>Modified</dt>
-        <dd>{formatDateWithRelative(stats.modified_at_unix, now)}</dd>
-        <dt>Bundle size</dt>
-        <dd>{formatBytes(stats.size_bytes)}</dd>
-        <dt>Audio files</dt>
-        <dd>{metadata.audio_file_count}</dd>
-        {metadata.impulse_response_count > 0 && (
-          <>
-            <dt>Impulse responses</dt>
-            <dd>{metadata.impulse_response_count}</dd>
-          </>
-        )}
+        {items.map((item) => {
+          const Icon = item.icon;
+          return (
+            <Pair key={item.label} icon={<Icon size="1em" aria-hidden="true" />} label={item.label}>
+              {item.value}
+            </Pair>
+          );
+        })}
       </dl>
     </section>
+  );
+}
+
+interface PairProps {
+  readonly icon: React.ReactNode;
+  readonly label: string;
+  readonly children: React.ReactNode;
+}
+
+function Pair({ icon, label, children }: PairProps) {
+  return (
+    <>
+      <dt>
+        <span className={styles.iconWrap}>{icon}</span>
+        <span>{label}</span>
+      </dt>
+      <dd>{children}</dd>
+    </>
   );
 }

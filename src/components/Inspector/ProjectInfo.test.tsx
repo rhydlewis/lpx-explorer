@@ -125,4 +125,20 @@ describe("<ProjectInfo />", () => {
 
     expect(screen.queryByText(/identified/)).not.toBeInTheDocument();
   });
+
+  it("renders a Lucide icon next to each metadata label (lpx-explorer-319)", () => {
+    const s = makeSummary({
+      metadata: { track_count: 8, audio_file_count: 4 },
+    });
+    const { container } = render(
+      <ProjectInfo metadata={s.metadata} stats={s.stats} now={fixedNow} />,
+    );
+
+    // Each <dt> carries an aria-hidden <svg> from lucide-react.
+    const dts = container.querySelectorAll("dt");
+    expect(dts.length).toBeGreaterThan(0);
+    dts.forEach((dt) => {
+      expect(dt.querySelector("svg")).not.toBeNull();
+    });
+  });
 });
