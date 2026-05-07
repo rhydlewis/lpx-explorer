@@ -231,11 +231,10 @@ pub fn run() {
             set_recent_menu
         ])
         .setup(|app| {
-            // Initial menu has empty submenus; the frontend rehydrates
-            // recents from `tauri-plugin-store` at startup and calls
-            // `set_recent_menu` to populate.
+            tlog!("[main] setup() entered");
             let menu = build_menu(app.handle(), &[], &[])?;
             app.set_menu(menu)?;
+            tlog!("[main] setup() done — menu attached, webview booting");
             Ok(())
         })
         .on_menu_event(|app, event| {

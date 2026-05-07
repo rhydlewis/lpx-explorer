@@ -78,6 +78,23 @@
         <div class="spinner" aria-hidden="true"></div>
       </div>
     </div>
+    <script>
+      // Inline blocker: fires the moment the webview parses the HTML —
+      // before any module imports happen. Stamps a wall-clock and
+      // forwards it to the Rust terminal via the Tauri IPC API (which
+      // is injected before any user script runs). Lets us tell apart
+      // 'webview never opened the page' from 'webview opened the page
+      // but vite took 15s to serve the bundle'.
+      (function () {
+        window.__lpxHtmlParsedAt = Date.now();
+        if (window.__TAURI_INTERNALS__ && window.__TAURI_INTERNALS__.invoke) {
+          window.__TAURI_INTERNALS__.invoke("log_event", {
+            level: "info",
+            message: "[js+0ms] [html] inline script ran (HTML parsed)",
+          }).catch(function () {});
+        }
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
