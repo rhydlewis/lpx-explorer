@@ -27,8 +27,10 @@ vi.mock("@tauri-apps/api/core", () => ({
 }));
 
 import {
+  loadPersistedFolderPaths,
   loadPersistedLibrary,
   loadTextZoom,
+  persistFolderPaths,
   persistLibrary,
   persistTextZoom,
   setRecentMenu,
@@ -172,6 +174,54 @@ describe("loadTextZoom / persistTextZoom", () => {
 
   it("persistTextZoom calls save() so the value lands on disk immediately", async () => {
     await persistTextZoom(0.9);
+
+    expect(mockSave).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("loadPersistedFolderPaths / persistFolderPaths", () => {
+  beforeEach(() => {
+    storeData.clear();
+    mockGet.mockClear();
+    mockSet.mockClear();
+    mockSave.mockClear();
+  });
+  afterEach(() => {
+    storeData.clear();
+  });
+
+  it("returns an empty array when nothing has been persisted", async () => {
+    expect(await loadPersistedFolderPaths()).toEqual([]);
+  });
+
+  it("round-trips a folder-paths list through persistFolderPaths + loadPersistedFolderPaths", async () => {
+    await persistFolderPaths([
+      "/Users/rhyd/Music/Logic",
+      "/Users/rhyd/Side Projects",
+    ]);
+
+    expect(await loadPersistedFolderPaths()).toEqual([
+      "/Users/rhyd/Music/Logic",
+      "/Users/rhyd/Side Projects",
+    ]);
+  });
+
+  it("filters non-string entries defensively (corrupted store)", async () => {
+    storeData.set("folders", ["/ok.logicx", 42, null, "/also-ok"]);
+
+    expect(await loadPersistedFolderPaths()).toEqual([
+      "/ok.logicx",
+      "/also-ok",
+    ]);
+  });
+
+  it("returns an empty array when the stored value is not an array", async () => {
+    storeData.set("folders", "not an array");
+    expect(await loadPersistedFolderPaths()).toEqual([]);
+  });
+
+  it("persistFolderPaths calls save() immediately", async () => {
+    await persistFolderPaths(["/a"]);
 
     expect(mockSave).toHaveBeenCalledTimes(1);
   });

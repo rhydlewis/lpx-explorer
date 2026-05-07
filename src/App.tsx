@@ -9,8 +9,10 @@ import { openProject } from "./lib/open-project";
 import { pickAndAddFolder } from "./lib/open-folder";
 import { routeDrop } from "./lib/drop-routing";
 import {
+  loadPersistedFolderPaths,
   loadPersistedLibrary,
   loadTextZoom,
+  persistFolderPaths,
   persistLibrary,
   persistTextZoom,
   setRecentMenu,
@@ -30,6 +32,67 @@ import { LibraryRail } from "./components/Library/LibraryRail";
 import "./App.css";
 
 const HINT_DISMISS_MS = 4000;
+
+/**
+ * Subscribe to LibraryStore changes and persist the deltas — recents,
+ * recent folders, and the active-folder paths. Extracted from the
+ * App.tsx hydration effect to keep that effect's cognitive complexity
+ * under the lint budget.
+ */
+function subscribeLibraryPersistence(persisted: {
+  recent: ReadonlyArray<{ readonly path: string }>;
+  recentFolders: ReadonlyArray<{ readonly path: string }>;
+}): () => void {
+  let prevRecent = persisted.recent;
+  let prevRecentFolders = persisted.recentFolders;
+  let prevFolderPaths = useLibraryStore
+    .getState()
+    .folders.map((f) => f.path);
+  return useLibraryStore.subscribe((state) => {
+    if (
+      state.recent !== prevRecent ||
+      state.recentFolders !== prevRecentFolders
+    ) {
+      prevRecent = state.recent;
+      prevRecentFolders = state.recentFolders;
+      void persistLibrary(state.recent, state.recentFolders);
+      void setRecentMenu(state.recent, state.recentFolders);
+    }
+    const nextFolderPaths = state.folders.map((f) => f.path);
+    if (folderPathsDiffer(prevFolderPaths, nextFolderPaths)) {
+      prevFolderPaths = nextFolderPaths;
+      void persistFolderPaths(nextFolderPaths);
+    }
+  });
+}
+
+function folderPathsDiffer(
+  prev: ReadonlyArray<string>,
+  next: ReadonlyArray<string>,
+): boolean {
+  if (prev.length !== next.length) return true;
+  for (let i = 0; i < prev.length; i += 1) {
+    if (prev[i] !== next[i]) return true;
+  }
+  return false;
+}
+
+/**
+ * If `~/Music/Logic` exists, register it as a library folder. Used on
+ * truly-first launch only (gated upstream by recents + recentFolders
+ * both empty). The `isCancelled` thunk lets the caller abort if the
+ * App component unmounts mid-flight.
+ */
+async function maybeAutoAddDefaultLibrary(
+  isCancelled: () => boolean,
+): Promise<void> {
+  const home = await invoke<string | null>("home_dir");
+  if (home === null || isCancelled()) return;
+  const defaultLib = `${home}/Music/Logic`;
+  const exists = await invoke<boolean>("is_dir", { path: defaultLib });
+  if (!exists || isCancelled()) return;
+  await useLibraryStore.getState().addFolder(defaultLib);
+}
 const REPORT_ISSUE_URL = "https://github.com/rhydlewis/lpx-explorer/issues";
 const BUY_ME_COFFEE_URL = "https://buymeacoffee.com/rhyd";
 /**
@@ -135,44 +198,40 @@ function App() {
         return;
       }
 
-      // First-launch convenience: when the user has nothing in their
-      // library yet, auto-add ~/Music/Logic if it exists. Logic Pro's
-      // default project location is the de-facto library for most
-      // users — landing them on a populated tile grid is friendlier
-      // than asking them to pick a folder. Per lpx-explorer-3mo.
-      if (
+      // Restore active folders from disk — re-runs scan_folder for each
+      // path so the project lists pick up new .logicx files added since
+      // last quit (lpx-explorer-vn5). Awaited sequentially so the
+      // library-browse target setter below can pick the first folder.
+      const persistedFolderPaths = await loadPersistedFolderPaths();
+      if (cancelled) return;
+      for (const path of persistedFolderPaths) {
+        if (cancelled) return;
+        await useLibraryStore.getState().addFolder(path);
+      }
+
+      // Per lpx-explorer-3mo + vn5: auto-add ~/Music/Logic on truly-first
+      // launch (no recents AND no recent folders). Once the user has
+      // interacted at all the gate stays closed forever.
+      const isFirstLaunch =
         persisted.recent.length === 0 &&
-        persisted.recentFolders.length === 0
-      ) {
-        const home = await invoke<string | null>("home_dir");
-        if (home !== null && !cancelled) {
-          const defaultLib = `${home}/Music/Logic`;
-          if (await invoke<boolean>("is_dir", { path: defaultLib })) {
-            if (cancelled) return;
-            await useLibraryStore.getState().addFolder(defaultLib);
-            // Make the auto-added folder the active library-browse
-            // target so the main area surfaces the tile grid (1di)
-            // straight away on first launch.
-            useUIStore.getState().setSelectedLibraryFolder(defaultLib);
-          }
-        }
+        persisted.recentFolders.length === 0;
+      if (isFirstLaunch) {
+        await maybeAutoAddDefaultLibrary(() => cancelled);
       }
       if (cancelled) return;
 
-      let prevRecent = persisted.recent;
-      let prevRecentFolders = persisted.recentFolders;
-      unsubscribe = useLibraryStore.subscribe((state) => {
-        if (
-          state.recent === prevRecent &&
-          state.recentFolders === prevRecentFolders
-        ) {
-          return;
-        }
-        prevRecent = state.recent;
-        prevRecentFolders = state.recentFolders;
-        void persistLibrary(state.recent, state.recentFolders);
-        void setRecentMenu(state.recent, state.recentFolders);
-      });
+      // If exactly one folder is in the rail (auto-added or restored),
+      // surface its tile grid by default. Multiple folders means the
+      // user has organised their library — let them pick which one to
+      // browse explicitly.
+      const initialFolders = useLibraryStore.getState().folders;
+      if (initialFolders.length === 1) {
+        useUIStore
+          .getState()
+          .setSelectedLibraryFolder(initialFolders[0]!.path);
+      }
+
+      unsubscribe = subscribeLibraryPersistence(persisted);
     })();
 
     return () => {

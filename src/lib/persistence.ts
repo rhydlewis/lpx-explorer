@@ -6,6 +6,7 @@ import type { RecentEntry } from "./types";
 const STORE_FILE = "library.json";
 const KEY_RECENT = "recent";
 const KEY_RECENT_FOLDERS = "recentFolders";
+const KEY_FOLDERS = "folders";
 const KEY_TEXT_ZOOM = "textZoom";
 
 interface PersistedLibrary {
@@ -80,6 +81,28 @@ export async function persistLibrary(
   const store = await getStore();
   await store.set(KEY_RECENT, recent);
   await store.set(KEY_RECENT_FOLDERS, recentFolders);
+  await store.save();
+}
+
+/**
+ * Read the persisted active-folders list. The `folders` slice on
+ * `useLibraryStore` carries scan status and a project array — those
+ * are derived (rescanned on hydration), so persistence stores only the
+ * folder paths. Filters non-string entries defensively. Per
+ * lpx-explorer-vn5.
+ */
+export async function loadPersistedFolderPaths(): Promise<ReadonlyArray<string>> {
+  const store = await getStore();
+  const raw = await store.get(KEY_FOLDERS);
+  if (!Array.isArray(raw)) return [];
+  return raw.filter((p): p is string => typeof p === "string");
+}
+
+export async function persistFolderPaths(
+  paths: ReadonlyArray<string>,
+): Promise<void> {
+  const store = await getStore();
+  await store.set(KEY_FOLDERS, paths);
   await store.save();
 }
 
