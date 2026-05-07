@@ -7,10 +7,11 @@ import type { ProjectSummary } from "../lib/types";
  * Cap on concurrent `parseProject` invocations. Without this, the
  * library-home tile grid spawns N parses on the same frame for an
  * N-project folder, flooding the IPC bridge and freezing the UI thread
- * (lpx-explorer-bh4). 4 keeps the FS busy without saturating the
- * renderer's frame budget.
+ * (lpx-explorer-bh4). Bumped from 4 → 8 after observing ~380ms
+ * effective per-parse with cap=4 on a 120-project library — IPC bridge
+ * round-trip dominated; the parser itself runs in ms.
  */
-export const PARSE_CONCURRENCY = 4;
+export const PARSE_CONCURRENCY = 8;
 
 let inFlightParseCount = 0;
 const parseSlotQueue: Array<() => void> = [];

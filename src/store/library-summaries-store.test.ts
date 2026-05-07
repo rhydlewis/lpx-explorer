@@ -91,9 +91,9 @@ describe("useLibrarySummariesStore", () => {
     expect(useLibrarySummariesStore.getState().has("/broken.logicx")).toBe(false);
   });
 
-  it("caps concurrent parses at PARSE_CONCURRENCY (=4)", async () => {
-    // 6 paths submitted at once. Cap = 4 → only 4 parseProject calls
-    // should fire on the first microtask wave; the remaining 2 wait
+  it("caps concurrent parses at PARSE_CONCURRENCY (=8)", async () => {
+    // 12 paths submitted at once. Cap = 8 → only 8 parseProject calls
+    // should fire on the first microtask wave; the remaining 4 wait
     // their turn and only start once earlier ones complete.
     const resolvers = new Map<string, (s: ReturnType<typeof makeSummary>) => void>();
     mockedParse.mockImplementation(
@@ -103,14 +103,7 @@ describe("useLibrarySummariesStore", () => {
         }),
     );
 
-    const paths = [
-      "/p1.logicx",
-      "/p2.logicx",
-      "/p3.logicx",
-      "/p4.logicx",
-      "/p5.logicx",
-      "/p6.logicx",
-    ];
+    const paths = Array.from({ length: 12 }, (_, i) => `/p${i + 1}.logicx`);
     const promises = paths.map((p) =>
       useLibrarySummariesStore.getState().getOrParse(p),
     );
@@ -120,22 +113,20 @@ describe("useLibrarySummariesStore", () => {
     for (let i = 0; i < 10; i += 1) {
       await Promise.resolve();
     }
-    expect(mockedParse).toHaveBeenCalledTimes(4);
+    expect(mockedParse).toHaveBeenCalledTimes(8);
 
-    // Complete the first 4; the queue advances and the remaining 2
-    // start. Drain explicitly path-by-path to avoid Map-iter-while-mutate
-    // hazards.
-    const firstFour = paths.slice(0, 4);
-    for (const p of firstFour) {
+    // Complete the first 8; the queue advances and the remaining 4 start.
+    const firstEight = paths.slice(0, 8);
+    for (const p of firstEight) {
       resolvers.get(p)!(makeSummary({}));
     }
     for (let i = 0; i < 10; i += 1) {
       await Promise.resolve();
     }
-    expect(mockedParse).toHaveBeenCalledTimes(6);
+    expect(mockedParse).toHaveBeenCalledTimes(12);
 
     // Drain the rest so the test doesn't dangle.
-    for (const p of paths.slice(4)) {
+    for (const p of paths.slice(8)) {
       resolvers.get(p)!(makeSummary({}));
     }
     await Promise.all(promises);

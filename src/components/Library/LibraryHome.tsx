@@ -23,13 +23,18 @@ interface Props {
 export function LibraryHome({ folder }: Props) {
   const name = folderNameOf(folder.path);
   const summaries = useLibrarySummariesStore((s) => s.summaries);
+  const errors = useLibrarySummariesStore((s) => s.errors);
 
   const total = folder.projects.length;
   const parsed = folder.projects.reduce(
     (n, path) => n + (summaries.has(path) ? 1 : 0),
     0,
   );
-  const progress = computeProgress(folder, total, parsed);
+  const errored = folder.projects.reduce(
+    (n, path) => n + (errors.has(path) ? 1 : 0),
+    0,
+  );
+  const progress = computeProgress(folder, total, parsed, errored);
 
   return (
     <section
@@ -67,14 +72,32 @@ function computeProgress(
   folder: FolderEntry,
   total: number,
   parsed: number,
+  errored: number,
 ): Progress | null {
   if (folder.status.kind === "scanning") {
     return { label: `Scanning… ${total} found`, percent: null };
   }
-  if (folder.status.kind === "done" && total > 0 && parsed < total) {
+  // Both successfully-parsed AND errored projects count as 'done' —
+  // otherwise a single corrupt bundle would trap the progress bar at
+  // 'N-1 of N…' forever. Surface a distinct label when the final
+  // count includes errors.
+  const settled = parsed + errored;
+  if (folder.status.kind === "done" && total > 0 && settled < total) {
+    const label = errored > 0
+      ? `Reading ${settled} of ${total}… (${errored} couldn't be read)`
+      : `Reading ${settled} of ${total}…`;
     return {
-      label: `Reading ${parsed} of ${total}…`,
-      percent: total > 0 ? (parsed / total) * 100 : null,
+      label,
+      percent: (settled / total) * 100,
+    };
+  }
+  // All settled but some errored — keep a quiet summary visible so the
+  // user knows why the count of 'plug-ins ready' is below their
+  // project count.
+  if (folder.status.kind === "done" && errored > 0 && settled === total) {
+    return {
+      label: `${errored} project${errored === 1 ? "" : "s"} couldn't be read`,
+      percent: null,
     };
   }
   return null;
