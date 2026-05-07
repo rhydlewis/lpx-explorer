@@ -30,10 +30,13 @@ import {
   loadPersistedFolderPaths,
   loadPersistedLibrary,
   loadTextZoom,
+  loadThemePreference,
   persistFolderPaths,
   persistLibrary,
   persistTextZoom,
+  persistThemePreference,
   setRecentMenu,
+  setThemeMenu,
 } from "./persistence";
 
 const entry = (path: string, lastLoadedMs = 1): RecentEntry => ({
@@ -237,5 +240,58 @@ describe("loadPersistedFolderPaths / persistFolderPaths", () => {
     await persistFolderPaths(["/a"]);
 
     expect(mockSave).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("theme preference (lpx-explorer-6zn)", () => {
+  beforeEach(() => {
+    storeData.clear();
+    mockGet.mockClear();
+    mockSet.mockClear();
+    mockSave.mockClear();
+    mockInvoke.mockReset();
+  });
+
+  it("loadThemePreference returns null when nothing is persisted", async () => {
+    expect(await loadThemePreference()).toBeNull();
+  });
+
+  it("loadThemePreference returns null when stored value isn't a valid mode", async () => {
+    storeData.set("theme", "neon");
+    expect(await loadThemePreference()).toBeNull();
+
+    storeData.set("theme", 7);
+    expect(await loadThemePreference()).toBeNull();
+  });
+
+  it("round-trips system / light / dark", async () => {
+    await persistThemePreference("system");
+    expect(await loadThemePreference()).toBe("system");
+
+    await persistThemePreference("light");
+    expect(await loadThemePreference()).toBe("light");
+
+    await persistThemePreference("dark");
+    expect(await loadThemePreference()).toBe("dark");
+  });
+
+  it("persistThemePreference calls save() immediately", async () => {
+    await persistThemePreference("light");
+    expect(mockSave).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("setThemeMenu (lpx-explorer-3x8)", () => {
+  beforeEach(() => {
+    mockInvoke.mockReset();
+  });
+
+  it("invokes the set_theme_menu Tauri command with the given mode", async () => {
+    mockInvoke.mockResolvedValue(undefined);
+    await setThemeMenu("light");
+
+    expect(mockInvoke).toHaveBeenCalledWith("set_theme_menu", {
+      theme: "light",
+    });
   });
 });

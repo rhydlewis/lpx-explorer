@@ -17,8 +17,11 @@ import { routeDrop } from "./lib/drop-routing";
 import {
   loadShowFingerprints,
   loadTextZoom,
+  loadThemePreference,
   persistShowFingerprints,
   persistTextZoom,
+  persistThemePreference,
+  setThemeMenu,
 } from "./lib/persistence";
 import { useMediaQuery } from "./lib/use-media-query";
 import { useAuRegistryStore } from "./store/au-registry-store";
@@ -58,6 +61,7 @@ function App() {
   const selectedLibraryFolder = useUIStore((s) => s.selectedLibraryFolder);
   const textZoom = useUIStore((s) => s.textZoom);
   const showFingerprints = useUIStore((s) => s.pluginRailShowFingerprints);
+  const theme = useUIStore((s) => s.theme);
   const isNarrow = useMediaQuery(`(max-width: ${RIGHT_RAIL_BREAKPOINT_PX - 1}px)`);
   const [hint, setHint] = useState<string | null>(null);
 
@@ -81,6 +85,25 @@ function App() {
   useEffect(() => hydrateParseCacheAsync(), []);
   useEffect(() => installScanIdleGate(), []);
   useEffect(() => installThemeWatcher(), []);
+
+  // Theme preference (lpx-explorer-6zn) — hydrate once on mount,
+  // persist on every change. The watcher above re-applies the
+  // resolved theme to documentElement when the store updates, so the
+  // persisted value flows through to the DOM without extra wiring.
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const persisted = await loadThemePreference();
+      if (!cancelled && persisted !== null) {
+        useUIStore.getState().setTheme(persisted);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+  useEffect(() => {
+    void persistThemePreference(theme);
+    void setThemeMenu(theme);
+  }, [theme]);
 
   // Text zoom — Cmd-+ / Cmd-- / Cmd-0. Hydrate from disk on mount, then
   // sync the CSS custom property + persist on every change. Keyboard
@@ -187,6 +210,12 @@ function App() {
         void openUrl(REPORT_ISSUE_URL);
       } else if (id === "help_buy_me_coffee") {
         void openUrl(BUY_ME_COFFEE_URL);
+      } else if (id === "theme_system") {
+        useUIStore.getState().setTheme("system");
+      } else if (id === "theme_light") {
+        useUIStore.getState().setTheme("light");
+      } else if (id === "theme_dark") {
+        useUIStore.getState().setTheme("dark");
       } else if (id.startsWith("recent_project::")) {
         void openProject(id.slice("recent_project::".length));
       } else if (id.startsWith("recent_folder::")) {

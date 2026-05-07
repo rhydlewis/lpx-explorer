@@ -10,6 +10,10 @@ const KEY_RECENT_FOLDERS = "recentFolders";
 const KEY_FOLDERS = "folders";
 const KEY_TEXT_ZOOM = "textZoom";
 const KEY_SHOW_FINGERPRINTS = "pluginRailShowFingerprints";
+const KEY_THEME = "theme";
+
+const THEME_MODES = ["system", "light", "dark"] as const;
+type PersistedThemeMode = (typeof THEME_MODES)[number];
 
 interface PersistedLibrary {
   recent: ReadonlyArray<RecentEntry>;
@@ -158,6 +162,28 @@ export async function persistShowFingerprints(show: boolean): Promise<void> {
 }
 
 /**
+ * Read the persisted theme preference (lpx-explorer-6zn). Returns
+ * `null` when nothing has been saved yet (first launch) or the stored
+ * value isn't one of `system | light | dark` — caller falls back to
+ * the ui-store default of `'system'`.
+ */
+export async function loadThemePreference(): Promise<PersistedThemeMode | null> {
+  const store = await getStore();
+  const raw = await store.get(KEY_THEME);
+  if (typeof raw !== "string") return null;
+  if (!THEME_MODES.includes(raw as PersistedThemeMode)) return null;
+  return raw as PersistedThemeMode;
+}
+
+export async function persistThemePreference(
+  mode: PersistedThemeMode,
+): Promise<void> {
+  const store = await getStore();
+  await store.set(KEY_THEME, mode);
+  await store.save();
+}
+
+/**
  * Persisted parse cache (lpx-explorer-aay). One entry per .logicx
  * bundle path, keyed by ProjectData mtime + size — the only inputs
  * whose change can alter parse output. Stored in a dedicated
@@ -209,6 +235,16 @@ export async function deleteParseCacheEntry(path: string): Promise<void> {
   const store = await getParseCacheStore();
   await store.delete(path);
   await store.save();
+}
+
+/**
+ * Push the active theme to the native View menu (lpx-explorer-3x8).
+ * The Rust side rebuilds the menu with a checkmark on the matching
+ * item and stores the value so subsequent `set_recent_menu` rebuilds
+ * preserve the checkmark.
+ */
+export async function setThemeMenu(theme: PersistedThemeMode): Promise<void> {
+  await invoke("set_theme_menu", { theme });
 }
 
 /**

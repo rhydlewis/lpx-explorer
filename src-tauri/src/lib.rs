@@ -3,9 +3,11 @@ mod bundle;
 mod commands;
 mod library;
 
+use std::sync::Mutex;
+
 use serde::Deserialize;
-use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
-use tauri::{AppHandle, Emitter, Wry};
+use tauri::menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu};
+use tauri::{AppHandle, Emitter, State, Wry};
 
 /// Local-time wall-clock stamp used by the `tlog!` macro. Format
 /// `HH:MM:SS.mmm` — short enough to scan, precise enough to spot
@@ -34,9 +36,66 @@ const MENU_CLEAR_RECENT_PROJECTS: &str = "clear_recent_projects";
 const MENU_CLEAR_RECENT_FOLDERS: &str = "clear_recent_folders";
 const MENU_REPORT_ISSUE: &str = "help_report_issue";
 const MENU_BUY_ME_COFFEE: &str = "help_buy_me_coffee";
+const MENU_THEME_SYSTEM: &str = "theme_system";
+const MENU_THEME_LIGHT: &str = "theme_light";
+const MENU_THEME_DARK: &str = "theme_dark";
 const PREFIX_RECENT_PROJECT: &str = "recent_project::";
 const PREFIX_RECENT_FOLDER: &str = "recent_folder::";
 const MENU_EVENT: &str = "menu-event";
+
+const THEME_SYSTEM: &str = "system";
+const THEME_LIGHT: &str = "light";
+const THEME_DARK: &str = "dark";
+
+/// Tauri-managed state holding the theme that should be checked in the
+/// View menu (lpx-explorer-3x8). Read on every menu rebuild — both
+/// `set_recent_menu` and `set_theme_menu` consult this so a recents
+/// update doesn't lose the theme checkmark, and a theme update
+/// preserves the recents.
+#[derive(Default)]
+struct AppMenuState {
+    active_theme: Mutex<String>,
+}
+
+fn active_theme_or_default(state: &AppMenuState) -> String {
+    let guard = state.active_theme.lock().expect("theme state poisoned");
+    if guard.is_empty() {
+        THEME_SYSTEM.to_owned()
+    } else {
+        guard.clone()
+    }
+}
+
+fn build_view_submenu(
+    app: &AppHandle,
+    active_theme: &str,
+) -> tauri::Result<Submenu<Wry>> {
+    let system = CheckMenuItem::with_id(
+        app,
+        MENU_THEME_SYSTEM,
+        "System",
+        true,
+        active_theme == THEME_SYSTEM,
+        None::<&str>,
+    )?;
+    let light = CheckMenuItem::with_id(
+        app,
+        MENU_THEME_LIGHT,
+        "Light",
+        true,
+        active_theme == THEME_LIGHT,
+        None::<&str>,
+    )?;
+    let dark = CheckMenuItem::with_id(
+        app,
+        MENU_THEME_DARK,
+        "Dark",
+        true,
+        active_theme == THEME_DARK,
+        None::<&str>,
+    )?;
+    Submenu::with_items(app, "View", true, &[&system, &light, &dark])
+}
 
 #[derive(Debug, Deserialize)]
 pub struct RecentMenuItem {
@@ -84,6 +143,7 @@ fn build_menu(
     app: &AppHandle,
     recent_projects: &[RecentMenuItem],
     recent_folders: &[RecentMenuItem],
+    active_theme: &str,
 ) -> tauri::Result<Menu<Wry>> {
     let app_menu = Submenu::with_items(
         app,
@@ -184,20 +244,53 @@ fn build_menu(
         ],
     )?;
 
-    Menu::with_items(app, &[&app_menu, &file_menu, &edit_menu, &help_menu])
+    let view_menu = build_view_submenu(app, active_theme)?;
+
+    Menu::with_items(
+        app,
+        &[&app_menu, &file_menu, &edit_menu, &view_menu, &help_menu],
+    )
 }
 
 /// Frontend-invoked rebuild: called whenever the recent-projects or
 /// recent-folders list changes (in-session adds, hydration on launch,
 /// "Clear Menu" wipes). Re-sets the entire native menu so the submenus
-/// reflect the latest state.
+/// reflect the latest state. The View-menu checkmark is preserved by
+/// reading the theme from the AppMenuState managed by Tauri.
 #[tauri::command]
 fn set_recent_menu(
     app: AppHandle,
+    state: State<'_, AppMenuState>,
     recent_projects: Vec<RecentMenuItem>,
     recent_folders: Vec<RecentMenuItem>,
 ) -> Result<(), String> {
-    let menu = build_menu(&app, &recent_projects, &recent_folders)
+    let active_theme = active_theme_or_default(&state);
+    let menu = build_menu(&app, &recent_projects, &recent_folders, &active_theme)
+        .map_err(|e| format!("failed to build menu: {e}"))?;
+    app.set_menu(menu)
+        .map_err(|e| format!("failed to set menu: {e}"))?;
+    Ok(())
+}
+
+/// Frontend-invoked: update the active-theme checkmark in the View
+/// menu (lpx-explorer-3x8). Stores the theme in AppMenuState so
+/// subsequent menu rebuilds (recents updates, etc) keep the checkmark
+/// in the right place. Rebuilds with empty recents — the frontend
+/// re-pushes recents via set_recent_menu on its own schedule.
+#[tauri::command]
+fn set_theme_menu(
+    app: AppHandle,
+    state: State<'_, AppMenuState>,
+    theme: String,
+) -> Result<(), String> {
+    {
+        let mut guard = state
+            .active_theme
+            .lock()
+            .map_err(|e| format!("theme state poisoned: {e}"))?;
+        *guard = theme.clone();
+    }
+    let menu = build_menu(&app, &[], &[], &theme)
         .map_err(|e| format!("failed to build menu: {e}"))?;
     app.set_menu(menu)
         .map_err(|e| format!("failed to set menu: {e}"))?;
@@ -211,6 +304,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_store::Builder::default().build())
+        .manage(AppMenuState::default())
         .invoke_handler(tauri::generate_handler![
             auval::load_au_registry,
             auval::run_au_scan,
@@ -220,11 +314,15 @@ pub fn run() {
             commands::parse_project,
             commands::project_data_stat,
             library::scan_folder,
-            set_recent_menu
+            set_recent_menu,
+            set_theme_menu
         ])
         .setup(|app| {
             tlog!("[main] setup() entered");
-            let menu = build_menu(app.handle(), &[], &[])?;
+            // Initial menu uses 'system' as the default theme; the
+            // frontend re-pushes the persisted preference once it
+            // hydrates via set_theme_menu.
+            let menu = build_menu(app.handle(), &[], &[], THEME_SYSTEM)?;
             app.set_menu(menu)?;
             tlog!("[main] setup() done — menu attached, webview booting");
             Ok(())
