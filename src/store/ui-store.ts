@@ -3,6 +3,14 @@ import { create } from "zustand";
 /** Plug-in rail chip filter — narrows the project's deduped plug-in list. */
 export type PluginRailChip = "all" | "installed" | "missing" | "duplicated";
 
+/**
+ * `<PluginRail />` scope. `'project'` shows the currently-loaded
+ * project's plug-ins (the original behaviour); `'library'` rolls up
+ * every plug-in across `useLibraryStore.recent` + every project under
+ * `useLibraryStore.folders`. Per lpx-explorer-185.
+ */
+export type PluginRailScope = "project" | "library";
+
 export interface UIState {
   railVisible: boolean;
   setRailVisible: (visible: boolean) => void;
@@ -23,6 +31,9 @@ export interface UIState {
   /** Chip filter on the right-rail plug-in list. */
   pluginRailChip: PluginRailChip;
   setPluginRailChip: (chip: PluginRailChip) => void;
+  /** Per-project vs library-wide scope on the right-rail plug-in list. */
+  pluginRailScope: PluginRailScope;
+  setPluginRailScope: (scope: PluginRailScope) => void;
   /**
    * Bump-counter the Compatibility pill increments to ask the rail to
    * scroll/highlight its first missing plug-in. PluginRail subscribes
@@ -88,6 +99,8 @@ export const useUIStore = create<UIState>((set) => ({
   setPluginRailFilter: (q: string) => set({ pluginRailFilter: q }),
   pluginRailChip: "all",
   setPluginRailChip: (chip: PluginRailChip) => set({ pluginRailChip: chip }),
+  pluginRailScope: "project",
+  setPluginRailScope: (scope: PluginRailScope) => set({ pluginRailScope: scope }),
   pluginRailJumpToMissingNonce: 0,
   requestJumpToMissing: () =>
     set((s) => ({

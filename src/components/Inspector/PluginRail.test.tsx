@@ -3,6 +3,8 @@ import { fireEvent, render, screen } from "@testing-library/react";
 
 import type { AURef } from "../../lib/types";
 import { useAuRegistryStore } from "../../store/au-registry-store";
+import { useLibraryStore } from "../../store/library-store";
+import { useLibrarySummariesStore } from "../../store/library-summaries-store";
 import { useUIStore } from "../../store/ui-store";
 import { makeAuRegistry, makeSummary } from "../../test/fixtures";
 
@@ -11,12 +13,24 @@ vi.mock("../../lib/plugin-actions", () => ({
   searchPluginOnWeb: vi.fn().mockResolvedValue(undefined),
 }));
 
+vi.mock("../../lib/parse", () => ({
+  parseProject: vi.fn(),
+}));
+
+vi.mock("../../lib/open-project", () => ({
+  openProject: vi.fn().mockResolvedValue(undefined),
+}));
+
+import { parseProject } from "../../lib/parse";
+import { openProject } from "../../lib/open-project";
 import { copyFingerprint, searchPluginOnWeb } from "../../lib/plugin-actions";
 
 import { PluginRail } from "./PluginRail";
 
 const mockedCopy = vi.mocked(copyFingerprint);
 const mockedSearch = vi.mocked(searchPluginOnWeb);
+const mockedParse = vi.mocked(parseProject);
+const mockedOpen = vi.mocked(openProject);
 
 function ref(
   type: string,
@@ -29,14 +43,28 @@ function ref(
 
 describe("<PluginRail />", () => {
   beforeEach(() => {
-    useUIStore.setState({ pluginRailFilter: "", pluginRailChip: "all" });
+    useUIStore.setState({
+      pluginRailFilter: "",
+      pluginRailChip: "all",
+      pluginRailScope: "project",
+    });
     useAuRegistryStore.setState({ status: { kind: "idle" } });
+    useLibraryStore.setState({ recent: [], folders: [] });
+    useLibrarySummariesStore.getState().clear();
     mockedCopy.mockClear();
     mockedSearch.mockClear();
+    mockedParse.mockReset();
+    mockedOpen.mockClear();
   });
   afterEach(() => {
-    useUIStore.setState({ pluginRailFilter: "", pluginRailChip: "all" });
+    useUIStore.setState({
+      pluginRailFilter: "",
+      pluginRailChip: "all",
+      pluginRailScope: "project",
+    });
     useAuRegistryStore.setState({ status: { kind: "idle" } });
+    useLibraryStore.setState({ recent: [], folders: [] });
+    useLibrarySummariesStore.getState().clear();
   });
 
   it("renders the section under aria-label='plug-ins'", () => {
@@ -407,5 +435,107 @@ describe("<PluginRail />", () => {
     );
 
     expect(screen.queryByLabelText(/klopfgeist/i)).toBeNull();
+  });
+
+  describe("scope toggle (lpx-explorer-185)", () => {
+    it("renders 'This project' / 'Library' segmented controls in the header", () => {
+      render(<PluginRail summary={makeSummary()} />);
+
+      expect(
+        screen.getByRole("button", { name: /this project/i }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /library/i }),
+      ).toBeInTheDocument();
+    });
+
+    it("clicking 'Library' flips ui-store.pluginRailScope", () => {
+      render(<PluginRail summary={makeSummary()} />);
+
+      fireEvent.click(screen.getByRole("button", { name: /library/i }));
+
+      expect(useUIStore.getState().pluginRailScope).toBe("library");
+    });
+
+    it("library scope renders rolled-up rows aggregated across the library", async () => {
+      // Two recent projects each containing the same plug-in. Library
+      // scope rolls them up to one row with a 'used in 2 projects' badge.
+      useLibraryStore.setState({
+        recent: [
+          { path: "/a.logicx", name: "a", lastLoadedMs: 1 },
+          { path: "/b.logicx", name: "b", lastLoadedMs: 2 },
+        ],
+        folders: [],
+      });
+      mockedParse.mockImplementation(async (path: string) => {
+        if (path === "/a.logicx") {
+          return makeSummary({
+            fingerprints: [ref("aumu", "EZk2", "Toon", 1)],
+          });
+        }
+        if (path === "/b.logicx") {
+          return makeSummary({
+            fingerprints: [ref("aumu", "EZk2", "Toon", 2)],
+          });
+        }
+        return makeSummary();
+      });
+      useUIStore.setState({ pluginRailScope: "library" });
+
+      render(<PluginRail summary={makeSummary()} />);
+
+      // Wait for the parse promises to settle. The store updates and
+      // re-renders the rail with the rolled-up row.
+      await screen.findByText(/used in 2 projects/i);
+      expect(screen.getByText("aumu/EZk2/Toon")).toBeInTheDocument();
+    });
+
+    it("library scope rows disclose contributing project paths on click", async () => {
+      useLibraryStore.setState({
+        recent: [{ path: "/a.logicx", name: "a", lastLoadedMs: 1 }],
+        folders: [],
+      });
+      mockedParse.mockResolvedValue(
+        makeSummary({ fingerprints: [ref("aumu", "EZk2", "Toon", 1)] }),
+      );
+      useUIStore.setState({ pluginRailScope: "library" });
+
+      render(<PluginRail summary={makeSummary()} />);
+
+      await screen.findByText(/used in 1 project/i);
+      const disclosure = screen.getByText(/used in 1 project/i)
+        .closest("details");
+      expect(disclosure).not.toBeNull();
+      // Open the disclosure and check the project path appears.
+      if (disclosure !== null) {
+        fireEvent.click(disclosure.querySelector("summary")!);
+      }
+      expect(screen.getByText("/a.logicx")).toBeInTheDocument();
+    });
+
+    it("clicking a project path inside a library row opens that project", async () => {
+      useLibraryStore.setState({
+        recent: [{ path: "/a.logicx", name: "a", lastLoadedMs: 1 }],
+        folders: [],
+      });
+      mockedParse.mockResolvedValue(
+        makeSummary({ fingerprints: [ref("aumu", "EZk2", "Toon", 1)] }),
+      );
+      useUIStore.setState({ pluginRailScope: "library" });
+
+      render(<PluginRail summary={makeSummary()} />);
+
+      await screen.findByText(/used in 1 project/i);
+      // Open the disclosure first.
+      const summary = screen
+        .getByText(/used in 1 project/i)
+        .closest("details")
+        ?.querySelector("summary");
+      if (summary) fireEvent.click(summary);
+
+      fireEvent.click(screen.getByText("/a.logicx"));
+
+      expect(mockedOpen).toHaveBeenCalledWith("/a.logicx");
+    });
   });
 });

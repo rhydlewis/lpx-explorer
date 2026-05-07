@@ -2,14 +2,29 @@ import { useEffect, useMemo, useRef } from "react";
 
 import { Ghost } from "lucide-react";
 
-import {
-  groupFingerprints,
-  installStatusOf,
-  type FingerprintGroup,
-  type InstallStatus,
-} from "../../lib/au-utils";
+import { type InstallStatus } from "../../lib/au-utils";
+import { aggregateLibrary } from "../../lib/library-rollup";
 import { copyFingerprint, searchPluginOnWeb } from "../../lib/plugin-actions";
 import type { AuRegistry, ProjectSummary } from "../../lib/types";
+import { useAuRegistryStore } from "../../store/au-registry-store";
+import { useLibraryStore } from "../../store/library-store";
+import { useLibrarySummariesStore } from "../../store/library-summaries-store";
+import {
+  useUIStore,
+  type PluginRailChip,
+  type PluginRailScope,
+} from "../../store/ui-store";
+
+import { LibraryPluginRow } from "./LibraryPluginRow";
+import {
+  applyFilters,
+  buildDisplayGroups,
+  buildLibraryGroups,
+  type DisplayGroup,
+} from "./plugin-rail-groups";
+
+import sectionStyles from "./Inspector.module.css";
+import styles from "./PluginRail.module.css";
 
 /**
  * Apple's stock metronome AU. Klopfgeist is German for poltergeist /
@@ -20,14 +35,6 @@ import type { AuRegistry, ProjectSummary } from "../../lib/types";
  * as decoration.
  */
 const KLOPFGEIST_FINGERPRINT = "aumu/klop/appl";
-import { useAuRegistryStore } from "../../store/au-registry-store";
-import {
-  useUIStore,
-  type PluginRailChip,
-} from "../../store/ui-store";
-
-import sectionStyles from "./Inspector.module.css";
-import styles from "./PluginRail.module.css";
 
 interface Props {
   readonly summary: ProjectSummary;
@@ -45,12 +52,10 @@ const CHIPS: ReadonlyArray<{ id: PluginRailChip; label: string }> = [
   { id: "duplicated", label: "Duplicated" },
 ];
 
-interface DisplayGroup {
-  readonly group: FingerprintGroup;
-  readonly status: InstallStatus;
-  readonly displayName: string;
-  readonly hasRegistryEntry: boolean;
-}
+const SCOPES: ReadonlyArray<{ id: PluginRailScope; label: string }> = [
+  { id: "project", label: "This project" },
+  { id: "library", label: "Library" },
+];
 
 function loadedRegistry(
   status: ReturnType<typeof useAuRegistryStore.getState>["status"],
@@ -58,60 +63,11 @@ function loadedRegistry(
   return status.kind === "loaded" ? status.registry : null;
 }
 
-function buildDisplayGroups(
-  summary: ProjectSummary,
-  registry: AuRegistry | null,
-): ReadonlyArray<DisplayGroup> {
-  const groups = groupFingerprints(summary.fingerprints);
-  return groups.map((group) => {
-    // Apple stock plug-ins arrive with a real display_name and a
-    // synthesised fingerprint that won't match auval. Treat them as
-    // installed-by-default (they ship with Logic) and render the human
-    // name without the synthesised fingerprint sub-line.
-    if (group.display_name !== undefined) {
-      return {
-        group,
-        status: "installed" as InstallStatus,
-        displayName: group.display_name,
-        hasRegistryEntry: false,
-      };
-    }
-    const entry = registry?.entries.find(
-      (e) => e.fingerprint === group.fingerprint,
-    );
-    return {
-      group,
-      status: installStatusOf(group.fingerprint, registry),
-      displayName: entry?.name ?? group.fingerprint,
-      hasRegistryEntry: entry !== undefined,
-    };
-  });
-}
-
-function applyFilters(
-  all: ReadonlyArray<DisplayGroup>,
-  query: string,
-  chip: PluginRailChip,
-): ReadonlyArray<DisplayGroup> {
-  const needle = query.trim().toLowerCase();
-  return all.filter((g) => {
-    if (chip === "installed" && g.status !== "installed") return false;
-    if (chip === "missing" && g.status !== "missing") return false;
-    if (chip === "duplicated" && g.group.count < 2) return false;
-    if (needle === "") return true;
-    return (
-      g.displayName.toLowerCase().includes(needle) ||
-      g.group.fingerprint.toLowerCase().includes(needle)
-    );
-  });
-}
-
 /**
  * Right-rail plug-in panel — surfaces the project's deduped plug-ins
- * permanently alongside the Inspector's main column. Distinct from the
- * old in-column `<PluginList>` (now removed): always visible, has its
- * own search + chip filters, and is the focus target for the
- * Compatibility pill's jump-to-missing affordance.
+ * permanently alongside the Inspector's main column. A scope toggle
+ * flips between the loaded project and a library-wide rollup
+ * (lpx-explorer-185).
  */
 export function PluginRail({ summary }: Props) {
   const registry = useAuRegistryStore((s) => loadedRegistry(s.status));
@@ -119,12 +75,54 @@ export function PluginRail({ summary }: Props) {
   const setFilter = useUIStore((s) => s.setPluginRailFilter);
   const chip = useUIStore((s) => s.pluginRailChip);
   const setChip = useUIStore((s) => s.setPluginRailChip);
+  const scope = useUIStore((s) => s.pluginRailScope);
+  const setScope = useUIStore((s) => s.setPluginRailScope);
   const jumpNonce = useUIStore((s) => s.pluginRailJumpToMissingNonce);
 
-  const all = useMemo(
-    () => buildDisplayGroups(summary, registry),
-    [summary, registry],
-  );
+  const recentEntries = useLibraryStore((s) => s.recent);
+  const folderEntries = useLibraryStore((s) => s.folders);
+  const summariesMap = useLibrarySummariesStore((s) => s.summaries);
+  const getOrParse = useLibrarySummariesStore((s) => s.getOrParse);
+
+  const libraryPaths = useMemo<ReadonlyArray<string>>(() => {
+    const seen = new Set<string>();
+    for (const r of recentEntries) seen.add(r.path);
+    for (const f of folderEntries) {
+      for (const p of f.projects) seen.add(p);
+    }
+    return Array.from(seen);
+  }, [recentEntries, folderEntries]);
+
+  // When the user toggles to library scope, fetch summaries for every
+  // path we know about. Lazy + de-duped: getOrParse short-circuits
+  // cached entries and collapses concurrent calls. Cancellable via the
+  // `cancelled` flag — a fast scope flip back to project shouldn't
+  // race a half-done fetch.
+  useEffect(() => {
+    if (scope !== "library") return;
+    let cancelled = false;
+    void (async () => {
+      for (const path of libraryPaths) {
+        if (cancelled) return;
+        await getOrParse(path);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [scope, libraryPaths, getOrParse]);
+
+  const all = useMemo<ReadonlyArray<DisplayGroup>>(() => {
+    if (scope !== "library") {
+      return buildDisplayGroups(summary, registry);
+    }
+    // Include the currently-loaded project's summary in the rollup so
+    // the active project always contributes regardless of cache state.
+    const map = new Map<string, ProjectSummary>(summariesMap);
+    map.set("__current__", summary);
+    return buildLibraryGroups(aggregateLibrary(map), registry);
+  }, [scope, summary, registry, summariesMap]);
+
   const visible = useMemo(
     () => applyFilters(all, filter, chip),
     [all, filter, chip],
@@ -132,11 +130,6 @@ export function PluginRail({ summary }: Props) {
 
   const listRef = useRef<HTMLUListElement | null>(null);
 
-  // Compatibility pill jump: when the nonce bumps, find the first row
-  // with data-status='missing', scroll it into view, and toggle a
-  // transient highlight class. The CSS animation runs once and ends —
-  // no JS timer to clean up. Skip the initial mount (nonce 0) so the
-  // rail doesn't auto-scroll on every project load.
   useEffect(() => {
     if (jumpNonce === 0) return;
     const list = listRef.current;
@@ -147,9 +140,6 @@ export function PluginRail({ summary }: Props) {
     if (target === null) return;
     target.scrollIntoView({ behavior: "smooth", block: "nearest" });
     target.setAttribute("data-highlight", "true");
-    // The CSS animation is 2s; clear the attribute slightly later so a
-    // second jump can re-trigger it (CSS animations don't restart on
-    // attribute set unless removed first).
     const t = window.setTimeout(() => {
       target.removeAttribute("data-highlight");
     }, 2200);
@@ -165,6 +155,19 @@ export function PluginRail({ summary }: Props) {
             ? `${all.length}`
             : `${visible.length} / ${all.length}`}
         </span>
+      </div>
+      <div className={styles.scopeRow} role="group" aria-label="plug-in scope">
+        {SCOPES.map((s) => (
+          <button
+            key={s.id}
+            type="button"
+            data-active={scope === s.id}
+            className={styles.scopeButton}
+            onClick={() => setScope(s.id)}
+          >
+            {s.label}
+          </button>
+        ))}
       </div>
       <input
         type="search"
@@ -191,7 +194,7 @@ export function PluginRail({ summary }: Props) {
           </button>
         ))}
       </div>
-      <PluginRailBody all={all} visible={visible} listRef={listRef} />
+      <PluginRailBody all={all} visible={visible} listRef={listRef} scope={scope} />
     </section>
   );
 }
@@ -200,9 +203,10 @@ interface BodyProps {
   readonly all: ReadonlyArray<DisplayGroup>;
   readonly visible: ReadonlyArray<DisplayGroup>;
   readonly listRef: React.RefObject<HTMLUListElement | null>;
+  readonly scope: PluginRailScope;
 }
 
-function PluginRailBody({ all, visible, listRef }: BodyProps) {
+function PluginRailBody({ all, visible, listRef, scope }: BodyProps) {
   if (all.length === 0) {
     return <p className={sectionStyles.placeholder}>No plug-ins detected.</p>;
   }
@@ -211,9 +215,19 @@ function PluginRailBody({ all, visible, listRef }: BodyProps) {
   }
   return (
     <ul ref={listRef} className={styles.list}>
-      {visible.map((g) => (
-        <PluginRow key={g.group.fingerprint} group={g} />
-      ))}
+      {visible.map((g) =>
+        scope === "library" && g.rolled !== undefined ? (
+          <LibraryPluginRow
+            key={g.group.fingerprint}
+            fingerprint={g.group.fingerprint}
+            displayName={g.displayName}
+            status={g.status}
+            rolled={g.rolled}
+          />
+        ) : (
+          <PluginRow key={g.group.fingerprint} group={g} />
+        ),
+      )}
     </ul>
   );
 }
