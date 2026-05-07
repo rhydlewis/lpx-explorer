@@ -1,6 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 
+import { useProjectStore } from "../../store/project-store";
+import { useUIStore } from "../../store/ui-store";
+
 import { ProjectHeader } from "./ProjectHeader";
 
 describe("<ProjectHeader />", () => {
@@ -106,6 +109,50 @@ describe("<ProjectHeader />", () => {
         screen.queryByRole("button", { name: /copy path/i }),
       ).toBeNull();
       expect(writeText).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("back-to-library affordance (lpx-explorer-vrt)", () => {
+    beforeEach(() => {
+      useUIStore.setState({ selectedLibraryFolder: null });
+      useProjectStore.setState({
+        current: {
+          kind: "loaded",
+          path: "/x.logicx",
+          summary: { fingerprints: [], metadata: {} as never, stats: {} as never, tracks: [], tracks_registry: [] },
+        },
+      });
+    });
+    afterEach(() => {
+      useUIStore.setState({ selectedLibraryFolder: null });
+      useProjectStore.getState().clear();
+    });
+
+    it("renders a 'Library' button when a library folder is selected", () => {
+      useUIStore.setState({ selectedLibraryFolder: "/Users/rhyd/Music/Logic" });
+      render(<ProjectHeader path="/x.logicx" />);
+
+      expect(
+        screen.getByRole("button", { name: /library/i }),
+      ).toBeInTheDocument();
+    });
+
+    it("does NOT render the button when no library folder is selected", () => {
+      useUIStore.setState({ selectedLibraryFolder: null });
+      render(<ProjectHeader path="/x.logicx" />);
+
+      expect(
+        screen.queryByRole("button", { name: /^library$/i }),
+      ).toBeNull();
+    });
+
+    it("clicking the button clears the project store (returns to LibraryHome)", () => {
+      useUIStore.setState({ selectedLibraryFolder: "/Users/rhyd/Music/Logic" });
+      render(<ProjectHeader path="/x.logicx" />);
+
+      fireEvent.click(screen.getByRole("button", { name: /library/i }));
+
+      expect(useProjectStore.getState().current.kind).toBe("idle");
     });
   });
 });

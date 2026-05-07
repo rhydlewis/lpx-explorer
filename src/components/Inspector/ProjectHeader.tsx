@@ -1,5 +1,9 @@
 import { useEffect, useState } from "react";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
+import { ChevronLeft } from "lucide-react";
+
+import { useProjectStore } from "../../store/project-store";
+import { useUIStore } from "../../store/ui-store";
 
 import styles from "./ProjectHeader.module.css";
 
@@ -26,6 +30,8 @@ function trimmedPath(path: string): string {
 export function ProjectHeader({ path }: Props) {
   const trimmed = trimmedPath(path);
   const [menuPos, setMenuPos] = useState<MenuPos | null>(null);
+  const selectedLibraryFolder = useUIStore((s) => s.selectedLibraryFolder);
+  const clearProject = useProjectStore((s) => s.clear);
 
   // Dismiss-on-outside-click + Escape. Listeners attach only while the
   // menu is open so we don't run a global keydown handler the rest of
@@ -48,6 +54,16 @@ export function ProjectHeader({ path }: Props) {
 
   return (
     <section aria-label="project" className={styles.header}>
+      {selectedLibraryFolder !== null && (
+        <button
+          type="button"
+          className={styles.backButton}
+          onClick={() => clearProject()}
+        >
+          <ChevronLeft size="0.9em" aria-hidden="true" />
+          <span>Library</span>
+        </button>
+      )}
       <h2 className={styles.name} title={trimmed}>
         {projectNameOf(path)}
       </h2>

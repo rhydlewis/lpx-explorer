@@ -5,6 +5,39 @@
   margin-bottom: var(--s-5);
 }
 
+/*
+ * Back-to-library button — surfaces only when the user reached the
+ * inspector via a LibraryRail folder selection (lpx-explorer-vrt).
+ * Hidden for projects opened directly via Pick / Recent. Subtle
+ * styling so it reads as a navigational hint rather than competing
+ * with the project name.
+ */
+.backButton {
+  appearance: none;
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-1);
+  background: transparent;
+  border: 0;
+  padding: 2px 0;
+  font-family: inherit;
+  font-size: var(--fs-secondary);
+  color: var(--c-accent);
+  cursor: pointer;
+  margin-bottom: var(--s-1);
+}
+
+.backButton:hover {
+  text-decoration: underline;
+}
+
+.backButton:focus-visible {
+  outline: 2px solid var(--c-accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
 .name {
   font-size: var(--fs-h2);
   font-weight: 600;
