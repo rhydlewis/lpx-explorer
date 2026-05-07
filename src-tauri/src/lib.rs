@@ -3,33 +3,28 @@ mod bundle;
 mod commands;
 mod library;
 
-use std::sync::OnceLock;
-use std::time::Instant;
-
 use serde::Deserialize;
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
 use tauri::{AppHandle, Emitter, Wry};
 
-/// Process-wide start instant used by the `tlog!` macro to prepend
-/// elapsed-since-startup to every diagnostic line. Initialised lazily
-/// on first use; `run()` forces initialisation on its very first line
-/// so the first log entry reads `+0ms`.
-static APP_START: OnceLock<Instant> = OnceLock::new();
-
+/// Local-time wall-clock stamp used by the `tlog!` macro. Format
+/// `HH:MM:SS.mmm` — short enough to scan, precise enough to spot
+/// 100ms-scale stalls. Re-evaluated on every call (no static cache);
+/// `chrono::Local::now()` is cheap relative to the eprintln itself.
 #[doc(hidden)]
-pub fn elapsed_ms() -> u128 {
-    APP_START.get_or_init(Instant::now).elapsed().as_millis()
+pub fn now_hms() -> String {
+    chrono::Local::now().format("%H:%M:%S%.3f").to_string()
 }
 
-/// Diagnostic logger. Prepends `[+Nms]` (since process start) to every
+/// Diagnostic logger. Prepends `[HH:MM:SS.mmm]` local time to every
 /// line and writes to stderr — appears in the `tauri dev` terminal.
 /// Used by both Rust callers and the `log_event` Tauri command (which
 /// is invoked by the JS-side dev-log bridge), so JS and Rust events
-/// share a single timeline. Per the user's startup-triage request.
+/// share a single timeline.
 #[macro_export]
 macro_rules! tlog {
     ($($arg:tt)*) => {
-        eprintln!("[+{}ms] {}", $crate::elapsed_ms(), format_args!($($arg)*))
+        eprintln!("[{}] {}", $crate::now_hms(), format_args!($($arg)*))
     };
 }
 
@@ -211,10 +206,6 @@ fn set_recent_menu(
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    // Force-initialise the app-start instant on the very first line so
-    // the `[main] start` entry reads `+0ms`. Every subsequent tlog!
-    // is relative to this point.
-    APP_START.get_or_init(Instant::now);
     tlog!("[main] start");
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())

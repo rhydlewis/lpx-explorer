@@ -29,6 +29,10 @@ serde_json = "1"
 thiserror = "1"
 lpx-parser = { path = "crates/lpx-parser" }
 tauri-plugin-store = "2.4.3"
+# Used by the `tlog!` diagnostic logger to stamp wall-clock time on every
+# line. Already in Cargo.lock as a transitive dep; explicitly depending
+# costs nothing in build time / binary size.
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
 
 [dev-dependencies]
 tempfile = "3"
