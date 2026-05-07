@@ -36,7 +36,7 @@
 .primary {
   background-color: var(--c-accent);
   border-color: var(--c-accent);
-  color: #fff;
+  color: var(--c-on-saturated);
   font-weight: 500;
 }
 

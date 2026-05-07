@@ -99,17 +99,17 @@
 
 .pill[data-kind="instrument"] {
   color: var(--c-status-clean);
-  background-color: rgba(52, 199, 89, 0.14);
+  background-color: var(--c-track-instrument-bg);
 }
 
 .pill[data-kind="fx"] {
-  color: #3a8dde;
-  background-color: rgba(58, 141, 222, 0.14);
+  color: var(--c-track-fx);
+  background-color: var(--c-track-fx-bg);
 }
 
 .pill[data-kind="midi"] {
   color: var(--c-status-warn);
-  background-color: rgba(255, 159, 10, 0.16);
+  background-color: var(--c-track-midi-bg);
 }
 
 /*

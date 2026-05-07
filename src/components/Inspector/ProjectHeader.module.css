@@ -82,7 +82,7 @@
   background-color: var(--c-bg);
   border: 1px solid var(--c-divider);
   border-radius: var(--radius-md);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 4px 12px var(--c-shadow);
   padding: var(--s-1) 0;
   min-width: 140px;
 }
@@ -103,6 +103,6 @@
 .contextMenuItem:hover,
 .contextMenuItem:focus-visible {
   background-color: var(--c-accent);
-  color: #fff;
+  color: var(--c-on-saturated);
   outline: none;
 }

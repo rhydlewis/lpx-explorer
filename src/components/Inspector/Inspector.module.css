@@ -56,12 +56,12 @@
 
 .installBadge[data-status="installed"] {
   color: var(--c-status-clean);
-  background-color: rgba(52, 199, 89, 0.12);
+  background-color: var(--c-badge-installed);
 }
 
 .installBadge[data-status="missing"] {
   color: var(--c-status-fail);
-  background-color: rgba(255, 69, 58, 0.12);
+  background-color: var(--c-badge-missing);
 }
 
 .pluginList {

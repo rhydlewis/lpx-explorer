@@ -28,6 +28,40 @@
   --c-status-fail: #ff453a;
   --c-status-neutral: rgba(245, 245, 247, 0.4);
 
+  /* ─── Status tints (lpx-explorer-om5) ────────────────────────────────
+   * Three semantic intensities per status hue:
+   *   - 'band'  : header/banner backgrounds (CompatibilityVerdict)
+   *   - 'badge' : install-status pills (Inspector, PluginRail)
+   *   - 'pill'  : strong fills inside the band (CompatibilityVerdict items)
+   * Aliased so the light theme can override the alpha + base hue once
+   * lpx-explorer-712 lands. */
+  --c-band-clean: rgba(52, 199, 89, 0.06);
+  --c-band-warn: rgba(255, 159, 10, 0.08);
+  --c-band-fail: rgba(255, 69, 58, 0.06);
+  --c-band-neutral: rgba(0, 0, 0, 0.06);
+  --c-badge-installed: rgba(52, 199, 89, 0.12);
+  --c-badge-missing: rgba(255, 69, 58, 0.12);
+  --c-pill-clean: rgba(52, 199, 89, 0.15);
+  --c-pill-warn: rgba(255, 159, 10, 0.18);
+  --c-pill-fail: rgba(255, 69, 58, 0.15);
+
+  /* ─── Track-kind tints (TrackRow) ──────────────────────────────────── */
+  --c-track-instrument-bg: rgba(52, 199, 89, 0.14);
+  --c-track-fx: #3a8dde;
+  --c-track-fx-bg: rgba(58, 141, 222, 0.14);
+  --c-track-midi-bg: rgba(255, 159, 10, 0.16);
+
+  /* ─── Misc ─────────────────────────────────────────────────────────── */
+  /* Foreground on saturated coloured backgrounds (status pills,
+   * primary buttons). Always the high-contrast counterpoint to the bg. */
+  --c-on-saturated: #fff;
+  /* Drop shadow under floating panels (search results, etc). */
+  --c-shadow: rgba(0, 0, 0, 0.18);
+  /* Skeleton-loader shimmer highlight. */
+  --c-shimmer: rgba(255, 255, 255, 0.04);
+  /* Jump-to-missing flash keyframe (lpx-explorer-yqw). */
+  --c-highlight-flash: rgba(255, 200, 87, 0.5);
+
   /* ─── Spacing scale (4px base) ───────────────────────────────────── */
   --s-1: 4px;
   --s-2: 8px;

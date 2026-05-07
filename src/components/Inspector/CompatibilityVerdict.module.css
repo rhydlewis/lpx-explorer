@@ -21,17 +21,17 @@
 
 .band[data-status="clean"] {
   border-left-color: var(--c-status-clean);
-  background-color: rgba(52, 199, 89, 0.06);
+  background-color: var(--c-band-clean);
 }
 
 .band[data-status="warnings"] {
   border-left-color: var(--c-status-warn);
-  background-color: rgba(255, 159, 10, 0.08);
+  background-color: var(--c-band-warn);
 }
 
 .band[data-status="will-not-open"] {
   border-left-color: var(--c-status-fail);
-  background-color: rgba(255, 69, 58, 0.06);
+  background-color: var(--c-band-fail);
 }
 
 .band[data-status="scanning"],
@@ -74,24 +74,24 @@
   letter-spacing: 0.02em;
   padding: 2px var(--s-2);
   border-radius: var(--radius-sm);
-  background-color: rgba(0, 0, 0, 0.06);
+  background-color: var(--c-band-neutral);
   color: var(--c-text-primary);
   white-space: nowrap;
 }
 
 .badge[data-status="clean"] {
   color: var(--c-status-clean);
-  background-color: rgba(52, 199, 89, 0.15);
+  background-color: var(--c-pill-clean);
 }
 
 .badge[data-status="warnings"] {
   color: var(--c-status-warn);
-  background-color: rgba(255, 159, 10, 0.18);
+  background-color: var(--c-pill-warn);
 }
 
 .badge[data-status="will-not-open"] {
   color: var(--c-status-fail);
-  background-color: rgba(255, 69, 58, 0.15);
+  background-color: var(--c-pill-fail);
 }
 
 .badge[data-status="unknown"] {
@@ -112,7 +112,7 @@
 .cta {
   background-color: var(--c-accent);
   border-color: var(--c-accent);
-  color: #fff;
+  color: var(--c-on-saturated);
   font-size: var(--fs-secondary);
   font-weight: 500;
   white-space: nowrap;
