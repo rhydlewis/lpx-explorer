@@ -1,4 +1,4 @@
-import { folderNameOf } from "../../lib/path-utils";
+import { folderNameOf, projectNameOf } from "../../lib/path-utils";
 import type { FolderEntry } from "../../lib/types";
 import { useLibrarySummariesStore } from "../../store/library-summaries-store";
 
@@ -30,11 +30,8 @@ export function LibraryHome({ folder }: Props) {
     (n, path) => n + (summaries.has(path) ? 1 : 0),
     0,
   );
-  const errored = folder.projects.reduce(
-    (n, path) => n + (errors.has(path) ? 1 : 0),
-    0,
-  );
-  const progress = computeProgress(folder, total, parsed, errored);
+  const failedPaths = folder.projects.filter((path) => errors.has(path));
+  const progress = computeProgress(folder, total, parsed, failedPaths.length);
 
   return (
     <section
@@ -56,9 +53,38 @@ export function LibraryHome({ folder }: Props) {
             )}
           </p>
         )}
+        {failedPaths.length > 0 && (
+          <FailedList paths={failedPaths} errors={errors} />
+        )}
       </header>
       <Body folder={folder} />
     </section>
+  );
+}
+
+interface FailedListProps {
+  readonly paths: ReadonlyArray<string>;
+  readonly errors: ReadonlyMap<string, string>;
+}
+
+function FailedList({ paths, errors }: FailedListProps) {
+  return (
+    <details className={styles.failedList}>
+      <summary>
+        {paths.length} couldn't be read — show {paths.length === 1 ? "it" : "them"}
+      </summary>
+      <ul>
+        {paths.map((path) => (
+          <li key={path}>
+            <span className={styles.failedName}>{projectNameOf(path)}</span>
+            <span className={styles.failedPath}>{path}</span>
+            <span className={styles.failedReason}>
+              {errors.get(path) ?? "unknown error"}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </details>
   );
 }
 
@@ -79,25 +105,13 @@ function computeProgress(
   }
   // Both successfully-parsed AND errored projects count as 'done' —
   // otherwise a single corrupt bundle would trap the progress bar at
-  // 'N-1 of N…' forever. Surface a distinct label when the final
-  // count includes errors.
+  // 'N-1 of N…' forever. Once everything's settled, hide the line —
+  // <FailedList /> renders separately when there are errors.
   const settled = parsed + errored;
   if (folder.status.kind === "done" && total > 0 && settled < total) {
-    const label = errored > 0
-      ? `Reading ${settled} of ${total}… (${errored} couldn't be read)`
-      : `Reading ${settled} of ${total}…`;
     return {
-      label,
+      label: `Reading ${settled} of ${total}…`,
       percent: (settled / total) * 100,
-    };
-  }
-  // All settled but some errored — keep a quiet summary visible so the
-  // user knows why the count of 'plug-ins ready' is below their
-  // project count.
-  if (folder.status.kind === "done" && errored > 0 && settled === total) {
-    return {
-      label: `${errored} project${errored === 1 ? "" : "s"} couldn't be read`,
-      percent: null,
     };
   }
   return null;

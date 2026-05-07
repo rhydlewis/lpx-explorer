@@ -88,3 +88,70 @@
   margin: 0;
   font-size: var(--fs-secondary);
 }
+
+/*
+ * Expandable list of projects whose parse failed. The progress line
+ * tells the user a count; the user clicks to see WHICH projects, with
+ * paths + the parser's error message. Lets them spot orphaned
+ * "Untitled.logicx" stubs vs genuine corruption.
+ */
+.failedList {
+  font-size: var(--fs-secondary);
+  color: var(--c-text-secondary);
+}
+
+.failedList > summary {
+  cursor: pointer;
+  color: var(--c-status-warn);
+  user-select: none;
+  padding: var(--s-1) 0;
+}
+
+.failedList > summary:hover {
+  color: var(--c-status-fail);
+}
+
+.failedList ul {
+  list-style: none;
+  margin: var(--s-1) 0 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+.failedList li {
+  display: grid;
+  grid-template-columns: minmax(140px, auto) 1fr;
+  grid-template-areas:
+    "name reason"
+    "path path";
+  column-gap: var(--s-3);
+  row-gap: 2px;
+  padding: var(--s-1) var(--s-2);
+  background: var(--c-surface-2);
+  border-radius: var(--radius-sm);
+}
+
+.failedName {
+  grid-area: name;
+  font-weight: 500;
+  color: var(--c-text);
+}
+
+.failedReason {
+  grid-area: reason;
+  text-align: right;
+  color: var(--c-status-fail);
+  font-style: italic;
+}
+
+.failedPath {
+  grid-area: path;
+  color: var(--c-text-muted);
+  font-family: var(--font-mono);
+  font-size: calc(10px * var(--text-zoom));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
