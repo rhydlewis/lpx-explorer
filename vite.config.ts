@@ -29,4 +29,25 @@ export default defineConfig(async () => ({
       ignored: ["**/src-tauri/**"],
     },
   },
+  // Pre-bundle deps that emit hundreds of small modules. lucide-react
+  // is the offender on cold start: every icon is a separate module, so
+  // without this hint vite makes a fetch-per-icon and the webview
+  // sits dark for 15s+ while the bundle resolves
+  // (lpx-explorer triage 2026-05-08). Pinning these tells vite to
+  // bundle them once with esbuild and serve a single chunk.
+  optimizeDeps: {
+    include: [
+      "lucide-react",
+      "react",
+      "react-dom",
+      "react-dom/client",
+      "zustand",
+      "@tauri-apps/api/core",
+      "@tauri-apps/api/event",
+      "@tauri-apps/api/webview",
+      "@tauri-apps/plugin-dialog",
+      "@tauri-apps/plugin-opener",
+      "@tauri-apps/plugin-store",
+    ],
+  },
 }));
