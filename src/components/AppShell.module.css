@@ -1,6 +1,8 @@
 .shell {
   display: grid;
-  grid-template-rows: var(--topbar-height) 1fr;
+  /* Topbar sizes to content (auto) so its single button row grows with
+   * text-zoom rather than clipping at the fixed --topbar-height. */
+  grid-template-rows: auto 1fr;
   grid-template-columns: var(--rail-width) 1fr;
   grid-template-areas:
     "topbar topbar"
@@ -37,7 +39,11 @@
   background-color: var(--c-surface);
   display: flex;
   align-items: center;
-  padding: 0 var(--s-4);
+  /* Vertical padding so the topbar has consistent breathing room
+   * regardless of text-zoom; min-height matches the legacy fixed value
+   * so a topbar with no children doesn't visually collapse. */
+  min-height: var(--topbar-height);
+  padding: var(--s-1) var(--s-4);
 }
 
 .rail {

@@ -3,8 +3,13 @@
   align-items: center;
   gap: var(--s-2);
   width: 100%;
-  height: var(--row-height);
-  padding: 0 var(--s-2);
+  /*
+   * `min-height` instead of fixed `height` so rows grow when text-zoom
+   * scales the two-line content (project name + path) past 30px.
+   * Otherwise the lines collide at zoom > 1.0 (lpx-explorer-1kn follow-up).
+   */
+  min-height: var(--row-height);
+  padding: var(--s-1) var(--s-2);
   border: 0;
   border-radius: var(--radius-sm);
   background: transparent;
