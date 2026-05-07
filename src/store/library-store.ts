@@ -64,15 +64,25 @@ function updateFolderStatus(
   return folders.map((f) => (f.path === path ? { ...f, status } : f));
 }
 
-function appendFolderProject(
+function appendFolderProjects(
   folders: ReadonlyArray<FolderEntry>,
   path: string,
-  project: string,
+  newProjects: ReadonlyArray<string>,
 ): ReadonlyArray<FolderEntry> {
+  if (newProjects.length === 0) return folders;
   return folders.map((f) =>
-    f.path === path ? { ...f, projects: [...f.projects, project] } : f,
+    f.path === path ? { ...f, projects: [...f.projects, ...newProjects] } : f,
   );
 }
+
+/**
+ * Batch interval for scan-progress flushes. Without batching, a folder
+ * with 1000 projects fires 1000 sequential set() calls, triggering N
+ * re-renders of every subscriber and locking the UI thread under a
+ * render storm. 60ms keeps the progress feel snappy without saturating
+ * the renderer.
+ */
+const SCAN_FLUSH_MS = 60;
 
 export const useLibraryStore = create<LibraryState>((set, get) => ({
   recent: [],
@@ -160,17 +170,48 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
           : f,
       ),
     }));
-    const appendProject = (project: string) => {
+
+    // Batched appends: accumulate projects in a local buffer and flush
+    // on a SCAN_FLUSH_MS timer (or on scan completion). Without this,
+    // every project found triggered a set() — for a 1000-project folder
+    // that's 1000 cascading re-renders that visibly locked the UI.
+    const buffer: string[] = [];
+    let flushHandle: ReturnType<typeof setTimeout> | null = null;
+    const flushBuffer = () => {
+      if (buffer.length === 0) return;
+      const batch = buffer.splice(0);
       set((state) => ({
-        folders: appendFolderProject(state.folders, path, project),
+        folders: appendFolderProjects(state.folders, path, batch),
       }));
     };
+    const appendProject = (project: string) => {
+      buffer.push(project);
+      if (flushHandle === null) {
+        flushHandle = setTimeout(() => {
+          flushHandle = null;
+          flushBuffer();
+        }, SCAN_FLUSH_MS);
+      }
+    };
+
     try {
       await scanFolder(path, appendProject);
+      // Final flush — anything still in the buffer when the scan
+      // resolves needs to land before status flips to 'done'.
+      if (flushHandle !== null) {
+        clearTimeout(flushHandle);
+        flushHandle = null;
+      }
+      flushBuffer();
       set((state) => ({
         folders: updateFolderStatus(state.folders, path, { kind: "done" }),
       }));
     } catch (e) {
+      if (flushHandle !== null) {
+        clearTimeout(flushHandle);
+        flushHandle = null;
+      }
+      flushBuffer();
       set((state) => ({
         folders: updateFolderStatus(state.folders, path, {
           kind: "error",

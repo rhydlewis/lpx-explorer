@@ -148,40 +148,59 @@ describe("useLibraryStore", () => {
     expect(mockedScan).not.toHaveBeenCalled();
   });
 
-  it("appends discovered projects progressively as onProject is called", async () => {
-    let onProjectRef: ((path: string) => void) | undefined;
-    let resolveScan!: () => void;
-    mockedScan.mockImplementationOnce(async (_path, onProject) => {
-      onProjectRef = onProject;
-      await new Promise<void>((r) => {
-        resolveScan = r;
+  it("appends discovered projects progressively in batched flushes", async () => {
+    // startScan now batches onProject callbacks via a 60ms setTimeout
+    // (scan-storm fix on a 1000-project folder). Use fake timers to
+    // drive the flush deterministically. Final flush also fires when
+    // the scan resolves regardless of pending timer.
+    vi.useFakeTimers();
+    try {
+      let onProjectRef: ((path: string) => void) | undefined;
+      let resolveScan!: () => void;
+      mockedScan.mockImplementationOnce(async (_path, onProject) => {
+        onProjectRef = onProject;
+        await new Promise<void>((r) => {
+          resolveScan = r;
+        });
       });
-    });
 
-    const scanPromise = useLibraryStore.getState().addFolder("/Music/Logic");
-    expect(useLibraryStore.getState().folders[0]?.projects).toEqual([]);
+      const scanPromise = useLibraryStore
+        .getState()
+        .addFolder("/Music/Logic");
+      expect(useLibraryStore.getState().folders[0]?.projects).toEqual([]);
 
-    onProjectRef?.("/Music/Logic/a.logicx");
-    expect(useLibraryStore.getState().folders[0]?.projects).toEqual([
-      "/Music/Logic/a.logicx",
-    ]);
+      // Append three projects in rapid succession; nothing's flushed yet.
+      onProjectRef?.("/Music/Logic/a.logicx");
+      onProjectRef?.("/Music/Logic/b.logicx");
+      onProjectRef?.("/Music/Logic/c.logicx");
+      expect(useLibraryStore.getState().folders[0]?.projects).toEqual([]);
 
-    onProjectRef?.("/Music/Logic/b.logicx");
-    onProjectRef?.("/Music/Logic/c.logicx");
-    expect(useLibraryStore.getState().folders[0]?.projects).toEqual([
-      "/Music/Logic/a.logicx",
-      "/Music/Logic/b.logicx",
-      "/Music/Logic/c.logicx",
-    ]);
-    // Status stays "scanning" until the wrapper resolves.
-    expect(useLibraryStore.getState().folders[0]?.status).toEqual({
-      kind: "scanning",
-    });
+      // Advance past the flush interval — all three land at once.
+      await vi.advanceTimersByTimeAsync(80);
+      expect(useLibraryStore.getState().folders[0]?.projects).toEqual([
+        "/Music/Logic/a.logicx",
+        "/Music/Logic/b.logicx",
+        "/Music/Logic/c.logicx",
+      ]);
+      expect(useLibraryStore.getState().folders[0]?.status).toEqual({
+        kind: "scanning",
+      });
 
-    resolveScan();
-    await scanPromise;
+      // Anything appended in the LAST batch flushes on scan resolve,
+      // even before the timer would have fired.
+      onProjectRef?.("/Music/Logic/d.logicx");
+      resolveScan();
+      await scanPromise;
 
-    expect(useLibraryStore.getState().folders[0]?.status).toEqual({ kind: "done" });
+      expect(useLibraryStore.getState().folders[0]?.projects).toContain(
+        "/Music/Logic/d.logicx",
+      );
+      expect(useLibraryStore.getState().folders[0]?.status).toEqual({
+        kind: "done",
+      });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("startScan sets scanning status while the scan is in flight", async () => {
