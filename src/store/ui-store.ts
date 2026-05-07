@@ -11,6 +11,13 @@ export type PluginRailChip = "all" | "installed" | "missing" | "duplicated";
  */
 export type PluginRailScope = "project" | "library";
 
+/**
+ * `<PluginRail />` second chip row — orthogonal to `PluginRailChip`.
+ * Coarse categorisation derived from the AU type 4CC (lpx-explorer-01w).
+ * `'all'` is the default; the others narrow the rolled-up list.
+ */
+export type PluginRailCategory = "all" | "effect" | "instrument" | "midi";
+
 export interface UIState {
   railVisible: boolean;
   setRailVisible: (visible: boolean) => void;
@@ -34,6 +41,9 @@ export interface UIState {
   /** Per-project vs library-wide scope on the right-rail plug-in list. */
   pluginRailScope: PluginRailScope;
   setPluginRailScope: (scope: PluginRailScope) => void;
+  /** Coarse type-based category filter on the right-rail plug-in list. */
+  pluginRailCategory: PluginRailCategory;
+  setPluginRailCategory: (category: PluginRailCategory) => void;
   /**
    * Path of the LibraryRail folder the user has selected for browse
    * mode. When set AND no project is loaded, the main area renders the
@@ -108,6 +118,9 @@ export const useUIStore = create<UIState>((set) => ({
   setPluginRailChip: (chip: PluginRailChip) => set({ pluginRailChip: chip }),
   pluginRailScope: "project",
   setPluginRailScope: (scope: PluginRailScope) => set({ pluginRailScope: scope }),
+  pluginRailCategory: "all",
+  setPluginRailCategory: (category: PluginRailCategory) =>
+    set({ pluginRailCategory: category }),
   selectedLibraryFolder: null,
   setSelectedLibraryFolder: (path: string | null) =>
     set({ selectedLibraryFolder: path }),

@@ -46,6 +46,7 @@ describe("<PluginRail />", () => {
     useUIStore.setState({
       pluginRailFilter: "",
       pluginRailChip: "all",
+      pluginRailCategory: "all",
       pluginRailScope: "project",
     });
     useAuRegistryStore.setState({ status: { kind: "idle" } });
@@ -60,6 +61,7 @@ describe("<PluginRail />", () => {
     useUIStore.setState({
       pluginRailFilter: "",
       pluginRailChip: "all",
+      pluginRailCategory: "all",
       pluginRailScope: "project",
     });
     useAuRegistryStore.setState({ status: { kind: "idle" } });
@@ -435,6 +437,67 @@ describe("<PluginRail />", () => {
     );
 
     expect(screen.queryByLabelText(/klopfgeist/i)).toBeNull();
+  });
+
+  describe("category chip row (lpx-explorer-01w)", () => {
+    it("renders the four coarse categories: All / Effects / Instruments / MIDI", () => {
+      render(<PluginRail summary={makeSummary()} />);
+
+      const filterRow = screen.getByRole("group", {
+        name: /filter by category/i,
+      });
+      // Each label appears as a button inside this row.
+      ["All", "Effects", "Instruments", "MIDI"].forEach((label) => {
+        expect(
+          filterRow.querySelector(`button:not([disabled])`),
+        ).not.toBeNull();
+        expect(
+          Array.from(filterRow.querySelectorAll("button")).find(
+            (b) => b.textContent === label,
+          ),
+        ).toBeDefined();
+      });
+    });
+
+    it("clicking a category chip narrows the visible rows", () => {
+      // Two AUs: one effect (aufx), one instrument (aumu). Filter by
+      // 'Effects' should hide the instrument row.
+      render(
+        <PluginRail
+          summary={makeSummary({
+            fingerprints: [
+              ref("aufx", "Comp", "Yamh", 1),
+              ref("aumu", "EZk2", "Toon", 2),
+            ],
+          })}
+        />,
+      );
+
+      const filterRow = screen.getByRole("group", {
+        name: /filter by category/i,
+      });
+      const effects = Array.from(filterRow.querySelectorAll("button")).find(
+        (b) => b.textContent === "Effects",
+      );
+      fireEvent.click(effects!);
+
+      expect(screen.getByText("aufx/Comp/Yamh")).toBeInTheDocument();
+      expect(screen.queryByText("aumu/EZk2/Toon")).not.toBeInTheDocument();
+    });
+
+    it("clicking a category chip persists the choice in ui-store", () => {
+      render(<PluginRail summary={makeSummary()} />);
+
+      const filterRow = screen.getByRole("group", {
+        name: /filter by category/i,
+      });
+      const midi = Array.from(filterRow.querySelectorAll("button")).find(
+        (b) => b.textContent === "MIDI",
+      );
+      fireEvent.click(midi!);
+
+      expect(useUIStore.getState().pluginRailCategory).toBe("midi");
+    });
   });
 
   describe("scope toggle (lpx-explorer-185)", () => {

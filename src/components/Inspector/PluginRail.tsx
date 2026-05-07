@@ -11,6 +11,7 @@ import { useLibraryStore } from "../../store/library-store";
 import { useLibrarySummariesStore } from "../../store/library-summaries-store";
 import {
   useUIStore,
+  type PluginRailCategory,
   type PluginRailChip,
   type PluginRailScope,
 } from "../../store/ui-store";
@@ -52,6 +53,13 @@ const CHIPS: ReadonlyArray<{ id: PluginRailChip; label: string }> = [
   { id: "duplicated", label: "Duplicated" },
 ];
 
+const CATEGORIES: ReadonlyArray<{ id: PluginRailCategory; label: string }> = [
+  { id: "all", label: "All" },
+  { id: "effect", label: "Effects" },
+  { id: "instrument", label: "Instruments" },
+  { id: "midi", label: "MIDI" },
+];
+
 const SCOPES: ReadonlyArray<{ id: PluginRailScope; label: string }> = [
   { id: "project", label: "This project" },
   { id: "library", label: "Library" },
@@ -75,6 +83,8 @@ export function PluginRail({ summary }: Props) {
   const setFilter = useUIStore((s) => s.setPluginRailFilter);
   const chip = useUIStore((s) => s.pluginRailChip);
   const setChip = useUIStore((s) => s.setPluginRailChip);
+  const category = useUIStore((s) => s.pluginRailCategory);
+  const setCategory = useUIStore((s) => s.setPluginRailCategory);
   const scope = useUIStore((s) => s.pluginRailScope);
   const setScope = useUIStore((s) => s.setPluginRailScope);
   const jumpNonce = useUIStore((s) => s.pluginRailJumpToMissingNonce);
@@ -124,8 +134,8 @@ export function PluginRail({ summary }: Props) {
   }, [scope, summary, registry, summariesMap]);
 
   const visible = useMemo(
-    () => applyFilters(all, filter, chip),
-    [all, filter, chip],
+    () => applyFilters(all, filter, chip, category),
+    [all, filter, chip, category],
   );
 
   const listRef = useRef<HTMLUListElement | null>(null);
@@ -189,6 +199,23 @@ export function PluginRail({ summary }: Props) {
             data-active={chip === c.id}
             className={styles.chip}
             onClick={() => setChip(c.id)}
+          >
+            {c.label}
+          </button>
+        ))}
+      </div>
+      <div
+        className={styles.chips}
+        role="group"
+        aria-label="filter by category"
+      >
+        {CATEGORIES.map((c) => (
+          <button
+            key={c.id}
+            type="button"
+            data-active={category === c.id}
+            className={styles.chip}
+            onClick={() => setCategory(c.id)}
           >
             {c.label}
           </button>

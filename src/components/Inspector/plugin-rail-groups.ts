@@ -1,3 +1,4 @@
+import { categoryOfFingerprint } from "../../lib/au-categories";
 import {
   groupFingerprints,
   installStatusOf,
@@ -6,7 +7,7 @@ import {
 } from "../../lib/au-utils";
 import type { RolledFingerprint } from "../../lib/library-rollup";
 import type { AuRegistry, ProjectSummary } from "../../lib/types";
-import type { PluginRailChip } from "../../store/ui-store";
+import type { PluginRailCategory, PluginRailChip } from "../../store/ui-store";
 
 export interface DisplayGroup {
   readonly group: FingerprintGroup;
@@ -84,12 +85,19 @@ export function applyFilters(
   all: ReadonlyArray<DisplayGroup>,
   query: string,
   chip: PluginRailChip,
+  category: PluginRailCategory = "all",
 ): ReadonlyArray<DisplayGroup> {
   const needle = query.trim().toLowerCase();
   return all.filter((g) => {
     if (chip === "installed" && g.status !== "installed") return false;
     if (chip === "missing" && g.status !== "missing") return false;
     if (chip === "duplicated" && g.group.count < 2) return false;
+    if (
+      category !== "all" &&
+      categoryOfFingerprint(g.group.fingerprint) !== category
+    ) {
+      return false;
+    }
     if (needle === "") return true;
     return (
       g.displayName.toLowerCase().includes(needle) ||
