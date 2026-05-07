@@ -356,20 +356,47 @@ function App() {
           top: 0,
           left: 0,
           right: 0,
-          height: 28,
           background: "#ff00aa",
-          color: "#000",
-          fontFamily: "monospace",
-          fontSize: 12,
-          fontWeight: 700,
+          color: "#000000",
           zIndex: 100000,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          letterSpacing: "0.05em",
+          padding: 16,
+          fontFamily: "Helvetica, Arial, sans-serif",
+          fontSize: 24,
+          fontWeight: 900,
+          textAlign: "center",
+          lineHeight: 1.4,
         }}
       >
-        DIAGNOSTIC PAINT TEST — IF YOU SEE THIS, THE WEBVIEW IS PAINTING
+        <div>LARGE DOM TEXT — Helvetica 24px black on pink</div>
+        <svg
+          width="600"
+          height="40"
+          style={{ display: "block", margin: "8px auto" }}
+        >
+          <rect width="600" height="40" fill="#000" />
+          <text
+            x="300"
+            y="28"
+            fill="#fff"
+            fontSize="22"
+            fontWeight="900"
+            textAnchor="middle"
+            fontFamily="Helvetica"
+          >
+            SVG TEXT — different render path
+          </text>
+        </svg>
+        <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
+          <span style={{ background: "#0f0", color: "#000", padding: "4px 12px" }}>
+            GREEN
+          </span>
+          <span style={{ background: "#0ff", color: "#000", padding: "4px 12px" }}>
+            CYAN
+          </span>
+          <span style={{ background: "#ff0", color: "#000", padding: "4px 12px" }}>
+            YELLOW
+          </span>
+        </div>
       </div>
       <AppShell topBar={topBar} rail={rail} rightRail={rightRail} main={main} />
       {hint !== null && (
