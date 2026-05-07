@@ -1,41 +1,30 @@
 import { useEffect, useMemo, useRef } from "react";
 
-import { Ghost } from "lucide-react";
-
 import { type InstallStatus } from "../../lib/au-utils";
 import { aggregateLibrary } from "../../lib/library-rollup";
-import { copyFingerprint, searchPluginOnWeb } from "../../lib/plugin-actions";
 import type { AuRegistry, ProjectSummary } from "../../lib/types";
 import { useAuRegistryStore } from "../../store/au-registry-store";
 import { useLibraryStore } from "../../store/library-store";
 import { useLibrarySummariesStore } from "../../store/library-summaries-store";
 import {
   useUIStore,
-  type PluginRailCategory,
   type PluginRailChip,
   type PluginRailScope,
 } from "../../store/ui-store";
 
 import { LibraryPluginRow } from "./LibraryPluginRow";
+import { MissingRowActions } from "./MissingRowActions";
+import { RowIcon } from "./RowIcon";
 import {
   applyFilters,
   buildDisplayGroups,
   buildLibraryGroups,
+  sortLibraryGroups,
   type DisplayGroup,
 } from "./plugin-rail-groups";
 
 import sectionStyles from "./Inspector.module.css";
 import styles from "./PluginRail.module.css";
-
-/**
- * Apple's stock metronome AU. Klopfgeist is German for poltergeist /
- * knocker — the in-joke Apple's hidden in plain sight. Logic auto-loads
- * it into every project (most users never hear it). Triggers a small
- * `<Ghost />` mark next to the row name; the row is the only place this
- * easter egg surfaces, fires on the canonical fingerprint only, never
- * as decoration.
- */
-const KLOPFGEIST_FINGERPRINT = "aumu/klop/appl";
 
 interface Props {
   readonly summary: ProjectSummary;
@@ -53,13 +42,6 @@ const CHIPS: ReadonlyArray<{ id: PluginRailChip; label: string }> = [
   { id: "duplicated", label: "Duplicated" },
 ];
 
-const CATEGORIES: ReadonlyArray<{ id: PluginRailCategory; label: string }> = [
-  { id: "all", label: "All" },
-  { id: "effect", label: "Effects" },
-  { id: "instrument", label: "Instruments" },
-  { id: "midi", label: "MIDI" },
-];
-
 const SCOPES: ReadonlyArray<{ id: PluginRailScope; label: string }> = [
   { id: "project", label: "This project" },
   { id: "library", label: "Library" },
@@ -72,10 +54,15 @@ function loadedRegistry(
 }
 
 /**
- * Right-rail plug-in panel — surfaces the project's deduped plug-ins
- * permanently alongside the Inspector's main column. A scope toggle
- * flips between the loaded project and a library-wide rollup
- * (lpx-explorer-185).
+ * Right-rail plug-in panel. After the 2026-05-08 PM review
+ * (lpx-explorer-4l1):
+ *   - per-row Lucide icon (effect/instrument/midi) lives in the icon
+ *     column; Klopfgeist's Ghost glyph migrated here too
+ *   - category chip row removed (icons + search box do the same job)
+ *   - fingerprint sub-line off by default; toggle in the header
+ *   - count badge always sits on line 1 right of the name
+ *   - library-scope rows match line 1 of project-scope rows; the
+ *     project-paths disclosure stays underneath
  */
 export function PluginRail({ summary }: Props) {
   const registry = useAuRegistryStore((s) => loadedRegistry(s.status));
@@ -83,10 +70,12 @@ export function PluginRail({ summary }: Props) {
   const setFilter = useUIStore((s) => s.setPluginRailFilter);
   const chip = useUIStore((s) => s.pluginRailChip);
   const setChip = useUIStore((s) => s.setPluginRailChip);
-  const category = useUIStore((s) => s.pluginRailCategory);
-  const setCategory = useUIStore((s) => s.setPluginRailCategory);
   const scope = useUIStore((s) => s.pluginRailScope);
   const setScope = useUIStore((s) => s.setPluginRailScope);
+  const showFingerprints = useUIStore((s) => s.pluginRailShowFingerprints);
+  const toggleShowFingerprints = useUIStore(
+    (s) => s.togglePluginRailShowFingerprints,
+  );
   const jumpNonce = useUIStore((s) => s.pluginRailJumpToMissingNonce);
 
   const recentEntries = useLibraryStore((s) => s.recent);
@@ -103,11 +92,6 @@ export function PluginRail({ summary }: Props) {
     return Array.from(seen);
   }, [recentEntries, folderEntries]);
 
-  // When the user toggles to library scope, fetch summaries for every
-  // path we know about. Lazy + de-duped: getOrParse short-circuits
-  // cached entries and collapses concurrent calls. Cancellable via the
-  // `cancelled` flag — a fast scope flip back to project shouldn't
-  // race a half-done fetch.
   useEffect(() => {
     if (scope !== "library") return;
     let cancelled = false;
@@ -126,16 +110,21 @@ export function PluginRail({ summary }: Props) {
     if (scope !== "library") {
       return buildDisplayGroups(summary, registry);
     }
-    // Include the currently-loaded project's summary in the rollup so
-    // the active project always contributes regardless of cache state.
     const map = new Map<string, ProjectSummary>(summariesMap);
     map.set("__current__", summary);
-    return buildLibraryGroups(aggregateLibrary(map), registry);
+    return sortLibraryGroups(
+      buildLibraryGroups(aggregateLibrary(map), registry),
+    );
   }, [scope, summary, registry, summariesMap]);
 
   const visible = useMemo(
-    () => applyFilters(all, filter, chip, category),
-    [all, filter, chip, category],
+    () => applyFilters(all, filter, chip),
+    [all, filter, chip],
+  );
+
+  const missingCount = useMemo(
+    () => all.filter((g) => g.status === "missing").length,
+    [all],
   );
 
   const listRef = useRef<HTMLUListElement | null>(null);
@@ -160,12 +149,25 @@ export function PluginRail({ summary }: Props) {
     <section aria-label="plug-ins" className={styles.section}>
       <div className={styles.header}>
         <h3 className={sectionStyles.sectionLabel}>Plug-ins</h3>
-        <span className={styles.count}>
-          {visible.length === all.length
-            ? `${all.length}`
-            : `${visible.length} / ${all.length}`}
-        </span>
+        <button
+          type="button"
+          className={styles.fingerprintsToggle}
+          aria-pressed={showFingerprints}
+          onClick={toggleShowFingerprints}
+          title={
+            showFingerprints
+              ? "Hide technical IDs"
+              : "Show technical IDs (4CC fingerprints)"
+          }
+        >
+          {showFingerprints ? "Hide IDs" : "Show IDs"}
+        </button>
       </div>
+      <CountLine
+        visible={visible.length}
+        total={all.length}
+        missing={missingCount}
+      />
       <div className={styles.scopeRow} role="group" aria-label="plug-in scope">
         {SCOPES.map((s) => (
           <button
@@ -204,25 +206,37 @@ export function PluginRail({ summary }: Props) {
           </button>
         ))}
       </div>
-      <div
-        className={styles.chips}
-        role="group"
-        aria-label="filter by category"
-      >
-        {CATEGORIES.map((c) => (
-          <button
-            key={c.id}
-            type="button"
-            data-active={category === c.id}
-            className={styles.chip}
-            onClick={() => setCategory(c.id)}
-          >
-            {c.label}
-          </button>
-        ))}
-      </div>
-      <PluginRailBody all={all} visible={visible} listRef={listRef} scope={scope} />
+      <PluginRailBody
+        all={all}
+        visible={visible}
+        listRef={listRef}
+        scope={scope}
+        showFingerprints={showFingerprints}
+      />
     </section>
+  );
+}
+
+interface CountLineProps {
+  readonly visible: number;
+  readonly total: number;
+  readonly missing: number;
+}
+
+function CountLine({ visible, total, missing }: CountLineProps) {
+  const plural = total === 1 ? "" : "s";
+  const headline =
+    visible !== total ? `${visible} of ${total}` : `${total} plug-in${plural}`;
+  return (
+    <p className={styles.countLine}>
+      {headline}
+      {missing > 0 && (
+        <span className={styles.countMissing}>
+          {" · "}
+          {missing} missing
+        </span>
+      )}
+    </p>
   );
 }
 
@@ -231,9 +245,16 @@ interface BodyProps {
   readonly visible: ReadonlyArray<DisplayGroup>;
   readonly listRef: React.RefObject<HTMLUListElement | null>;
   readonly scope: PluginRailScope;
+  readonly showFingerprints: boolean;
 }
 
-function PluginRailBody({ all, visible, listRef, scope }: BodyProps) {
+function PluginRailBody({
+  all,
+  visible,
+  listRef,
+  scope,
+  showFingerprints,
+}: BodyProps) {
   if (all.length === 0) {
     return <p className={sectionStyles.placeholder}>No plug-ins detected.</p>;
   }
@@ -250,9 +271,14 @@ function PluginRailBody({ all, visible, listRef, scope }: BodyProps) {
             displayName={g.displayName}
             status={g.status}
             rolled={g.rolled}
+            showFingerprint={showFingerprints && g.hasRegistryEntry}
           />
         ) : (
-          <PluginRow key={g.group.fingerprint} group={g} />
+          <PluginRow
+            key={g.group.fingerprint}
+            group={g}
+            showFingerprint={showFingerprints}
+          />
         ),
       )}
     </ul>
@@ -261,11 +287,13 @@ function PluginRailBody({ all, visible, listRef, scope }: BodyProps) {
 
 interface RowProps {
   readonly group: DisplayGroup;
+  readonly showFingerprint: boolean;
 }
 
-function PluginRow({ group }: RowProps) {
+function PluginRow({ group, showFingerprint }: RowProps) {
   const { displayName, hasRegistryEntry, status } = group;
-  const showSecondLine = hasRegistryEntry;
+  const fingerprintLineVisible = showFingerprint && hasRegistryEntry;
+  const count = group.group.count;
   return (
     <li
       className={styles.row}
@@ -273,18 +301,10 @@ function PluginRow({ group }: RowProps) {
       data-status={status}
     >
       <div className={styles.line}>
+        <RowIcon fingerprint={group.group.fingerprint} status={status} />
         <span className={styles.name}>{displayName}</span>
-        {group.group.fingerprint === KLOPFGEIST_FINGERPRINT && (
-          <span
-            className={styles.klopfgeist}
-            aria-label="Klopfgeist (Logic's stock metronome)"
-            title="Klopfgeist — Logic's stock metronome (German: poltergeist)"
-          >
-            <Ghost size="0.85em" aria-hidden="true" />
-          </span>
-        )}
-        {!showSecondLine && group.group.count > 1 && (
-          <span className={styles.countBadge}>×{group.group.count}</span>
+        {count > 1 && (
+          <span className={styles.countBadge}>×{count}</span>
         )}
         {status !== "unknown" && (
           <span data-status={status} className={styles.installBadge}>
@@ -292,14 +312,11 @@ function PluginRow({ group }: RowProps) {
           </span>
         )}
       </div>
-      {showSecondLine && (
+      {fingerprintLineVisible && (
         <div className={styles.line}>
           <span className={styles.fingerprint}>
             {group.group.fingerprint}
           </span>
-          {group.group.count > 1 && (
-            <span className={styles.countBadge}>×{group.group.count}</span>
-          )}
         </div>
       )}
       {status === "missing" && (
@@ -312,28 +329,3 @@ function PluginRow({ group }: RowProps) {
   );
 }
 
-interface MissingActionsProps {
-  readonly fingerprint: string;
-  readonly displayName: string;
-}
-
-function MissingRowActions({ fingerprint, displayName }: MissingActionsProps) {
-  return (
-    <div className={styles.actions}>
-      <button
-        type="button"
-        className={styles.actionButton}
-        onClick={() => void copyFingerprint(fingerprint)}
-      >
-        Copy fingerprint
-      </button>
-      <button
-        type="button"
-        className={styles.actionButton}
-        onClick={() => void searchPluginOnWeb(displayName)}
-      >
-        Search the web
-      </button>
-    </div>
-  );
-}

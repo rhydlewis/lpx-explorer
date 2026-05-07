@@ -5,15 +5,21 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 
+import {
+  folderPathsDiffer,
+  maybeAutoAddDefaultLibrary,
+  subscribeLibraryPersistence,
+} from "./lib/library-hydration";
 import { openProject } from "./lib/open-project";
 import { pickAndAddFolder } from "./lib/open-folder";
 import { routeDrop } from "./lib/drop-routing";
 import {
   loadPersistedFolderPaths,
   loadPersistedLibrary,
+  loadShowFingerprints,
   loadTextZoom,
   persistFolderPaths,
-  persistLibrary,
+  persistShowFingerprints,
   persistTextZoom,
   setRecentMenu,
 } from "./lib/persistence";
@@ -32,67 +38,6 @@ import { LibraryRail } from "./components/Library/LibraryRail";
 import "./App.css";
 
 const HINT_DISMISS_MS = 4000;
-
-/**
- * Subscribe to LibraryStore changes and persist the deltas — recents,
- * recent folders, and the active-folder paths. Extracted from the
- * App.tsx hydration effect to keep that effect's cognitive complexity
- * under the lint budget.
- */
-function subscribeLibraryPersistence(persisted: {
-  recent: ReadonlyArray<{ readonly path: string }>;
-  recentFolders: ReadonlyArray<{ readonly path: string }>;
-}): () => void {
-  let prevRecent = persisted.recent;
-  let prevRecentFolders = persisted.recentFolders;
-  let prevFolderPaths = useLibraryStore
-    .getState()
-    .folders.map((f) => f.path);
-  return useLibraryStore.subscribe((state) => {
-    if (
-      state.recent !== prevRecent ||
-      state.recentFolders !== prevRecentFolders
-    ) {
-      prevRecent = state.recent;
-      prevRecentFolders = state.recentFolders;
-      void persistLibrary(state.recent, state.recentFolders);
-      void setRecentMenu(state.recent, state.recentFolders);
-    }
-    const nextFolderPaths = state.folders.map((f) => f.path);
-    if (folderPathsDiffer(prevFolderPaths, nextFolderPaths)) {
-      prevFolderPaths = nextFolderPaths;
-      void persistFolderPaths(nextFolderPaths);
-    }
-  });
-}
-
-function folderPathsDiffer(
-  prev: ReadonlyArray<string>,
-  next: ReadonlyArray<string>,
-): boolean {
-  if (prev.length !== next.length) return true;
-  for (let i = 0; i < prev.length; i += 1) {
-    if (prev[i] !== next[i]) return true;
-  }
-  return false;
-}
-
-/**
- * If `~/Music/Logic` exists, register it as a library folder. Used on
- * truly-first launch only (gated upstream by recents + recentFolders
- * both empty). The `isCancelled` thunk lets the caller abort if the
- * App component unmounts mid-flight.
- */
-async function maybeAutoAddDefaultLibrary(
-  isCancelled: () => boolean,
-): Promise<void> {
-  const home = await invoke<string | null>("home_dir");
-  if (home === null || isCancelled()) return;
-  const defaultLib = `${home}/Music/Logic`;
-  const exists = await invoke<boolean>("is_dir", { path: defaultLib });
-  if (!exists || isCancelled()) return;
-  await useLibraryStore.getState().addFolder(defaultLib);
-}
 const REPORT_ISSUE_URL = "https://github.com/rhydlewis/lpx-explorer/issues";
 const BUY_ME_COFFEE_URL = "https://buymeacoffee.com/rhyd";
 /**
@@ -114,6 +59,7 @@ function App() {
   const togglePluginRailOpen = useUIStore((s) => s.togglePluginRailOpen);
   const selectedLibraryFolder = useUIStore((s) => s.selectedLibraryFolder);
   const textZoom = useUIStore((s) => s.textZoom);
+  const showFingerprints = useUIStore((s) => s.pluginRailShowFingerprints);
   const isNarrow = useMediaQuery(`(max-width: ${RIGHT_RAIL_BREAKPOINT_PX - 1}px)`);
   const [hint, setHint] = useState<string | null>(null);
 
@@ -154,6 +100,21 @@ function App() {
     document.documentElement.style.setProperty("--text-zoom", String(textZoom));
     void persistTextZoom(textZoom);
   }, [textZoom]);
+
+  // Plug-in rail "Show IDs" pref — hydrate once, persist on change.
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const p = await loadShowFingerprints();
+      if (!cancelled && p !== null) {
+        useUIStore.getState().setPluginRailShowFingerprints(p);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+  useEffect(() => {
+    void persistShowFingerprints(showFingerprints);
+  }, [showFingerprints]);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {

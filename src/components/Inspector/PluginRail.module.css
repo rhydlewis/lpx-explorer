@@ -21,6 +21,51 @@
   font-variant-numeric: tabular-nums;
 }
 
+/*
+ * Header-level toggle for the per-row fingerprint sub-line. Off by
+ * default — fingerprints are debug-shaped data; users can opt in
+ * (preference persisted via lib/persistence.ts loadShowFingerprints).
+ */
+.fingerprintsToggle {
+  appearance: none;
+  background: transparent;
+  border: 1px solid var(--c-divider);
+  border-radius: var(--radius-sm);
+  padding: 1px var(--s-2);
+  font-size: calc(10px * var(--text-zoom));
+  color: var(--c-text-muted);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.fingerprintsToggle:hover {
+  color: var(--c-text);
+  border-color: var(--c-text-muted);
+}
+
+.fingerprintsToggle[aria-pressed="true"] {
+  color: var(--c-text);
+  border-color: var(--c-text-secondary);
+  background: var(--c-surface-2);
+}
+
+/*
+ * Quiet count line below the header — replaces the dropped category
+ * chip row. Reads `47 plug-ins · 3 missing` (or `12 of 47` when a
+ * filter is narrowing the visible set). Missing count surfaces only
+ * when > 0 so a clean project gets a single calm line.
+ */
+.countLine {
+  margin: 0;
+  font-size: var(--fs-secondary);
+  color: var(--c-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.countMissing {
+  color: var(--c-status-fail);
+}
+
 .search {
   width: 100%;
   background-color: var(--c-bg);
@@ -123,6 +168,23 @@
   overflow: hidden;
   text-overflow: ellipsis;
   font-size: var(--fs-body);
+}
+
+/*
+ * Per-row leading icon. The category glyph (or Ghost for Klopfgeist)
+ * sits in the icon column at row left. Suppressed when install status
+ * is unknown — see <RowIcon /> for that branch.
+ */
+.rowIcon {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  color: var(--c-text-muted);
+  width: calc(14px * var(--text-zoom));
+}
+
+.row[data-status="missing"] .rowIcon {
+  opacity: 0.5;
 }
 
 .fingerprint {
@@ -257,6 +319,32 @@
   color: var(--c-text-secondary);
 }
 
+/*
+ * Library-scope row summary — the line-1 layout matches <PluginRow />
+ * exactly. The whole line IS the disclosure trigger; clicking anywhere
+ * on it toggles the project-paths list below. The native marker is
+ * dropped because we use the count-as-affordance instead.
+ */
+.libraryRowSummary {
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+.libraryRowSummary::-webkit-details-marker {
+  display: none;
+}
+
+.libraryCount {
+  font-size: var(--fs-secondary);
+  color: var(--c-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+details[open] > .libraryRowSummary .libraryCount {
+  color: var(--c-accent);
+}
+
 .libraryProjectsList {
   list-style: none;
   margin: var(--s-1) 0 0 0;
@@ -287,14 +375,3 @@
   text-decoration: underline;
 }
 
-/*
- * Klopfgeist mark — quiet ghost glyph next to the row name when the
- * project contains Apple's stock metronome (`aumu/klop/appl`). Easter
- * egg per the 2026-05-06 Whimsy review; intentionally subdued.
- */
-.klopfgeist {
-  display: inline-flex;
-  align-items: center;
-  color: var(--c-text-muted);
-  opacity: 0.7;
-}

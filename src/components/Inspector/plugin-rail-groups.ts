@@ -1,4 +1,3 @@
-import { categoryOfFingerprint } from "../../lib/au-categories";
 import {
   groupFingerprints,
   installStatusOf,
@@ -7,7 +6,7 @@ import {
 } from "../../lib/au-utils";
 import type { RolledFingerprint } from "../../lib/library-rollup";
 import type { AuRegistry, ProjectSummary } from "../../lib/types";
-import type { PluginRailCategory, PluginRailChip } from "../../store/ui-store";
+import type { PluginRailChip } from "../../store/ui-store";
 
 export interface DisplayGroup {
   readonly group: FingerprintGroup;
@@ -85,23 +84,34 @@ export function applyFilters(
   all: ReadonlyArray<DisplayGroup>,
   query: string,
   chip: PluginRailChip,
-  category: PluginRailCategory = "all",
 ): ReadonlyArray<DisplayGroup> {
   const needle = query.trim().toLowerCase();
   return all.filter((g) => {
     if (chip === "installed" && g.status !== "installed") return false;
     if (chip === "missing" && g.status !== "missing") return false;
     if (chip === "duplicated" && g.group.count < 2) return false;
-    if (
-      category !== "all" &&
-      categoryOfFingerprint(g.group.fingerprint) !== category
-    ) {
-      return false;
-    }
     if (needle === "") return true;
     return (
       g.displayName.toLowerCase().includes(needle) ||
       g.group.fingerprint.toLowerCase().includes(needle)
     );
+  });
+}
+
+/**
+ * Library-scope sort: descending by `projectCount` (most-used plug-ins
+ * first — that's the JTBD answer for 'what do I depend on most'),
+ * tie-break ascending by displayName for stable ordering across
+ * re-renders. Project-scope rows come from `groupFingerprints` which
+ * already keeps insertion order; we don't sort them.
+ */
+export function sortLibraryGroups(
+  groups: ReadonlyArray<DisplayGroup>,
+): ReadonlyArray<DisplayGroup> {
+  return [...groups].sort((a, b) => {
+    if (a.group.count !== b.group.count) {
+      return b.group.count - a.group.count;
+    }
+    return a.displayName.localeCompare(b.displayName);
   });
 }

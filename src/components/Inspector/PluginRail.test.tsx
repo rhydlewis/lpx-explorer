@@ -46,7 +46,7 @@ describe("<PluginRail />", () => {
     useUIStore.setState({
       pluginRailFilter: "",
       pluginRailChip: "all",
-      pluginRailCategory: "all",
+      pluginRailShowFingerprints: false,
       pluginRailScope: "project",
     });
     useAuRegistryStore.setState({ status: { kind: "idle" } });
@@ -61,7 +61,7 @@ describe("<PluginRail />", () => {
     useUIStore.setState({
       pluginRailFilter: "",
       pluginRailChip: "all",
-      pluginRailCategory: "all",
+      pluginRailShowFingerprints: false,
       pluginRailScope: "project",
     });
     useAuRegistryStore.setState({ status: { kind: "idle" } });
@@ -163,11 +163,11 @@ describe("<PluginRail />", () => {
     expect(screen.getByText(/no matches/i)).toBeInTheDocument();
   });
 
-  it("renders fingerprinted plug-ins as a 2-line row (name + status / fingerprint + count)", () => {
-    // Layout contract: line 1 carries the user-visible name and the
-    // install-status badge (right-aligned). Line 2 carries the
-    // fingerprint and — when count > 1 — the duplicate badge. This
-    // pairing keeps the status badge column-aligned across rows.
+  it("collapses every row to one visual line by default (count + status badge inline)", () => {
+    // Post-4l1 layout contract: line 1 carries icon + name + count
+    // badge + status badge. The fingerprint sub-line is hidden behind
+    // the 'Show IDs' header toggle. This test asserts the default-off
+    // single-line shape.
     useAuRegistryStore.setState({
       status: { kind: "loaded", registry: makeAuRegistry(["aufx/Comp/Yamh"]) },
     });
@@ -176,7 +176,7 @@ describe("<PluginRail />", () => {
         summary={makeSummary({
           fingerprints: [
             ref("aufx", "Comp", "Yamh", 1),
-            ref("aufx", "Comp", "Yamh", 2), // duplicate -> ×2
+            ref("aufx", "Comp", "Yamh", 2), // duplicate -> ×2 on line 1
           ],
         })}
       />,
@@ -185,13 +185,10 @@ describe("<PluginRail />", () => {
     const row = container.querySelector("li");
     expect(row).not.toBeNull();
     const lines = row?.querySelectorAll(":scope > div") ?? [];
-    expect(lines.length).toBe(2);
-    // Line 1: name + status badge.
+    expect(lines.length).toBe(1);
     expect(lines[0].textContent).toContain("aufx/Comp/Yamh");
+    expect(lines[0].textContent).toContain("×2");
     expect(lines[0].textContent).toContain("Installed");
-    // Line 2: fingerprint + count.
-    expect(lines[1].textContent).toContain("aufx/Comp/Yamh");
-    expect(lines[1].textContent).toContain("×2");
   });
 
   it("renders Apple stock plug-ins as a 1-line row (no second line, no synthesised fingerprint)", () => {
@@ -291,7 +288,7 @@ describe("<PluginRail />", () => {
     expect(screen.queryByText("aumu/EZk2/Toon")).not.toBeInTheDocument();
   });
 
-  it("header count shows 'visible / total' when filtered", () => {
+  it("count line shows '<visible> of <total>' when filtered, total alone otherwise", () => {
     render(
       <PluginRail
         summary={makeSummary({
@@ -304,15 +301,15 @@ describe("<PluginRail />", () => {
       />,
     );
 
-    // Unfiltered: just the total
-    expect(screen.getByText("3")).toBeInTheDocument();
+    // Unfiltered: '3 plug-ins'.
+    expect(screen.getByText(/3 plug-ins/i)).toBeInTheDocument();
 
     fireEvent.change(screen.getByRole("searchbox"), {
       target: { value: "Comp" },
     });
 
-    // Filtered: shows visible / total
-    expect(screen.getByText("1 / 3")).toBeInTheDocument();
+    // Filtered: '1 of 3'.
+    expect(screen.getByText(/1 of 3/i)).toBeInTheDocument();
   });
 
   it("missing rows expose 'Copy fingerprint' and 'Search the web' action buttons", () => {
@@ -439,64 +436,92 @@ describe("<PluginRail />", () => {
     expect(screen.queryByLabelText(/klopfgeist/i)).toBeNull();
   });
 
-  describe("category chip row (lpx-explorer-01w)", () => {
-    it("renders the four coarse categories: All / Effects / Instruments / MIDI", () => {
+  describe("per-row icon + UX reshape (lpx-explorer-4l1)", () => {
+    it("does NOT render the category chip row anymore", () => {
+      // The category filter was folded into per-row icons; the chip
+      // row from lpx-explorer-01w is gone.
       render(<PluginRail summary={makeSummary()} />);
 
-      const filterRow = screen.getByRole("group", {
-        name: /filter by category/i,
-      });
-      // Each label appears as a button inside this row.
-      ["All", "Effects", "Instruments", "MIDI"].forEach((label) => {
-        expect(
-          filterRow.querySelector(`button:not([disabled])`),
-        ).not.toBeNull();
-        expect(
-          Array.from(filterRow.querySelectorAll("button")).find(
-            (b) => b.textContent === label,
-          ),
-        ).toBeDefined();
-      });
+      expect(
+        screen.queryByRole("group", { name: /filter by category/i }),
+      ).toBeNull();
     });
 
-    it("clicking a category chip narrows the visible rows", () => {
-      // Two AUs: one effect (aufx), one instrument (aumu). Filter by
-      // 'Effects' should hide the instrument row.
+    it("renders a leading icon on each row (status known)", () => {
+      useAuRegistryStore.setState({
+        status: { kind: "loaded", registry: makeAuRegistry(["aufx/Comp/Yamh"]) },
+      });
+      const { container } = render(
+        <PluginRail
+          summary={makeSummary({
+            fingerprints: [ref("aufx", "Comp", "Yamh", 1)],
+          })}
+        />,
+      );
+
+      const row = container.querySelector('li[data-fingerprint="aufx/Comp/Yamh"]');
+      expect(row).not.toBeNull();
+      // The leading icon renders inside its own span — assert at least
+      // one svg is present in the row's first line.
+      expect(row?.querySelector("svg")).not.toBeNull();
+    });
+
+    it("hides the fingerprint sub-line by default; toggling the header button reveals it", () => {
+      // Use a registry entry whose human name DIFFERS from the
+      // fingerprint string so the sub-line is the only place the
+      // fingerprint text appears in the DOM.
+      useAuRegistryStore.setState({
+        status: {
+          kind: "loaded",
+          registry: {
+            scanned_at_unix: 0,
+            entries: [
+              {
+                fingerprint: "aufx/Comp/Yamh",
+                type_4cc: "aufx",
+                subtype_4cc: "Comp",
+                manufacturer_4cc: "Yamh",
+                name: "Yamaha Compressor",
+              },
+            ],
+          },
+        },
+      });
+      render(
+        <PluginRail
+          summary={makeSummary({
+            fingerprints: [ref("aufx", "Comp", "Yamh", 1)],
+          })}
+        />,
+      );
+
+      // Default: human name is rendered (line 1), fingerprint is not.
+      expect(screen.getByText("Yamaha Compressor")).toBeInTheDocument();
+      expect(screen.queryByText("aufx/Comp/Yamh")).toBeNull();
+
+      fireEvent.click(screen.getByRole("button", { name: /show ids/i }));
+
+      expect(screen.getByText("aufx/Comp/Yamh")).toBeInTheDocument();
+      expect(useUIStore.getState().pluginRailShowFingerprints).toBe(true);
+    });
+
+    it("count line surfaces missing-count when there are missing plug-ins", () => {
+      useAuRegistryStore.setState({
+        status: { kind: "loaded", registry: makeAuRegistry([]) },
+      });
       render(
         <PluginRail
           summary={makeSummary({
             fingerprints: [
-              ref("aufx", "Comp", "Yamh", 1),
-              ref("aumu", "EZk2", "Toon", 2),
+              ref("aufx", "Miss", "Mfgr", 1),
+              ref("aufx", "Comp", "Yamh", 2),
             ],
           })}
         />,
       );
 
-      const filterRow = screen.getByRole("group", {
-        name: /filter by category/i,
-      });
-      const effects = Array.from(filterRow.querySelectorAll("button")).find(
-        (b) => b.textContent === "Effects",
-      );
-      fireEvent.click(effects!);
-
-      expect(screen.getByText("aufx/Comp/Yamh")).toBeInTheDocument();
-      expect(screen.queryByText("aumu/EZk2/Toon")).not.toBeInTheDocument();
-    });
-
-    it("clicking a category chip persists the choice in ui-store", () => {
-      render(<PluginRail summary={makeSummary()} />);
-
-      const filterRow = screen.getByRole("group", {
-        name: /filter by category/i,
-      });
-      const midi = Array.from(filterRow.querySelectorAll("button")).find(
-        (b) => b.textContent === "MIDI",
-      );
-      fireEvent.click(midi!);
-
-      expect(useUIStore.getState().pluginRailCategory).toBe("midi");
+      // 2 plug-ins, both missing — count line includes "2 missing".
+      expect(screen.getByText(/2 missing/)).toBeInTheDocument();
     });
   });
 
@@ -522,7 +547,7 @@ describe("<PluginRail />", () => {
 
     it("library scope renders rolled-up rows aggregated across the library", async () => {
       // Two recent projects each containing the same plug-in. Library
-      // scope rolls them up to one row with a 'used in 2 projects' badge.
+      // scope rolls them up to one row with a '· 2 projects' badge.
       useLibraryStore.setState({
         recent: [
           { path: "/a.logicx", name: "a", lastLoadedMs: 1 },
@@ -549,7 +574,7 @@ describe("<PluginRail />", () => {
 
       // Wait for the parse promises to settle. The store updates and
       // re-renders the rail with the rolled-up row.
-      await screen.findByText(/used in 2 projects/i);
+      await screen.findByText(/· 2 projects/i);
       expect(screen.getByText("aumu/EZk2/Toon")).toBeInTheDocument();
     });
 
@@ -565,8 +590,8 @@ describe("<PluginRail />", () => {
 
       render(<PluginRail summary={makeSummary()} />);
 
-      await screen.findByText(/used in 1 project/i);
-      const disclosure = screen.getByText(/used in 1 project/i)
+      await screen.findByText(/· 1 project/i);
+      const disclosure = screen.getByText(/· 1 project/i)
         .closest("details");
       expect(disclosure).not.toBeNull();
       // Open the disclosure and check the project path appears.
@@ -588,10 +613,10 @@ describe("<PluginRail />", () => {
 
       render(<PluginRail summary={makeSummary()} />);
 
-      await screen.findByText(/used in 1 project/i);
+      await screen.findByText(/· 1 project/i);
       // Open the disclosure first.
       const summary = screen
-        .getByText(/used in 1 project/i)
+        .getByText(/· 1 project/i)
         .closest("details")
         ?.querySelector("summary");
       if (summary) fireEvent.click(summary);

@@ -8,6 +8,7 @@ const KEY_RECENT = "recent";
 const KEY_RECENT_FOLDERS = "recentFolders";
 const KEY_FOLDERS = "folders";
 const KEY_TEXT_ZOOM = "textZoom";
+const KEY_SHOW_FINGERPRINTS = "pluginRailShowFingerprints";
 
 interface PersistedLibrary {
   recent: ReadonlyArray<RecentEntry>;
@@ -126,6 +127,24 @@ export async function loadTextZoom(): Promise<number | null> {
 export async function persistTextZoom(zoom: number): Promise<void> {
   const store = await getStore();
   await store.set(KEY_TEXT_ZOOM, zoom);
+  await store.save();
+}
+
+/**
+ * Read the persisted "show fingerprints" preference for the plug-in
+ * rail (lpx-explorer-4l1). Returns `null` when nothing has been saved
+ * yet — caller falls back to the ui-store default of `false`.
+ */
+export async function loadShowFingerprints(): Promise<boolean | null> {
+  const store = await getStore();
+  const raw = await store.get(KEY_SHOW_FINGERPRINTS);
+  if (typeof raw !== "boolean") return null;
+  return raw;
+}
+
+export async function persistShowFingerprints(show: boolean): Promise<void> {
+  const store = await getStore();
+  await store.set(KEY_SHOW_FINGERPRINTS, show);
   await store.save();
 }
 

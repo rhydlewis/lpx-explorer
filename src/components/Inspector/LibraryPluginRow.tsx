@@ -1,12 +1,10 @@
-import { Ghost } from "lucide-react";
-
 import type { InstallStatus } from "../../lib/au-utils";
 import type { RolledFingerprint } from "../../lib/library-rollup";
 import { openProject } from "../../lib/open-project";
 
-import styles from "./PluginRail.module.css";
+import { RowIcon } from "./RowIcon";
 
-const KLOPFGEIST_FINGERPRINT = "aumu/klop/appl";
+import styles from "./PluginRail.module.css";
 
 const INSTALL_LABEL: Record<Exclude<InstallStatus, "unknown">, string> = {
   installed: "Installed",
@@ -18,59 +16,44 @@ export interface LibraryPluginRowProps {
   readonly displayName: string;
   readonly status: InstallStatus;
   readonly rolled: RolledFingerprint;
+  readonly showFingerprint: boolean;
 }
 
 /**
- * One row in the cross-project rollup view (`<PluginRail />` library
- * scope, lpx-explorer-185). Differs from the per-project `<PluginRow />`
- * in two ways: the badge reads *'Used in N projects'* (not `×N`) and a
- * disclosure under the row lists the contributing project paths as
- * clickable buttons that open each project.
+ * Cross-project rollup row (lpx-explorer-185 + 4l1). Line 1 mirrors
+ * `<PluginRow />` exactly — leading icon, name, count badge, install
+ * badge — so the user reads both scopes the same way. The library
+ * twist: the count badge reads `· N projects` (clickable disclosure)
+ * and expands to list the contributing paths.
  */
 export function LibraryPluginRow({
   fingerprint,
   displayName,
   status,
   rolled,
+  showFingerprint,
 }: LibraryPluginRowProps) {
-  const projectsLabel = `Used in ${rolled.projectCount} project${
+  const projectsLabel = `${rolled.projectCount} project${
     rolled.projectCount === 1 ? "" : "s"
   }`;
-  // Only show the fingerprint sub-line when it differs from displayName.
-  // For 3rd-party AUs without a registry hit, displayName IS the
-  // fingerprint — duplicating it adds noise.
-  const showSecondLine = displayName !== fingerprint;
   return (
     <li
       className={styles.row}
       data-fingerprint={fingerprint}
       data-status={status}
     >
-      <div className={styles.line}>
-        <span className={styles.name}>{displayName}</span>
-        {fingerprint === KLOPFGEIST_FINGERPRINT && (
-          <span
-            className={styles.klopfgeist}
-            aria-label="Klopfgeist (Logic's stock metronome)"
-            title="Klopfgeist — Logic's stock metronome (German: poltergeist)"
-          >
-            <Ghost size="0.85em" aria-hidden="true" />
-          </span>
-        )}
-        {status !== "unknown" && (
-          <span data-status={status} className={styles.installBadge}>
-            {INSTALL_LABEL[status]}
-          </span>
-        )}
-      </div>
-      {showSecondLine && (
-        <div className={styles.line}>
-          <span className={styles.fingerprint}>{fingerprint}</span>
-        </div>
-      )}
       <details className={styles.libraryProjects}>
-        <summary className={styles.libraryProjectsSummary}>
-          {projectsLabel}
+        <summary className={styles.libraryRowSummary}>
+          <span className={styles.line}>
+            <RowIcon fingerprint={fingerprint} status={status} />
+            <span className={styles.name}>{displayName}</span>
+            <span className={styles.libraryCount}>· {projectsLabel}</span>
+            {status !== "unknown" && (
+              <span data-status={status} className={styles.installBadge}>
+                {INSTALL_LABEL[status]}
+              </span>
+            )}
+          </span>
         </summary>
         <ul className={styles.libraryProjectsList}>
           {rolled.projectPaths.map((path) => (
@@ -86,6 +69,11 @@ export function LibraryPluginRow({
           ))}
         </ul>
       </details>
+      {showFingerprint && displayName !== fingerprint && (
+        <div className={styles.line}>
+          <span className={styles.fingerprint}>{fingerprint}</span>
+        </div>
+      )}
     </li>
   );
 }
