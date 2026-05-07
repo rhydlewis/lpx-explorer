@@ -343,6 +343,34 @@ function App() {
 
   return (
     <>
+      {/*
+        DIAGNOSTIC: hot-pink bar fixed at the top of the window. If the
+        user sees this, the webview is painting our DOM and the
+        blank-screen bug is below it (CSS / layout). If they DON'T see
+        it, the webview isn't pushing pixels even though React commits.
+        Remove once the post-hydrate render hang is solved.
+      */}
+      <div
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          height: 28,
+          background: "#ff00aa",
+          color: "#000",
+          fontFamily: "monospace",
+          fontSize: 12,
+          fontWeight: 700,
+          zIndex: 100000,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          letterSpacing: "0.05em",
+        }}
+      >
+        DIAGNOSTIC PAINT TEST — IF YOU SEE THIS, THE WEBVIEW IS PAINTING
+      </div>
       <AppShell topBar={topBar} rail={rail} rightRail={rightRail} main={main} />
       {hint !== null && (
         <div role="status" aria-live="polite" className="drop-hint">
