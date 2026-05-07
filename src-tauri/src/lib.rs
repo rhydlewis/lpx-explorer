@@ -218,6 +218,7 @@ pub fn run() {
             commands::home_dir,
             commands::log_event,
             commands::parse_project,
+            commands::project_data_stat,
             library::scan_folder,
             set_recent_menu
         ])

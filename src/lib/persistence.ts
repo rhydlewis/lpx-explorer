@@ -1,9 +1,10 @@
 import { invoke } from "@tauri-apps/api/core";
 import { load } from "@tauri-apps/plugin-store";
 
-import type { RecentEntry } from "./types";
+import type { ProjectSummary, RecentEntry } from "./types";
 
 const STORE_FILE = "library.json";
+const PARSE_CACHE_FILE = "parse-cache.json";
 const KEY_RECENT = "recent";
 const KEY_RECENT_FOLDERS = "recentFolders";
 const KEY_FOLDERS = "folders";
@@ -16,12 +17,20 @@ interface PersistedLibrary {
 }
 
 let storePromise: ReturnType<typeof load> | null = null;
+let parseCacheStorePromise: ReturnType<typeof load> | null = null;
 
 function getStore() {
   if (storePromise === null) {
     storePromise = load(STORE_FILE);
   }
   return storePromise;
+}
+
+function getParseCacheStore() {
+  if (parseCacheStorePromise === null) {
+    parseCacheStorePromise = load(PARSE_CACHE_FILE);
+  }
+  return parseCacheStorePromise;
 }
 
 function isRecentEntry(value: unknown): value is RecentEntry {
@@ -145,6 +154,60 @@ export async function loadShowFingerprints(): Promise<boolean | null> {
 export async function persistShowFingerprints(show: boolean): Promise<void> {
   const store = await getStore();
   await store.set(KEY_SHOW_FINGERPRINTS, show);
+  await store.save();
+}
+
+/**
+ * Persisted parse cache (lpx-explorer-aay). One entry per .logicx
+ * bundle path, keyed by ProjectData mtime + size — the only inputs
+ * whose change can alter parse output. Stored in a dedicated
+ * `parse-cache.json` (separate from `library.json`) because it grows
+ * with library size; keeping the small/static prefs file untouched
+ * avoids churn on every parse.
+ */
+export interface ParseCacheEntry {
+  readonly mtime_unix: number;
+  readonly size_bytes: number;
+  readonly summary: ProjectSummary;
+}
+
+function isParseCacheEntry(value: unknown): value is ParseCacheEntry {
+  if (typeof value !== "object" || value === null) return false;
+  const v = value as Record<string, unknown>;
+  return (
+    typeof v.mtime_unix === "number" &&
+    typeof v.size_bytes === "number" &&
+    typeof v.summary === "object" &&
+    v.summary !== null
+  );
+}
+
+export async function loadParseCache(): Promise<
+  ReadonlyMap<string, ParseCacheEntry>
+> {
+  const store = await getParseCacheStore();
+  const out = new Map<string, ParseCacheEntry>();
+  for (const path of await store.keys()) {
+    const raw = await store.get(path);
+    if (isParseCacheEntry(raw)) {
+      out.set(path, raw);
+    }
+  }
+  return out;
+}
+
+export async function persistParseCacheEntry(
+  path: string,
+  entry: ParseCacheEntry,
+): Promise<void> {
+  const store = await getParseCacheStore();
+  await store.set(path, entry);
+  await store.save();
+}
+
+export async function deleteParseCacheEntry(path: string): Promise<void> {
+  const store = await getParseCacheStore();
+  await store.delete(path);
   await store.save();
 }
 

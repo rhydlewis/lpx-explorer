@@ -15,6 +15,12 @@ vi.mock("../../lib/plugin-actions", () => ({
 
 vi.mock("../../lib/parse", () => ({
   parseProject: vi.fn(),
+  projectDataStat: vi.fn().mockResolvedValue(null),
+}));
+
+vi.mock("../../lib/persistence", () => ({
+  persistParseCacheEntry: vi.fn().mockResolvedValue(undefined),
+  deleteParseCacheEntry: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("../../lib/open-project", () => ({

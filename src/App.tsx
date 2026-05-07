@@ -5,23 +5,19 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 
+import { runLibraryHydration } from "./lib/library-hydration";
 import {
-  folderPathsDiffer,
-  maybeAutoAddDefaultLibrary,
-  subscribeLibraryPersistence,
-} from "./lib/library-hydration";
+  hydrateParseCacheAsync,
+  installScanIdleGate,
+} from "./lib/scan-scheduler";
 import { openProject } from "./lib/open-project";
 import { pickAndAddFolder } from "./lib/open-folder";
 import { routeDrop } from "./lib/drop-routing";
 import {
-  loadPersistedFolderPaths,
-  loadPersistedLibrary,
   loadShowFingerprints,
   loadTextZoom,
-  persistFolderPaths,
   persistShowFingerprints,
   persistTextZoom,
-  setRecentMenu,
 } from "./lib/persistence";
 import { useMediaQuery } from "./lib/use-media-query";
 import { useAuRegistryStore } from "./store/au-registry-store";
@@ -30,6 +26,7 @@ import { useProjectStore } from "./store/project-store";
 import { TEXT_ZOOM_STEP, useUIStore } from "./store/ui-store";
 import { AppShell } from "./components/AppShell";
 import { EmptyState } from "./components/EmptyState";
+import { ScanBanner } from "./components/ScanBanner";
 import { ProjectInspector } from "./components/Inspector/ProjectInspector";
 import { PluginRail } from "./components/Inspector/PluginRail";
 import { LibraryHome } from "./components/Library/LibraryHome";
@@ -79,6 +76,9 @@ function App() {
   useEffect(() => {
     void useAuRegistryStore.getState().autoScanIfAbsent();
   }, []);
+
+  useEffect(() => hydrateParseCacheAsync(), []);
+  useEffect(() => installScanIdleGate(), []);
 
   // Text zoom — Cmd-+ / Cmd-- / Cmd-0. Hydrate from disk on mount, then
   // sync the CSS custom property + persist on every change. Keyboard
@@ -139,78 +139,7 @@ function App() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
-  // Persistence: hydrate from disk, then sync writes + native menu on every
-  // recent-list change. Subscribes AFTER hydration so the initial fill
-  // doesn't echo straight back to disk. The native macOS File menu's
-  // "Open Recent Project" / "Open Recent Folder" submenus are rebuilt on
-  // each change via `set_recent_menu` (Tauri command).
-  useEffect(() => {
-    let unsubscribe: (() => void) | null = null;
-    let cancelled = false;
-
-    void (async () => {
-      console.info("[hydrate] start");
-      const persisted = await loadPersistedLibrary();
-      console.info(
-        `[hydrate] loaded recents=${persisted.recent.length} recentFolders=${persisted.recentFolders.length}`,
-      );
-      if (cancelled) {
-        return;
-      }
-      useLibraryStore.getState().hydrate(persisted);
-      await setRecentMenu(persisted.recent, persisted.recentFolders);
-      if (cancelled) {
-        return;
-      }
-
-      const persistedFolderPaths = await loadPersistedFolderPaths();
-      console.info(
-        `[hydrate] persistedFolderPaths=${persistedFolderPaths.length} ${JSON.stringify(persistedFolderPaths)}`,
-      );
-      if (cancelled) return;
-      for (const path of persistedFolderPaths) {
-        if (cancelled) return;
-        console.info(`[hydrate] addFolder begin ${path}`);
-        await useLibraryStore.getState().addFolder(path);
-        console.info(`[hydrate] addFolder done ${path}`);
-      }
-
-      const isFirstLaunch =
-        persisted.recent.length === 0 &&
-        persisted.recentFolders.length === 0;
-      console.info(`[hydrate] isFirstLaunch=${isFirstLaunch}`);
-      if (isFirstLaunch) {
-        await maybeAutoAddDefaultLibrary(() => cancelled);
-      }
-      if (cancelled) return;
-
-      // If exactly one folder is in the rail (auto-added or restored),
-      // surface its tile grid by default. Multiple folders means the
-      // user has organised their library — let them pick which one.
-      const initialFolders = useLibraryStore.getState().folders;
-      console.info(`[hydrate] initialFolders=${initialFolders.length}`);
-      if (initialFolders.length === 1) {
-        useUIStore.getState().setSelectedLibraryFolder(initialFolders[0]!.path);
-      }
-
-      unsubscribe = subscribeLibraryPersistence(persisted);
-      // Persist folder additions made during hydration — chiefly the
-      // ~/Music/Logic auto-add, which mutates the store before the
-      // subscriber above is registered. Idempotent.
-      const finalPaths = initialFolders.map((f) => f.path);
-      if (folderPathsDiffer(persistedFolderPaths, finalPaths)) {
-        void persistFolderPaths(finalPaths);
-      }
-      console.info("[hydrate] complete");
-    })();
-
-    return () => {
-      cancelled = true;
-      if (unsubscribe !== null) {
-        unsubscribe();
-      }
-    };
-  }, []);
+  useEffect(() => runLibraryHydration(), []);
 
   useEffect(() => {
     const isDir = (path: string): Promise<boolean> =>
@@ -279,9 +208,9 @@ function App() {
       ? folders.find((f) => f.path === selectedLibraryFolder)
       : undefined;
 
-  let main;
+  let mainContent;
   if (status.kind === "idle") {
-    main = browseFolder !== undefined ? (
+    mainContent = browseFolder !== undefined ? (
       <LibraryHome folder={browseFolder} />
     ) : (
       <EmptyState
@@ -291,8 +220,14 @@ function App() {
       />
     );
   } else {
-    main = <ProjectInspector status={status} />;
+    mainContent = <ProjectInspector status={status} />;
   }
+  const main = (
+    <>
+      <ScanBanner />
+      {mainContent}
+    </>
+  );
 
   // Right rail is project-scoped — only visible once a project is
   // loaded. At narrow widths the rail collapses to a topbar toggle so

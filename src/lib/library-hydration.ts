@@ -1,8 +1,11 @@
 import { invoke } from "@tauri-apps/api/core";
 
 import { useLibraryStore } from "../store/library-store";
+import { useUIStore } from "../store/ui-store";
 
 import {
+  loadPersistedFolderPaths,
+  loadPersistedLibrary,
   persistFolderPaths,
   persistLibrary,
   setRecentMenu,
@@ -50,6 +53,75 @@ export function folderPathsDiffer(
     if (prev[i] !== next[i]) return true;
   }
   return false;
+}
+
+/**
+ * Run the full library-hydration sequence on App mount: load persisted
+ * recents/folders from disk, push them into the library store, rebuild
+ * the native macOS Recent menu, kick off folder scans, auto-add the
+ * default library on first launch, and register the persistence
+ * subscriber. Returns a cleanup thunk that cancels in-flight async
+ * work and unsubscribes the store listener.
+ */
+export function runLibraryHydration(): () => void {
+  let unsubscribe: (() => void) | null = null;
+  let cancelled = false;
+
+  void (async () => {
+    console.info("[hydrate] start");
+    const persisted = await loadPersistedLibrary();
+    console.info(
+      `[hydrate] loaded recents=${persisted.recent.length} recentFolders=${persisted.recentFolders.length}`,
+    );
+    if (cancelled) return;
+    useLibraryStore.getState().hydrate(persisted);
+    await setRecentMenu(persisted.recent, persisted.recentFolders);
+    if (cancelled) return;
+
+    const persistedFolderPaths = await loadPersistedFolderPaths();
+    console.info(
+      `[hydrate] persistedFolderPaths=${persistedFolderPaths.length} ${JSON.stringify(persistedFolderPaths)}`,
+    );
+    if (cancelled) return;
+    for (const path of persistedFolderPaths) {
+      if (cancelled) return;
+      console.info(`[hydrate] addFolder begin ${path}`);
+      await useLibraryStore.getState().addFolder(path);
+      console.info(`[hydrate] addFolder done ${path}`);
+    }
+
+    const isFirstLaunch =
+      persisted.recent.length === 0 && persisted.recentFolders.length === 0;
+    console.info(`[hydrate] isFirstLaunch=${isFirstLaunch}`);
+    if (isFirstLaunch) {
+      await maybeAutoAddDefaultLibrary(() => cancelled);
+    }
+    if (cancelled) return;
+
+    // If exactly one folder is in the rail (auto-added or restored),
+    // surface its tile grid by default. Multiple folders means the
+    // user has organised their library — let them pick which one.
+    const initialFolders = useLibraryStore.getState().folders;
+    console.info(`[hydrate] initialFolders=${initialFolders.length}`);
+    if (initialFolders.length === 1) {
+      useUIStore.getState().setSelectedLibraryFolder(initialFolders[0]!.path);
+    }
+
+    unsubscribe = subscribeLibraryPersistence(persisted);
+    // Persist folder additions made during hydration — chiefly the
+    // ~/Music/Logic auto-add, which mutates the store before the
+    // subscriber above is registered. Idempotent.
+    const finalPaths = initialFolders.map((f) => f.path);
+    if (folderPathsDiffer(persistedFolderPaths, finalPaths)) {
+      void persistFolderPaths(finalPaths);
+    }
+    console.info("[hydrate] complete");
+  })();
+
+  return () => {
+    cancelled = true;
+    if (unsubscribe !== null) unsubscribe();
+  };
 }
 
 /**

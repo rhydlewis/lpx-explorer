@@ -121,6 +121,38 @@ pub fn log_event(level: String, message: String) {
     crate::tlog!("[js:{level}] {message}");
 }
 
+#[derive(Debug, Serialize)]
+pub struct ProjectDataStat {
+    /// Mtime of the ProjectData file in unix epoch seconds.
+    pub mtime_unix: i64,
+    /// Size in bytes of the ProjectData file.
+    pub size_bytes: u64,
+}
+
+/// Cheap stat of `<bundle>/Alternatives/*/ProjectData` — used by the
+/// frontend parse cache (lpx-explorer-aay) to decide whether a
+/// previously-parsed summary is still valid. Stats *only* the
+/// ProjectData file (not the recursive bundle), since that's the
+/// single input whose change can alter parse output. Returns None when
+/// the bundle has no Alternatives directory or the ProjectData file is
+/// missing — callers treat None as "cache miss, parse fresh."
+#[tauri::command]
+pub fn project_data_stat(path: String) -> Option<ProjectDataStat> {
+    let bundle = PathBuf::from(&path);
+    let alt = locate_alternative(&bundle)?;
+    let meta = fs::metadata(alt.join("ProjectData")).ok()?;
+    let mtime_unix = meta
+        .modified()
+        .ok()
+        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+        .map(|d| d.as_secs() as i64)
+        .unwrap_or(0);
+    Some(ProjectDataStat {
+        mtime_unix,
+        size_bytes: meta.len(),
+    })
+}
+
 /// First `<bundle>/Alternatives/<n>/` directory containing ProjectData.
 fn locate_alternative(bundle: &Path) -> Option<PathBuf> {
     let alternatives = bundle.join("Alternatives");
