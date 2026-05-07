@@ -88,14 +88,17 @@ export async function persistLibrary(
  * Read the persisted active-folders list. The `folders` slice on
  * `useLibraryStore` carries scan status and a project array — those
  * are derived (rescanned on hydration), so persistence stores only the
- * folder paths. Filters non-string entries defensively. Per
+ * folder paths. Filters non-string entries AND paths whose targets no
+ * longer exist on disk (renamed / deleted between launches). Per
  * lpx-explorer-vn5.
  */
 export async function loadPersistedFolderPaths(): Promise<ReadonlyArray<string>> {
   const store = await getStore();
   const raw = await store.get(KEY_FOLDERS);
   if (!Array.isArray(raw)) return [];
-  return raw.filter((p): p is string => typeof p === "string");
+  const stringPaths = raw.filter((p): p is string => typeof p === "string");
+  const checks = await Promise.all(stringPaths.map((p) => isDir(p)));
+  return stringPaths.filter((_, i) => checks[i] === true);
 }
 
 export async function persistFolderPaths(

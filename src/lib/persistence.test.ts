@@ -185,6 +185,10 @@ describe("loadPersistedFolderPaths / persistFolderPaths", () => {
     mockGet.mockClear();
     mockSet.mockClear();
     mockSave.mockClear();
+    mockInvoke.mockReset();
+    // Default: every path the loader checks is treated as an existing
+    // directory. Individual tests override per-path as needed.
+    mockInvoke.mockResolvedValue(true);
   });
   afterEach(() => {
     storeData.clear();
@@ -213,6 +217,15 @@ describe("loadPersistedFolderPaths / persistFolderPaths", () => {
       "/ok.logicx",
       "/also-ok",
     ]);
+  });
+
+  it("drops paths whose targets no longer exist on disk", async () => {
+    storeData.set("folders", ["/exists", "/gone"]);
+    mockInvoke.mockImplementation(async (_cmd, args) =>
+      (args as { path: string }).path === "/exists",
+    );
+
+    expect(await loadPersistedFolderPaths()).toEqual(["/exists"]);
   });
 
   it("returns an empty array when the stored value is not an array", async () => {
