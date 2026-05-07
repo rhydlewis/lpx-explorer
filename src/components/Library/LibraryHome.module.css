@@ -1,0 +1,53 @@
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  height: 100%;
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+}
+
+.heading {
+  font-size: var(--fs-h1);
+  font-weight: 600;
+  margin: 0;
+  letter-spacing: -0.005em;
+}
+
+.path {
+  font-size: var(--fs-secondary);
+  color: var(--c-text-muted);
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/*
+ * Responsive auto-fill grid — tile minimum 220px, fills the available
+ * width, wraps cleanly. No virtualisation in v1; libraries with 1000+
+ * projects can layer that on later if it bites (lpx-explorer-1di out
+ * of scope).
+ */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--s-3);
+  align-content: start;
+}
+
+.placeholder {
+  color: var(--c-text-muted);
+  font-style: italic;
+  margin: 0;
+}
+
+.error {
+  color: var(--c-status-fail);
+  margin: 0;
+  font-size: var(--fs-secondary);
+}

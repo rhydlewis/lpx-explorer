@@ -35,6 +35,13 @@ export interface UIState {
   pluginRailScope: PluginRailScope;
   setPluginRailScope: (scope: PluginRailScope) => void;
   /**
+   * Path of the LibraryRail folder the user has selected for browse
+   * mode. When set AND no project is loaded, the main area renders the
+   * library-home tile grid instead of EmptyState. Per lpx-explorer-1di.
+   */
+  selectedLibraryFolder: string | null;
+  setSelectedLibraryFolder: (path: string | null) => void;
+  /**
    * Bump-counter the Compatibility pill increments to ask the rail to
    * scroll/highlight its first missing plug-in. PluginRail subscribes
    * via useEffect on this nonce. (Counter rather than boolean because
@@ -101,6 +108,9 @@ export const useUIStore = create<UIState>((set) => ({
   setPluginRailChip: (chip: PluginRailChip) => set({ pluginRailChip: chip }),
   pluginRailScope: "project",
   setPluginRailScope: (scope: PluginRailScope) => set({ pluginRailScope: scope }),
+  selectedLibraryFolder: null,
+  setSelectedLibraryFolder: (path: string | null) =>
+    set({ selectedLibraryFolder: path }),
   pluginRailJumpToMissingNonce: 0,
   requestJumpToMissing: () =>
     set((s) => ({

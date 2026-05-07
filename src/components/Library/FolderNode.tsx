@@ -7,6 +7,7 @@ import { projectNameOf } from "../../lib/path-utils";
 import type { FolderEntry } from "../../lib/types";
 import { useLibraryStore } from "../../store/library-store";
 import { useProjectStore } from "../../store/project-store";
+import { useUIStore } from "../../store/ui-store";
 import { ErrorCard } from "../ErrorCard";
 
 import { ProjectRow } from "./ProjectRow";
@@ -61,6 +62,11 @@ export function FolderNode({ folder }: Props) {
   const selectedPath = useProjectStore((s) =>
     s.current.kind === "idle" ? undefined : s.current.path,
   );
+  const selectedLibraryFolder = useUIStore((s) => s.selectedLibraryFolder);
+  const setSelectedLibraryFolder = useUIStore(
+    (s) => s.setSelectedLibraryFolder,
+  );
+  const isSelectedForBrowse = selectedLibraryFolder === folder.path;
 
   const visibleProjects = folder.projects.filter((p) => matchesQuery(p, query));
   const status = statusLine(folder, visibleProjects.length, query);
@@ -73,12 +79,17 @@ export function FolderNode({ folder }: Props) {
           type="button"
           data-rail-row="true"
           aria-expanded={open}
+          aria-current={isSelectedForBrowse ? "true" : undefined}
           className={styles.toggle}
-          onClick={() => setOpen((v) => !v)}
+          onClick={() => {
+            // Two responsibilities on click: toggle the rail-tree open
+            // state AND mark this folder as the active library-browse
+            // target so the main area renders <LibraryHome /> when no
+            // project is loaded (lpx-explorer-1di).
+            setOpen((v) => !v);
+            setSelectedLibraryFolder(folder.path);
+          }}
           onKeyDown={(e) => {
-            // ArrowRight expands a closed folder, ArrowLeft collapses
-            // an open one. Both stop propagation so the rail's
-            // Up/Down navigator doesn't also treat them as moves.
             if (e.key === "ArrowRight" && !open) {
               e.preventDefault();
               setOpen(true);

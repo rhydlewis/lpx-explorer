@@ -24,6 +24,7 @@ import { AppShell } from "./components/AppShell";
 import { EmptyState } from "./components/EmptyState";
 import { ProjectInspector } from "./components/Inspector/ProjectInspector";
 import { PluginRail } from "./components/Inspector/PluginRail";
+import { LibraryHome } from "./components/Library/LibraryHome";
 import { LibraryRail } from "./components/Library/LibraryRail";
 
 import "./App.css";
@@ -44,9 +45,11 @@ function App() {
   const status = useProjectStore((s) => s.current);
   const recentCount = useLibraryStore((s) => s.recent.length);
   const folderCount = useLibraryStore((s) => s.folders.length);
+  const folders = useLibraryStore((s) => s.folders);
   const auRegistryStatus = useAuRegistryStore((s) => s.status);
   const pluginRailOpen = useUIStore((s) => s.pluginRailOpen);
   const togglePluginRailOpen = useUIStore((s) => s.togglePluginRailOpen);
+  const selectedLibraryFolder = useUIStore((s) => s.selectedLibraryFolder);
   const textZoom = useUIStore((s) => s.textZoom);
   const isNarrow = useMediaQuery(`(max-width: ${RIGHT_RAIL_BREAKPOINT_PX - 1}px)`);
   const [hint, setHint] = useState<string | null>(null);
@@ -215,13 +218,28 @@ function App() {
 
   const rail = recentCount > 0 || folderCount > 0 ? <LibraryRail /> : undefined;
 
-  const main = status.kind === "idle"
-    ? <EmptyState
+  // Library-browse state: idle project + a selected library folder that
+  // exists in the rail. Falls through to EmptyState when no folder is
+  // selected (or the selected one was removed). Per lpx-explorer-1di.
+  const browseFolder =
+    status.kind === "idle" && selectedLibraryFolder !== null
+      ? folders.find((f) => f.path === selectedLibraryFolder)
+      : undefined;
+
+  let main;
+  if (status.kind === "idle") {
+    main = browseFolder !== undefined ? (
+      <LibraryHome folder={browseFolder} />
+    ) : (
+      <EmptyState
         onPickProject={pickProject}
         onOpenFolder={() => void pickAndAddFolder()}
         auRegistryStatus={auRegistryStatus}
       />
-    : <ProjectInspector status={status} />;
+    );
+  } else {
+    main = <ProjectInspector status={status} />;
+  }
 
   // Right rail is project-scoped — only visible once a project is
   // loaded. At narrow widths the rail collapses to a topbar toggle so
