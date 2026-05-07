@@ -77,6 +77,14 @@ interface InternalState extends LibrarySummariesState {
 
 function messageOf(e: unknown): string {
   if (e instanceof Error) return e.message;
+  // Tauri rejects with a serialised `ParseError`:
+  //   { kind: "ProjectDataMissing", message: "ProjectData not found …" }
+  // Pull `.message` out so the failed-list reads the parser's actual
+  // explanation instead of `[object Object]`.
+  if (typeof e === "object" && e !== null && "message" in e) {
+    const msg = (e as { message: unknown }).message;
+    if (typeof msg === "string") return msg;
+  }
   return String(e);
 }
 
