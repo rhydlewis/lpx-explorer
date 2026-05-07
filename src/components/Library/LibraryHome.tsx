@@ -1,3 +1,5 @@
+import { useMemo, useState } from "react";
+
 import { folderNameOf, projectNameOf } from "../../lib/path-utils";
 import type { FolderEntry } from "../../lib/types";
 import { useLibrarySummariesStore } from "../../store/library-summaries-store";
@@ -24,6 +26,10 @@ export function LibraryHome({ folder }: Props) {
   const name = folderNameOf(folder.path);
   const summaries = useLibrarySummariesStore((s) => s.summaries);
   const errors = useLibrarySummariesStore((s) => s.errors);
+  // Per-mount filter state (lpx-explorer-xxb). Reset implicitly on
+  // folder switch via React's `key` semantics — each folder mounts a
+  // fresh <LibraryHome /> from <App />.
+  const [query, setQuery] = useState("");
 
   const total = folder.projects.length;
   const parsed = folder.projects.reduce(
@@ -32,6 +38,14 @@ export function LibraryHome({ folder }: Props) {
   );
   const failedPaths = folder.projects.filter((path) => errors.has(path));
   const progress = computeProgress(folder, total, parsed, failedPaths.length);
+
+  const trimmed = query.trim().toLowerCase();
+  const visibleProjects = useMemo(() => {
+    if (trimmed === "") return folder.projects;
+    return folder.projects.filter((path) =>
+      projectNameOf(path).toLowerCase().includes(trimmed),
+    );
+  }, [folder.projects, trimmed]);
 
   return (
     <section
@@ -53,11 +67,29 @@ export function LibraryHome({ folder }: Props) {
             )}
           </p>
         )}
+        {folder.projects.length > 0 && (
+          <input
+            type="search"
+            role="searchbox"
+            aria-label="Search projects"
+            placeholder="Search projects…"
+            value={query}
+            className={styles.search}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") setQuery("");
+            }}
+          />
+        )}
         {failedPaths.length > 0 && (
           <FailedList paths={failedPaths} errors={errors} />
         )}
       </header>
-      <Body folder={folder} />
+      <Body
+        folder={folder}
+        visibleProjects={visibleProjects}
+        query={trimmed}
+      />
     </section>
   );
 }
@@ -117,7 +149,13 @@ function computeProgress(
   return null;
 }
 
-function Body({ folder }: { readonly folder: FolderEntry }) {
+interface BodyProps {
+  readonly folder: FolderEntry;
+  readonly visibleProjects: ReadonlyArray<string>;
+  readonly query: string;
+}
+
+function Body({ folder, visibleProjects, query }: BodyProps) {
   if (folder.status.kind === "error") {
     return (
       <p className={styles.error}>
@@ -130,9 +168,16 @@ function Body({ folder }: { readonly folder: FolderEntry }) {
       <p className={styles.placeholder}>No .logicx projects in this folder.</p>
     );
   }
+  if (visibleProjects.length === 0 && query !== "") {
+    return (
+      <p className={styles.placeholder}>
+        No projects match &ldquo;{query}&rdquo;.
+      </p>
+    );
+  }
   return (
     <div className={styles.grid}>
-      {folder.projects.map((path) => (
+      {visibleProjects.map((path) => (
         <LibraryHomeTile key={path} path={path} />
       ))}
     </div>

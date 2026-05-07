@@ -157,17 +157,25 @@ export function TrackList({ tracks }: Props) {
             type="button"
             className={styles.expandAllButton}
             onClick={toggleAllTracks}
+            title={
+              tracksAllExpanded
+                ? "Collapse the inserts panel under every track"
+                : "Expand every track to show its instrument + MIDI FX + Audio FX inserts"
+            }
           >
-            {tracksAllExpanded ? "Collapse all" : "Expand all"}
+            {tracksAllExpanded ? "Collapse inserts" : "Expand inserts"}
           </button>
-          <label className={styles.toggle}>
+          <label
+            className={styles.toggle}
+            title="Include routing tracks (Master, Output, Bus, Aux, Input) that have at least one insert"
+          >
             <input
               type="checkbox"
               checked={showAll}
               onChange={togglePluginChainsShowAll}
-              aria-label="show routing kinds (master, output, bus, aux, input)"
+              aria-label="Show routing tracks (master, output, bus, aux, input)"
             />
-            <span>Show all</span>
+            <span>Show routing tracks</span>
           </label>
         </div>
       </div>

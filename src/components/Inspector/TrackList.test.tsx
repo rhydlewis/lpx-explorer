@@ -208,7 +208,7 @@ describe("<TrackList />", () => {
     );
 
     fireEvent.click(
-      screen.getByRole("checkbox", { name: /show routing kinds/i }),
+      screen.getByRole("checkbox", { name: /show routing tracks/i }),
     );
 
     expect(screen.getByText("Mix Bus")).toBeInTheDocument();
@@ -232,7 +232,7 @@ describe("<TrackList />", () => {
     );
 
     fireEvent.click(
-      screen.getByRole("checkbox", { name: /show routing kinds/i }),
+      screen.getByRole("checkbox", { name: /show routing tracks/i }),
     );
 
     // Show-all surfaces routing kinds but does not unhide inactive tracks
@@ -241,21 +241,21 @@ describe("<TrackList />", () => {
     expect(screen.queryByText("Phantom Bus")).not.toBeInTheDocument();
   });
 
-  it("exposes an 'Expand all' button when no tracks are expanded", () => {
+  it("exposes an 'Expand inserts' button when no tracks are expanded", () => {
     useUIStore.setState({ tracksAllExpanded: false, tracksExpansionNonce: 0 });
     render(<TrackList tracks={[track({ name: "Audio 1", offset: 1 })]} />);
 
     expect(
-      screen.getByRole("button", { name: /expand all/i }),
+      screen.getByRole("button", { name: /expand inserts/i }),
     ).toBeInTheDocument();
   });
 
-  it("the button label flips to 'Collapse all' once tracks are expanded", () => {
+  it("the button label flips to 'Collapse inserts' once tracks are expanded", () => {
     useUIStore.setState({ tracksAllExpanded: true, tracksExpansionNonce: 1 });
     render(<TrackList tracks={[track({ name: "Audio 1", offset: 1 })]} />);
 
     expect(
-      screen.getByRole("button", { name: /collapse all/i }),
+      screen.getByRole("button", { name: /collapse inserts/i }),
     ).toBeInTheDocument();
   });
 
@@ -263,10 +263,22 @@ describe("<TrackList />", () => {
     useUIStore.setState({ tracksAllExpanded: false, tracksExpansionNonce: 0 });
     render(<TrackList tracks={[track({ name: "Audio 1", offset: 1 })]} />);
 
-    fireEvent.click(screen.getByRole("button", { name: /expand all/i }));
+    fireEvent.click(screen.getByRole("button", { name: /expand inserts/i }));
 
     expect(useUIStore.getState().tracksAllExpanded).toBe(true);
     expect(useUIStore.getState().tracksExpansionNonce).toBe(1);
+  });
+
+  it("'Show routing tracks' checkbox label and tooltip describe the scope", () => {
+    render(<TrackList tracks={[track({ name: "Audio 1", offset: 1 })]} />);
+
+    expect(screen.getByText(/show routing tracks/i)).toBeInTheDocument();
+    // The aria-label on the checkbox carries the long-form scope.
+    expect(
+      screen.getByRole("checkbox", {
+        name: /show routing tracks.*master.*bus.*aux/i,
+      }),
+    ).toBeInTheDocument();
   });
 
   // lpx-explorer-1ki — inline name filter

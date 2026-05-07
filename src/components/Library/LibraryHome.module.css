@@ -77,6 +77,28 @@
   align-content: start;
 }
 
+.search {
+  width: 100%;
+  max-width: 480px;
+  background-color: var(--c-bg);
+  border: 1px solid var(--c-divider);
+  border-radius: var(--radius-sm);
+  padding: var(--s-2) var(--s-3);
+  font-size: var(--fs-secondary);
+  font-family: inherit;
+  color: var(--c-text);
+  margin-top: var(--s-2);
+}
+
+.search:focus {
+  outline: none;
+  border-color: var(--c-accent);
+}
+
+.search::placeholder {
+  color: var(--c-text-muted);
+}
+
 .placeholder {
   color: var(--c-text-muted);
   font-style: italic;
