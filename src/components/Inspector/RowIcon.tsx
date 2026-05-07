@@ -19,6 +19,12 @@ const CATEGORY_ICON: Record<"effect" | "instrument" | "midi", LucideIcon> = {
   midi: Workflow,
 };
 
+const CATEGORY_LABEL: Record<"effect" | "instrument" | "midi", string> = {
+  effect: "Audio effect",
+  instrument: "Instrument",
+  midi: "MIDI processor",
+};
+
 interface Props {
   readonly fingerprint: string;
   readonly status: InstallStatus;
@@ -50,9 +56,14 @@ export function RowIcon({ fingerprint, status }: Props) {
     );
   }
   const Icon = CATEGORY_ICON[category];
+  const label = CATEGORY_LABEL[category];
   return (
-    <span className={styles.rowIcon} aria-hidden="true">
-      <Icon size="0.95em" />
+    <span
+      className={styles.rowIcon}
+      aria-label={label}
+      title={label}
+    >
+      <Icon size="0.95em" aria-hidden="true" />
     </span>
   );
 }
