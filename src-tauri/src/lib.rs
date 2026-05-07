@@ -194,6 +194,7 @@ pub fn run() {
             auval::run_au_scan,
             commands::is_dir,
             commands::home_dir,
+            commands::log_event,
             commands::parse_project,
             library::scan_folder,
             set_recent_menu

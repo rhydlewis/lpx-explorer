@@ -112,6 +112,15 @@ pub fn home_dir() -> Option<String> {
     std::env::var("HOME").ok().filter(|s| !s.is_empty())
 }
 
+/// Tauri command: relay a frontend log line to the Rust process's
+/// stderr (the `tauri dev` terminal). Avoids the user having to open
+/// Web Inspector to see JS-side traces — handy for triage when the
+/// renderer is hung.
+#[tauri::command]
+pub fn log_event(level: String, message: String) {
+    eprintln!("[js:{level}] {message}");
+}
+
 /// First `<bundle>/Alternatives/<n>/` directory containing ProjectData.
 fn locate_alternative(bundle: &Path) -> Option<PathBuf> {
     let alternatives = bundle.join("Alternatives");
