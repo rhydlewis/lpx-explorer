@@ -28,7 +28,9 @@ vi.mock("@tauri-apps/api/core", () => ({
 
 import {
   loadPersistedLibrary,
+  loadTextZoom,
   persistLibrary,
+  persistTextZoom,
   setRecentMenu,
 } from "./persistence";
 
@@ -136,5 +138,41 @@ describe("setRecentMenu", () => {
       ],
       recentFolders: [{ path: "/Music", name: "Music" }],
     });
+  });
+});
+
+describe("loadTextZoom / persistTextZoom", () => {
+  beforeEach(() => {
+    storeData.clear();
+    mockGet.mockClear();
+    mockSet.mockClear();
+    mockSave.mockClear();
+  });
+  afterEach(() => {
+    storeData.clear();
+  });
+
+  it("returns null when nothing has been persisted yet", async () => {
+    expect(await loadTextZoom()).toBeNull();
+  });
+
+  it("round-trips a zoom value through persistTextZoom + loadTextZoom", async () => {
+    await persistTextZoom(1.3);
+
+    expect(await loadTextZoom()).toBe(1.3);
+  });
+
+  it("returns null for non-finite stored values (corrupted store)", async () => {
+    storeData.set("textZoom", Number.NaN);
+    expect(await loadTextZoom()).toBeNull();
+
+    storeData.set("textZoom", "1.2"); // wrong type
+    expect(await loadTextZoom()).toBeNull();
+  });
+
+  it("persistTextZoom calls save() so the value lands on disk immediately", async () => {
+    await persistTextZoom(0.9);
+
+    expect(mockSave).toHaveBeenCalledTimes(1);
   });
 });

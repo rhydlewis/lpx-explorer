@@ -9,14 +9,16 @@ import { pickAndAddFolder } from "./lib/open-folder";
 import { routeDrop } from "./lib/drop-routing";
 import {
   loadPersistedLibrary,
+  loadTextZoom,
   persistLibrary,
+  persistTextZoom,
   setRecentMenu,
 } from "./lib/persistence";
 import { useMediaQuery } from "./lib/use-media-query";
 import { useAuRegistryStore } from "./store/au-registry-store";
 import { useLibraryStore } from "./store/library-store";
 import { useProjectStore } from "./store/project-store";
-import { useUIStore } from "./store/ui-store";
+import { TEXT_ZOOM_STEP, useUIStore } from "./store/ui-store";
 import { AppShell } from "./components/AppShell";
 import { EmptyState } from "./components/EmptyState";
 import { ProjectInspector } from "./components/Inspector/ProjectInspector";
@@ -42,6 +44,7 @@ function App() {
   const auRegistryStatus = useAuRegistryStore((s) => s.status);
   const pluginRailOpen = useUIStore((s) => s.pluginRailOpen);
   const togglePluginRailOpen = useUIStore((s) => s.togglePluginRailOpen);
+  const textZoom = useUIStore((s) => s.textZoom);
   const isNarrow = useMediaQuery(`(max-width: ${RIGHT_RAIL_BREAKPOINT_PX - 1}px)`);
   const [hint, setHint] = useState<string | null>(null);
 
@@ -60,6 +63,50 @@ function App() {
 
   useEffect(() => {
     void useAuRegistryStore.getState().autoScanIfAbsent();
+  }, []);
+
+  // Text zoom — Cmd-+ / Cmd-- / Cmd-0. Hydrate from disk on mount, then
+  // sync the CSS custom property + persist on every change. Keyboard
+  // listener uses metaKey for Cmd; treats '=' (the unshifted '+') and
+  // 'Equal'/'Plus' as zoom-in.
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const persisted = await loadTextZoom();
+      if (cancelled || persisted === null) return;
+      useUIStore.getState().setTextZoom(persisted);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    document.documentElement.style.setProperty("--text-zoom", String(textZoom));
+    void persistTextZoom(textZoom);
+  }, [textZoom]);
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (!e.metaKey || e.altKey || e.ctrlKey) return;
+      // Cmd-+ (also matches '=' on US layouts since '+' is shift-=) → zoom in
+      if (e.key === "+" || e.key === "=") {
+        e.preventDefault();
+        useUIStore.getState().bumpTextZoom(TEXT_ZOOM_STEP);
+        return;
+      }
+      if (e.key === "-" || e.key === "_") {
+        e.preventDefault();
+        useUIStore.getState().bumpTextZoom(-TEXT_ZOOM_STEP);
+        return;
+      }
+      if (e.key === "0") {
+        e.preventDefault();
+        useUIStore.getState().resetTextZoom();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
   // Persistence: hydrate from disk, then sync writes + native menu on every

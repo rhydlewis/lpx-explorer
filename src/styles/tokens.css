@@ -42,11 +42,17 @@
   --font-system: -apple-system, system-ui, "SF Pro Display", "SF Pro Text",
     "Helvetica Neue", Arial, sans-serif;
   --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
-  --fs-section-header: 10px;  /* small caps */
-  --fs-secondary: 11px;
-  --fs-body: 14px;
-  --fs-h2: 16px;
-  --fs-h1: 22px;
+  /*
+   * Text zoom multiplier — driven by Cmd-+ / Cmd-- / Cmd-0 in App.tsx
+   * (lpx-explorer-1kn). Default 1.0; tokens below scale via calc() so the
+   * spacing scale stays fixed (only text grows / shrinks).
+   */
+  --text-zoom: 1;
+  --fs-section-header: calc(10px * var(--text-zoom));
+  --fs-secondary: calc(11px * var(--text-zoom));
+  --fs-body: calc(14px * var(--text-zoom));
+  --fs-h2: calc(16px * var(--text-zoom));
+  --fs-h1: calc(22px * var(--text-zoom));
 
   /* ─── Layout ─────────────────────────────────────────────────────── */
   --row-height: 30px;

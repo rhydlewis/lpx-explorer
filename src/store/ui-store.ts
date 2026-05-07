@@ -53,6 +53,26 @@ export interface UIState {
   expandAllTracks: () => void;
   collapseAllTracks: () => void;
   toggleAllTracks: () => void;
+  /**
+   * App-wide text zoom multiplier. 1.0 is default; clamped to
+   * [TEXT_ZOOM_MIN, TEXT_ZOOM_MAX] so users can't shrink the UI past
+   * legibility or balloon it past the layout's tolerance. Persisted
+   * across launches via `lib/persistence.ts`.
+   */
+  textZoom: number;
+  setTextZoom: (z: number) => void;
+  bumpTextZoom: (delta: number) => void;
+  resetTextZoom: () => void;
+}
+
+export const TEXT_ZOOM_MIN = 0.75;
+export const TEXT_ZOOM_MAX = 2.0;
+export const TEXT_ZOOM_STEP = 0.1;
+export const TEXT_ZOOM_DEFAULT = 1.0;
+
+function clampZoom(z: number): number {
+  if (Number.isNaN(z)) return TEXT_ZOOM_DEFAULT;
+  return Math.min(TEXT_ZOOM_MAX, Math.max(TEXT_ZOOM_MIN, z));
 }
 
 export const useUIStore = create<UIState>((set) => ({
@@ -102,4 +122,9 @@ export const useUIStore = create<UIState>((set) => ({
       tracksAllExpanded: !s.tracksAllExpanded,
       tracksExpansionNonce: s.tracksExpansionNonce + 1,
     })),
+  textZoom: TEXT_ZOOM_DEFAULT,
+  setTextZoom: (z: number) => set({ textZoom: clampZoom(z) }),
+  bumpTextZoom: (delta: number) =>
+    set((s) => ({ textZoom: clampZoom(s.textZoom + delta) })),
+  resetTextZoom: () => set({ textZoom: TEXT_ZOOM_DEFAULT }),
 }));

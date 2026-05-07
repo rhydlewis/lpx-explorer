@@ -1,6 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { useUIStore } from "./ui-store";
+import {
+  useUIStore,
+  TEXT_ZOOM_DEFAULT,
+  TEXT_ZOOM_MIN,
+  TEXT_ZOOM_MAX,
+} from "./ui-store";
 
 describe("useUIStore", () => {
   beforeEach(() => {
@@ -13,6 +18,7 @@ describe("useUIStore", () => {
       pluginRailOpen: false,
       tracksAllExpanded: false,
       tracksExpansionNonce: 0,
+      textZoom: TEXT_ZOOM_DEFAULT,
     });
   });
   afterEach(() => {
@@ -25,6 +31,7 @@ describe("useUIStore", () => {
       pluginRailOpen: false,
       tracksAllExpanded: false,
       tracksExpansionNonce: 0,
+      textZoom: TEXT_ZOOM_DEFAULT,
     });
   });
 
@@ -153,5 +160,44 @@ describe("useUIStore", () => {
     useUIStore.getState().toggleAllTracks();
     expect(useUIStore.getState().tracksAllExpanded).toBe(false);
     expect(useUIStore.getState().tracksExpansionNonce).toBe(2);
+  });
+
+  describe("textZoom", () => {
+    it("starts at 1.0 (the default)", () => {
+      expect(useUIStore.getState().textZoom).toBe(TEXT_ZOOM_DEFAULT);
+    });
+
+    it("bumpTextZoom(+0.1) increases by one step", () => {
+      useUIStore.getState().bumpTextZoom(0.1);
+      expect(useUIStore.getState().textZoom).toBeCloseTo(1.1, 5);
+    });
+
+    it("bumpTextZoom(-0.1) decreases by one step", () => {
+      useUIStore.getState().bumpTextZoom(-0.1);
+      expect(useUIStore.getState().textZoom).toBeCloseTo(0.9, 5);
+    });
+
+    it("bumpTextZoom clamps at TEXT_ZOOM_MAX", () => {
+      useUIStore.getState().setTextZoom(TEXT_ZOOM_MAX);
+      useUIStore.getState().bumpTextZoom(0.5);
+      expect(useUIStore.getState().textZoom).toBe(TEXT_ZOOM_MAX);
+    });
+
+    it("bumpTextZoom clamps at TEXT_ZOOM_MIN", () => {
+      useUIStore.getState().setTextZoom(TEXT_ZOOM_MIN);
+      useUIStore.getState().bumpTextZoom(-0.5);
+      expect(useUIStore.getState().textZoom).toBe(TEXT_ZOOM_MIN);
+    });
+
+    it("setTextZoom rejects NaN, falls back to the default", () => {
+      useUIStore.getState().setTextZoom(Number.NaN);
+      expect(useUIStore.getState().textZoom).toBe(TEXT_ZOOM_DEFAULT);
+    });
+
+    it("resetTextZoom returns to the default", () => {
+      useUIStore.getState().setTextZoom(1.5);
+      useUIStore.getState().resetTextZoom();
+      expect(useUIStore.getState().textZoom).toBe(TEXT_ZOOM_DEFAULT);
+    });
   });
 });

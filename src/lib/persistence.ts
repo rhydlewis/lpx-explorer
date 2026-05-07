@@ -6,6 +6,7 @@ import type { RecentEntry } from "./types";
 const STORE_FILE = "library.json";
 const KEY_RECENT = "recent";
 const KEY_RECENT_FOLDERS = "recentFolders";
+const KEY_TEXT_ZOOM = "textZoom";
 
 interface PersistedLibrary {
   recent: ReadonlyArray<RecentEntry>;
@@ -79,6 +80,26 @@ export async function persistLibrary(
   const store = await getStore();
   await store.set(KEY_RECENT, recent);
   await store.set(KEY_RECENT_FOLDERS, recentFolders);
+  await store.save();
+}
+
+/**
+ * Read the persisted text-zoom multiplier. Returns `null` when nothing
+ * has been saved yet (first launch) or the stored value is malformed
+ * — caller falls back to the ui-store default.
+ */
+export async function loadTextZoom(): Promise<number | null> {
+  const store = await getStore();
+  const raw = await store.get(KEY_TEXT_ZOOM);
+  if (typeof raw !== "number" || !Number.isFinite(raw)) {
+    return null;
+  }
+  return raw;
+}
+
+export async function persistTextZoom(zoom: number): Promise<void> {
+  const store = await getStore();
+  await store.set(KEY_TEXT_ZOOM, zoom);
   await store.save();
 }
 
