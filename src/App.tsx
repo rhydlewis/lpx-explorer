@@ -26,7 +26,8 @@ import { AppShell } from "./components/AppShell";
 import { EmptyState } from "./components/EmptyState";
 import { ProjectInspector } from "./components/Inspector/ProjectInspector";
 import { PluginRail } from "./components/Inspector/PluginRail";
-import { LibraryHome } from "./components/Library/LibraryHome";
+// LibraryHome import temporarily removed while the tile view is
+// disabled (post-hydrate render hang triage). Re-add when re-enabling.
 import { LibraryRail } from "./components/Library/LibraryRail";
 
 import "./App.css";
@@ -105,14 +106,17 @@ const BUY_ME_COFFEE_URL = "https://buymeacoffee.com/rhyd";
 const RIGHT_RAIL_BREAKPOINT_PX = 1100;
 
 function App() {
+  // Render breadcrumb — fires every time React commits the App tree.
+  // If this stops while [alive] heartbeats keep coming, the renderer is
+  // skipping commits (suspended? error boundary?). If both stop, the
+  // event loop itself is jammed.
+  console.info("[render] App");
   const status = useProjectStore((s) => s.current);
   const recentCount = useLibraryStore((s) => s.recent.length);
   const folderCount = useLibraryStore((s) => s.folders.length);
-  const folders = useLibraryStore((s) => s.folders);
   const auRegistryStatus = useAuRegistryStore((s) => s.status);
   const pluginRailOpen = useUIStore((s) => s.pluginRailOpen);
   const togglePluginRailOpen = useUIStore((s) => s.togglePluginRailOpen);
-  const selectedLibraryFolder = useUIStore((s) => s.selectedLibraryFolder);
   const textZoom = useUIStore((s) => s.textZoom);
   const isNarrow = useMediaQuery(`(max-width: ${RIGHT_RAIL_BREAKPOINT_PX - 1}px)`);
   const [hint, setHint] = useState<string | null>(null);
@@ -225,11 +229,9 @@ function App() {
 
       const initialFolders = useLibraryStore.getState().folders;
       console.info(`[hydrate] initialFolders=${initialFolders.length}`);
-      if (initialFolders.length === 1) {
-        useUIStore
-          .getState()
-          .setSelectedLibraryFolder(initialFolders[0]!.path);
-      }
+      // Auto-select-for-browse intentionally disabled while 1di
+      // (LibraryHome) is off the render path. The user always lands
+      // on EmptyState when idle.
 
       unsubscribe = subscribeLibraryPersistence(persisted);
       console.info("[hydrate] complete");
@@ -302,28 +304,17 @@ function App() {
 
   const rail = recentCount > 0 || folderCount > 0 ? <LibraryRail /> : undefined;
 
-  // Library-browse state: idle project + a selected library folder that
-  // exists in the rail. Falls through to EmptyState when no folder is
-  // selected (or the selected one was removed). Per lpx-explorer-1di.
-  const browseFolder =
-    status.kind === "idle" && selectedLibraryFolder !== null
-      ? folders.find((f) => f.path === selectedLibraryFolder)
-      : undefined;
-
-  let main;
-  if (status.kind === "idle") {
-    main = browseFolder !== undefined ? (
-      <LibraryHome folder={browseFolder} />
-    ) : (
-      <EmptyState
+  // 1di tile view temporarily disabled — investigating a post-hydrate
+  // render hang. EmptyState only path while idle. Rail still shows
+  // recents / folders normally; clicking a project still opens it.
+  // Re-enable once the root cause of the blank-after-hydrate is fixed.
+  const main = status.kind === "idle"
+    ? <EmptyState
         onPickProject={pickProject}
         onOpenFolder={() => void pickAndAddFolder()}
         auRegistryStatus={auRegistryStatus}
       />
-    );
-  } else {
-    main = <ProjectInspector status={status} />;
-  }
+    : <ProjectInspector status={status} />;
 
   // Right rail is project-scoped — only visible once a project is
   // loaded. At narrow widths the rail collapses to a topbar toggle so
