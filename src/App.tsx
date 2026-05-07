@@ -223,19 +223,23 @@ function App() {
       }
       if (cancelled) return;
 
-      const initialFolders = useLibraryStore.getState().folders;
-      console.info(`[hydrate] initialFolders=${initialFolders.length}`);
       // If exactly one folder is in the rail (auto-added or restored),
       // surface its tile grid by default. Multiple folders means the
-      // user has organised their library — let them pick which one to
-      // browse explicitly.
+      // user has organised their library — let them pick which one.
+      const initialFolders = useLibraryStore.getState().folders;
+      console.info(`[hydrate] initialFolders=${initialFolders.length}`);
       if (initialFolders.length === 1) {
-        useUIStore
-          .getState()
-          .setSelectedLibraryFolder(initialFolders[0]!.path);
+        useUIStore.getState().setSelectedLibraryFolder(initialFolders[0]!.path);
       }
 
       unsubscribe = subscribeLibraryPersistence(persisted);
+      // Persist folder additions made during hydration — chiefly the
+      // ~/Music/Logic auto-add, which mutates the store before the
+      // subscriber above is registered. Idempotent.
+      const finalPaths = initialFolders.map((f) => f.path);
+      if (folderPathsDiffer(persistedFolderPaths, finalPaths)) {
+        void persistFolderPaths(finalPaths);
+      }
       console.info("[hydrate] complete");
     })();
 
