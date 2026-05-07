@@ -268,4 +268,118 @@ describe("<TrackList />", () => {
     expect(useUIStore.getState().tracksAllExpanded).toBe(true);
     expect(useUIStore.getState().tracksExpansionNonce).toBe(1);
   });
+
+  // lpx-explorer-1ki — inline name filter
+
+  it("renders a search input for narrowing tracks by name", () => {
+    render(<TrackList tracks={[track({ name: "Audio 1", offset: 1 })]} />);
+
+    expect(
+      screen.getByRole("searchbox", { name: /search tracks/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("typing in the search input narrows visible tracks (case-insensitive substring)", () => {
+    render(
+      <TrackList
+        tracks={[
+          track({ name: "Audio 1", user_name: "Bass", offset: 1 }),
+          track({ name: "Audio 2", user_name: "Drums", offset: 2 }),
+          track({ name: "Audio 3", user_name: "Bass DI", offset: 3 }),
+        ]}
+      />,
+    );
+
+    fireEvent.change(
+      screen.getByRole("searchbox", { name: /search tracks/i }),
+      { target: { value: "bass" } },
+    );
+
+    expect(screen.getByText("Bass")).toBeInTheDocument();
+    expect(screen.getByText("Bass DI")).toBeInTheDocument();
+    expect(screen.queryByText("Drums")).not.toBeInTheDocument();
+  });
+
+  it("falls back to track.name when user_name is null", () => {
+    render(
+      <TrackList
+        tracks={[
+          track({ name: "Audio 1", user_name: null, offset: 1 }),
+          track({ name: "Inst 4", user_name: null, kind: "instrument", offset: 2 }),
+        ]}
+      />,
+    );
+
+    fireEvent.change(
+      screen.getByRole("searchbox", { name: /search tracks/i }),
+      { target: { value: "inst" } },
+    );
+
+    expect(screen.getByText("Inst 4")).toBeInTheDocument();
+    expect(screen.queryByText("Audio 1")).not.toBeInTheDocument();
+  });
+
+  it("shows an empty-state placeholder when the query has no matches", () => {
+    render(
+      <TrackList
+        tracks={[track({ name: "Audio 1", user_name: "Bass", offset: 1 })]}
+      />,
+    );
+
+    fireEvent.change(
+      screen.getByRole("searchbox", { name: /search tracks/i }),
+      { target: { value: "synth" } },
+    );
+
+    expect(screen.getByText(/no tracks match\s+["“]synth["”]/i)).toBeInTheDocument();
+  });
+
+  it("clearing the query restores the full list", () => {
+    render(
+      <TrackList
+        tracks={[
+          track({ name: "Audio 1", user_name: "Bass", offset: 1 }),
+          track({ name: "Audio 2", user_name: "Drums", offset: 2 }),
+        ]}
+      />,
+    );
+
+    const search = screen.getByRole("searchbox", { name: /search tracks/i });
+    fireEvent.change(search, { target: { value: "bass" } });
+    expect(screen.queryByText("Drums")).not.toBeInTheDocument();
+
+    fireEvent.change(search, { target: { value: "" } });
+    expect(screen.getByText("Bass")).toBeInTheDocument();
+    expect(screen.getByText("Drums")).toBeInTheDocument();
+  });
+
+  it("ESC clears the active query", () => {
+    render(
+      <TrackList
+        tracks={[
+          track({ name: "Audio 1", user_name: "Bass", offset: 1 }),
+          track({ name: "Audio 2", user_name: "Drums", offset: 2 }),
+        ]}
+      />,
+    );
+
+    const search = screen.getByRole("searchbox", { name: /search tracks/i });
+    fireEvent.change(search, { target: { value: "bass" } });
+    fireEvent.keyDown(search, { key: "Escape" });
+
+    expect((search as HTMLInputElement).value).toBe("");
+    expect(screen.getByText("Drums")).toBeInTheDocument();
+  });
+
+  it("'No tracks detected.' (not the filter empty-state) shows when the project has zero tracks", () => {
+    render(<TrackList tracks={[]} />);
+
+    fireEvent.change(
+      screen.getByRole("searchbox", { name: /search tracks/i }),
+      { target: { value: "anything" } },
+    );
+
+    expect(screen.getByText(/no tracks detected/i)).toBeInTheDocument();
+    expect(screen.queryByText(/no tracks match/i)).not.toBeInTheDocument();
+  });
 });

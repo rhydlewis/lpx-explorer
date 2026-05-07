@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import type { Track, TrackKind } from "../../lib/types";
 import { useUIStore } from "../../store/ui-store";
@@ -116,15 +116,37 @@ function groupChildrenUnderParents(
   return result;
 }
 
+/**
+ * Case-insensitive substring filter against the track's user-given
+ * name (preferred) with channel-strip default name fallback. Per
+ * lpx-explorer-1ki: 'where's the Bass track?' on a 80+ track
+ * project. v1 deliberately does NOT consult the auval registry to
+ * resolve instrument names — the renamed-by-user track is the
+ * common case, and registry-resolved fallbacks would couple the
+ * filter to load order.
+ */
+function matchesQuery(track: Track, needle: string): boolean {
+  if (needle === "") return true;
+  const haystack = (track.user_name ?? track.name).toLowerCase();
+  return haystack.includes(needle);
+}
+
 export function TrackList({ tracks }: Props) {
   const showAll = useUIStore((s) => s.pluginChainsShowAll);
   const togglePluginChainsShowAll = useUIStore((s) => s.togglePluginChainsShowAll);
   const tracksAllExpanded = useUIStore((s) => s.tracksAllExpanded);
   const toggleAllTracks = useUIStore((s) => s.toggleAllTracks);
-  const items = useMemo(
+  const [query, setQuery] = useState("");
+
+  const allItems = useMemo(
     () => buildRenderOrder(tracks, showAll),
     [tracks, showAll],
   );
+  const items = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    if (needle === "") return allItems;
+    return allItems.filter((it) => matchesQuery(it.track, needle));
+  }, [allItems, query]);
 
   return (
     <section aria-label="tracks" className={sectionStyles.section}>
@@ -149,15 +171,46 @@ export function TrackList({ tracks }: Props) {
           </label>
         </div>
       </div>
-      {items.length === 0 ? (
-        <p className={sectionStyles.placeholder}>
-          No tracks detected.
-        </p>
-      ) : (
-        items.map(({ track, depth }) => (
-          <TrackRow key={track.offset} track={track} depth={depth} />
-        ))
-      )}
+      <input
+        type="search"
+        role="searchbox"
+        aria-label="Search tracks"
+        placeholder="Search tracks…"
+        value={query}
+        className={styles.search}
+        onChange={(e) => setQuery(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") setQuery("");
+        }}
+      />
+      <TrackListBody items={items} totalBeforeFilter={allItems.length} query={query} />
     </section>
+  );
+}
+
+interface BodyProps {
+  readonly items: ReadonlyArray<RenderItem>;
+  readonly totalBeforeFilter: number;
+  readonly query: string;
+}
+
+function TrackListBody({ items, totalBeforeFilter, query }: BodyProps) {
+  if (totalBeforeFilter === 0) {
+    return <p className={sectionStyles.placeholder}>No tracks detected.</p>;
+  }
+  const trimmed = query.trim();
+  if (items.length === 0 && trimmed !== "") {
+    return (
+      <p className={sectionStyles.placeholder}>
+        No tracks match &ldquo;{trimmed}&rdquo;.
+      </p>
+    );
+  }
+  return (
+    <>
+      {items.map(({ track, depth }) => (
+        <TrackRow key={track.offset} track={track} depth={depth} />
+      ))}
+    </>
   );
 }
