@@ -14,11 +14,14 @@ import {
 
 import { LibraryPluginRow } from "./LibraryPluginRow";
 import { MissingRowActions } from "./MissingRowActions";
+import { PluginRailCountLine } from "./PluginRailCountLine";
+import { PluginRailFacetRow } from "./PluginRailFacetRow";
 import { RowIcon } from "./RowIcon";
 import {
   applyFilters,
   buildDisplayGroups,
   buildLibraryGroups,
+  fineCategoryFacets,
   sortLibraryGroups,
   type DisplayGroup,
 } from "./plugin-rail-groups";
@@ -70,6 +73,8 @@ export function PluginRail({ summary }: Props) {
   const setFilter = useUIStore((s) => s.setPluginRailFilter);
   const chip = useUIStore((s) => s.pluginRailChip);
   const setChip = useUIStore((s) => s.setPluginRailChip);
+  const fineCategory = useUIStore((s) => s.pluginRailFineCategory);
+  const setFineCategory = useUIStore((s) => s.setPluginRailFineCategory);
   const scope = useUIStore((s) => s.pluginRailScope);
   const setScope = useUIStore((s) => s.setPluginRailScope);
   const showFingerprints = useUIStore((s) => s.pluginRailShowFingerprints);
@@ -118,12 +123,18 @@ export function PluginRail({ summary }: Props) {
   }, [scope, summary, registry, summariesMap]);
 
   const visible = useMemo(
-    () => applyFilters(all, filter, chip),
-    [all, filter, chip],
+    () => applyFilters(all, filter, chip, fineCategory),
+    [all, filter, chip, fineCategory],
   );
 
   const missingCount = useMemo(
     () => all.filter((g) => g.status === "missing").length,
+    [all],
+  );
+
+  const facets = useMemo(() => fineCategoryFacets(all), [all]);
+  const categorisedCount = useMemo(
+    () => all.filter((g) => g.fineCategory !== "Uncategorised").length,
     [all],
   );
 
@@ -163,10 +174,11 @@ export function PluginRail({ summary }: Props) {
           {showFingerprints ? "Hide IDs" : "Show IDs"}
         </button>
       </div>
-      <CountLine
+      <PluginRailCountLine
         visible={visible.length}
         total={all.length}
         missing={missingCount}
+        categorised={categorisedCount}
       />
       <div className={styles.scopeRow} role="group" aria-label="plug-in scope">
         {SCOPES.map((s) => (
@@ -206,6 +218,11 @@ export function PluginRail({ summary }: Props) {
           </button>
         ))}
       </div>
+      <PluginRailFacetRow
+        facets={facets}
+        active={fineCategory}
+        onSelect={setFineCategory}
+      />
       <PluginRailBody
         all={all}
         visible={visible}
@@ -214,29 +231,6 @@ export function PluginRail({ summary }: Props) {
         showFingerprints={showFingerprints}
       />
     </section>
-  );
-}
-
-interface CountLineProps {
-  readonly visible: number;
-  readonly total: number;
-  readonly missing: number;
-}
-
-function CountLine({ visible, total, missing }: CountLineProps) {
-  const plural = total === 1 ? "" : "s";
-  const headline =
-    visible !== total ? `${visible} of ${total}` : `${total} plug-in${plural}`;
-  return (
-    <p className={styles.countLine}>
-      {headline}
-      {missing > 0 && (
-        <span className={styles.countMissing}>
-          {" · "}
-          {missing} missing
-        </span>
-      )}
-    </p>
   );
 }
 

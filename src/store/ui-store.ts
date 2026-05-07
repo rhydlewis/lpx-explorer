@@ -1,5 +1,7 @@
 import { create } from "zustand";
 
+import type { AuFineCategory } from "../lib/au-categories";
+
 /** Plug-in rail chip filter — narrows the project's deduped plug-in list. */
 export type PluginRailChip = "all" | "installed" | "missing" | "duplicated";
 
@@ -31,6 +33,13 @@ export interface UIState {
   /** Chip filter on the right-rail plug-in list. */
   pluginRailChip: PluginRailChip;
   setPluginRailChip: (chip: PluginRailChip) => void;
+  /**
+   * Fine-grained Logic-Pro-style category filter (lpx-explorer-uqg).
+   * Null = no filter (default). The rail's facet row only renders
+   * chips for categories present in the current data set.
+   */
+  pluginRailFineCategory: AuFineCategory | null;
+  setPluginRailFineCategory: (category: AuFineCategory | null) => void;
   /** Per-project vs library-wide scope on the right-rail plug-in list. */
   pluginRailScope: PluginRailScope;
   setPluginRailScope: (scope: PluginRailScope) => void;
@@ -115,6 +124,9 @@ export const useUIStore = create<UIState>((set) => ({
   setPluginRailFilter: (q: string) => set({ pluginRailFilter: q }),
   pluginRailChip: "all",
   setPluginRailChip: (chip: PluginRailChip) => set({ pluginRailChip: chip }),
+  pluginRailFineCategory: null,
+  setPluginRailFineCategory: (category) =>
+    set({ pluginRailFineCategory: category }),
   pluginRailScope: "project",
   setPluginRailScope: (scope: PluginRailScope) => set({ pluginRailScope: scope }),
   pluginRailShowFingerprints: false,
@@ -136,6 +148,7 @@ export const useUIStore = create<UIState>((set) => ({
       pluginRailJumpToMissingNonce: s.pluginRailJumpToMissingNonce + 1,
       pluginRailChip: "missing",
       pluginRailFilter: "",
+      pluginRailFineCategory: null,
       // If the rail is closed at narrow width, open it so the user can
       // see the row we just scrolled to.
       pluginRailOpen: true,

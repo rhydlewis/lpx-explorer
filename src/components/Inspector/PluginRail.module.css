@@ -66,6 +66,10 @@
   color: var(--c-status-fail);
 }
 
+.countCategorised {
+  color: var(--c-text-muted);
+}
+
 .search {
   width: 100%;
   background-color: var(--c-bg);
