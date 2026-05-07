@@ -15,21 +15,33 @@ export const PARSE_CONCURRENCY = 4;
 let inFlightParseCount = 0;
 const parseSlotQueue: Array<() => void> = [];
 
-function acquireSlot(): Promise<void> {
+function acquireSlot(path: string): Promise<void> {
   if (inFlightParseCount < PARSE_CONCURRENCY) {
     inFlightParseCount += 1;
+    console.info(
+      `[parse] acquire path=${path} inFlight=${inFlightParseCount} queued=${parseSlotQueue.length}`,
+    );
     return Promise.resolve();
   }
+  console.info(
+    `[parse] queue path=${path} queued=${parseSlotQueue.length + 1}`,
+  );
   return new Promise<void>((resolve) => {
     parseSlotQueue.push(() => {
       inFlightParseCount += 1;
+      console.info(
+        `[parse] acquire(queued) path=${path} inFlight=${inFlightParseCount} queued=${parseSlotQueue.length}`,
+      );
       resolve();
     });
   });
 }
 
-function releaseSlot(): void {
+function releaseSlot(path: string): void {
   inFlightParseCount -= 1;
+  console.info(
+    `[parse] release path=${path} inFlight=${inFlightParseCount} queued=${parseSlotQueue.length}`,
+  );
   const next = parseSlotQueue.shift();
   if (next !== undefined) next();
 }
@@ -90,9 +102,13 @@ export const useLibrarySummariesStore = create<LibrarySummariesState>(
           return inflight;
         }
         const promise = (async () => {
-          await acquireSlot();
+          await acquireSlot(path);
           try {
+            const t0 = performance.now();
             const summary = await parseProject(path);
+            console.info(
+              `[parse] ok path=${path} ${(performance.now() - t0).toFixed(0)}ms`,
+            );
             const cur = get() as InternalState;
             cur._summariesInner.set(path, summary);
             cur._errorsInner.delete(path);
@@ -103,6 +119,7 @@ export const useLibrarySummariesStore = create<LibrarySummariesState>(
             });
             return summary;
           } catch (e) {
+            console.warn(`[parse] FAIL path=${path}`, e);
             const cur = get() as InternalState;
             cur._errorsInner.set(path, messageOf(e));
             cur._inflight.delete(path);
@@ -111,7 +128,7 @@ export const useLibrarySummariesStore = create<LibrarySummariesState>(
             });
             return null;
           } finally {
-            releaseSlot();
+            releaseSlot(path);
           }
         })();
         s._inflight.set(path, promise);

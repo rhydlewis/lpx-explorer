@@ -106,11 +106,27 @@ pub async fn scan_folder(
     path: String,
     on_event: Channel<ScanEvent>,
 ) -> Result<(), ScanError> {
+    let started = std::time::Instant::now();
+    eprintln!("[scan_folder] start path={path:?}");
+
     let root = PathBuf::from(&path);
-    validate_scan_root(&root)?;
+    if let Err(e) = validate_scan_root(&root) {
+        eprintln!("[scan_folder] validate failed: {e:?}");
+        return Err(e);
+    }
 
     let cancel = AtomicBool::new(false);
+    let mut count = 0usize;
     walk(&root, &cancel, &mut |found| {
+        count += 1;
+        // Periodic progress so a stalled scan vs a slow scan is visible.
+        if count <= 5 || count % 50 == 0 {
+            eprintln!(
+                "[scan_folder] hit {count} elapsed={:?} path={}",
+                started.elapsed(),
+                found.display()
+            );
+        }
         // Channel send only fails if the frontend has unsubscribed; nothing
         // useful to do mid-walk if it has, so swallow.
         let _ = on_event.send(ScanEvent::Project {
@@ -118,6 +134,10 @@ pub async fn scan_folder(
         });
     });
 
+    eprintln!(
+        "[scan_folder] done count={count} elapsed={:?} path={path:?}",
+        started.elapsed()
+    );
     let _ = on_event.send(ScanEvent::Done);
     Ok(())
 }

@@ -37,9 +37,14 @@ pub enum ParseError {
 
 #[tauri::command]
 pub fn parse_project(path: String) -> Result<ProjectSummary, ParseError> {
+    let started = std::time::Instant::now();
+    eprintln!("[parse_project] start path={path:?}");
+
     let bundle = PathBuf::from(&path);
-    let alt = locate_alternative(&bundle)
-        .ok_or_else(|| ParseError::ProjectDataMissing(path.clone()))?;
+    let alt = locate_alternative(&bundle).ok_or_else(|| {
+        eprintln!("[parse_project] FAIL no Alternatives/*/ProjectData path={path:?}");
+        ParseError::ProjectDataMissing(path.clone())
+    })?;
 
     let project_data_bytes = read_required(&alt.join("ProjectData"))?;
     let plist_bytes = read_required(&alt.join("MetaData.plist"))
@@ -64,6 +69,12 @@ pub fn parse_project(path: String) -> Result<ProjectSummary, ParseError> {
     let tracks_registry = lpx_parser::find_track_registry_records(&project_data_bytes);
     lpx_parser::assign_registry_names(&mut tracks, &tracks_registry);
 
+    eprintln!(
+        "[parse_project] done elapsed={:?} fps={} tracks={} path={path:?}",
+        started.elapsed(),
+        fingerprints.len(),
+        tracks.len(),
+    );
     Ok(ProjectSummary {
         fingerprints,
         metadata,

@@ -188,7 +188,11 @@ function App() {
     let cancelled = false;
 
     void (async () => {
+      console.info("[hydrate] start");
       const persisted = await loadPersistedLibrary();
+      console.info(
+        `[hydrate] loaded recents=${persisted.recent.length} recentFolders=${persisted.recentFolders.length}`,
+      );
       if (cancelled) {
         return;
       }
@@ -198,33 +202,29 @@ function App() {
         return;
       }
 
-      // Restore active folders from disk — re-runs scan_folder for each
-      // path so the project lists pick up new .logicx files added since
-      // last quit (lpx-explorer-vn5). Awaited sequentially so the
-      // library-browse target setter below can pick the first folder.
       const persistedFolderPaths = await loadPersistedFolderPaths();
+      console.info(
+        `[hydrate] persistedFolderPaths=${persistedFolderPaths.length} ${JSON.stringify(persistedFolderPaths)}`,
+      );
       if (cancelled) return;
       for (const path of persistedFolderPaths) {
         if (cancelled) return;
+        console.info(`[hydrate] addFolder begin ${path}`);
         await useLibraryStore.getState().addFolder(path);
+        console.info(`[hydrate] addFolder done ${path}`);
       }
 
-      // Per lpx-explorer-3mo + vn5: auto-add ~/Music/Logic on truly-first
-      // launch (no recents AND no recent folders). Once the user has
-      // interacted at all the gate stays closed forever.
       const isFirstLaunch =
         persisted.recent.length === 0 &&
         persisted.recentFolders.length === 0;
+      console.info(`[hydrate] isFirstLaunch=${isFirstLaunch}`);
       if (isFirstLaunch) {
         await maybeAutoAddDefaultLibrary(() => cancelled);
       }
       if (cancelled) return;
 
-      // If exactly one folder is in the rail (auto-added or restored),
-      // surface its tile grid by default. Multiple folders means the
-      // user has organised their library — let them pick which one to
-      // browse explicitly.
       const initialFolders = useLibraryStore.getState().folders;
+      console.info(`[hydrate] initialFolders=${initialFolders.length}`);
       if (initialFolders.length === 1) {
         useUIStore
           .getState()
@@ -232,6 +232,7 @@ function App() {
       }
 
       unsubscribe = subscribeLibraryPersistence(persisted);
+      console.info("[hydrate] complete");
     })();
 
     return () => {
