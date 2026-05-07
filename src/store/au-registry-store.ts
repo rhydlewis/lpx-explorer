@@ -52,40 +52,60 @@ export const useAuRegistryStore = create<AuRegistryState>((set, get) => ({
   status: { kind: "idle" },
 
   loadFromCache: async () => {
+    console.info("[au] loadFromCache start");
     set({ status: { kind: "loading" } });
     try {
       const registry = await loadAuRegistry();
+      const summary = registry === null
+        ? "absent"
+        : `loaded n=${registry.entries.length}`;
+      console.info(`[au] loadFromCache result=${summary}`);
       set({
         status: registry === null
           ? { kind: "absent" }
           : { kind: "loaded", registry },
       });
     } catch (e) {
+      console.warn("[au] loadFromCache error", e);
       set({ status: { kind: "error", message: messageOf(e) } });
     }
   },
 
   runScan: async () => {
+    console.info("[au] runScan start (auval -l)");
     set({ status: { kind: "scanning", found: 0 } });
     try {
+      let lastLogged = 0;
       await runAuScan(() => {
         const current = get().status;
         if (current.kind === "scanning") {
-          set({ status: { kind: "scanning", found: current.found + 1 } });
+          const next = current.found + 1;
+          set({ status: { kind: "scanning", found: next } });
+          // Throttle: log every 50 entries instead of all 400+.
+          if (next - lastLogged >= 50) {
+            lastLogged = next;
+            console.info(`[au] runScan progress=${next}`);
+          }
         }
       });
-      // Rust wrote the cache; reload to surface the canonical entries.
+      console.info("[au] runScan complete; reloading cache");
       await get().loadFromCache();
     } catch (e) {
+      console.warn("[au] runScan error", e);
       set({ status: { kind: "error", message: messageOf(e) } });
     }
   },
 
   autoScanIfAbsent: async () => {
+    console.info("[au] autoScanIfAbsent enter");
     await get().loadFromCache();
     if (get().status.kind === "absent") {
+      console.info("[au] autoScanIfAbsent → cache absent, scanning");
       await get().runScan();
     }
+    console.info(
+      `[au] autoScanIfAbsent exit status.kind=${get().status.kind}`,
+    );
   },
 
   byFingerprint: () => lookupMapOf(get().status),
