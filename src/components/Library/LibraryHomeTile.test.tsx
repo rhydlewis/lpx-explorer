@@ -39,10 +39,13 @@ describe("<LibraryHomeTile />", () => {
     expect(screen.getByText("song")).toBeInTheDocument();
   });
 
-  it("kicks off parseProject on mount", () => {
+  it("kicks off parseProject on mount", async () => {
     mockedParse.mockImplementationOnce(() => new Promise(() => {}));
     render(<LibraryHomeTile path="/x.logicx" />);
 
+    // The parse is gated on acquireSlot (concurrency cap, lpx-explorer-bh4)
+    // so it fires on a microtask after mount, not synchronously.
+    for (let i = 0; i < 10; i += 1) await Promise.resolve();
     expect(mockedParse).toHaveBeenCalledWith("/x.logicx");
   });
 

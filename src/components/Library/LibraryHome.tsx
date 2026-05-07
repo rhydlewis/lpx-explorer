@@ -1,5 +1,6 @@
 import { folderNameOf } from "../../lib/path-utils";
 import type { FolderEntry } from "../../lib/types";
+import { useLibrarySummariesStore } from "../../store/library-summaries-store";
 
 import { LibraryHomeTile } from "./LibraryHomeTile";
 
@@ -21,6 +22,14 @@ interface Props {
  */
 export function LibraryHome({ folder }: Props) {
   const name = folderNameOf(folder.path);
+  const summaries = useLibrarySummariesStore((s) => s.summaries);
+
+  const total = folder.projects.length;
+  const parsed = folder.projects.reduce(
+    (n, path) => n + (summaries.has(path) ? 1 : 0),
+    0,
+  );
+  const progress = computeProgress(folder, total, parsed);
 
   return (
     <section
@@ -30,20 +39,48 @@ export function LibraryHome({ folder }: Props) {
       <header className={styles.header}>
         <h2 className={styles.heading}>{name}</h2>
         <p className={styles.path}>{folder.path}</p>
+        {progress !== null && (
+          <p className={styles.progress} aria-live="polite">
+            {progress.label}
+            {progress.percent !== null && (
+              <progress
+                className={styles.progressBar}
+                value={progress.percent}
+                max={100}
+              />
+            )}
+          </p>
+        )}
       </header>
       <Body folder={folder} />
     </section>
   );
 }
 
-function Body({ folder }: { readonly folder: FolderEntry }) {
+interface Progress {
+  readonly label: string;
+  /** 0-100; null when no determinate progress is available (mid-scan). */
+  readonly percent: number | null;
+}
+
+function computeProgress(
+  folder: FolderEntry,
+  total: number,
+  parsed: number,
+): Progress | null {
   if (folder.status.kind === "scanning") {
-    return (
-      <p className={styles.placeholder} role="status" aria-live="polite">
-        Scanning folder…
-      </p>
-    );
+    return { label: `Scanning… ${total} found`, percent: null };
   }
+  if (folder.status.kind === "done" && total > 0 && parsed < total) {
+    return {
+      label: `Reading ${parsed} of ${total}…`,
+      percent: total > 0 ? (parsed / total) * 100 : null,
+    };
+  }
+  return null;
+}
+
+function Body({ folder }: { readonly folder: FolderEntry }) {
   if (folder.status.kind === "error") {
     return (
       <p className={styles.error}>

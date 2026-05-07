@@ -4,6 +4,37 @@ import { parseProject } from "../lib/parse";
 import type { ProjectSummary } from "../lib/types";
 
 /**
+ * Cap on concurrent `parseProject` invocations. Without this, the
+ * library-home tile grid spawns N parses on the same frame for an
+ * N-project folder, flooding the IPC bridge and freezing the UI thread
+ * (lpx-explorer-bh4). 4 keeps the FS busy without saturating the
+ * renderer's frame budget.
+ */
+export const PARSE_CONCURRENCY = 4;
+
+let inFlightParseCount = 0;
+const parseSlotQueue: Array<() => void> = [];
+
+function acquireSlot(): Promise<void> {
+  if (inFlightParseCount < PARSE_CONCURRENCY) {
+    inFlightParseCount += 1;
+    return Promise.resolve();
+  }
+  return new Promise<void>((resolve) => {
+    parseSlotQueue.push(() => {
+      inFlightParseCount += 1;
+      resolve();
+    });
+  });
+}
+
+function releaseSlot(): void {
+  inFlightParseCount -= 1;
+  const next = parseSlotQueue.shift();
+  if (next !== undefined) next();
+}
+
+/**
  * In-session cache of `ProjectSummary` keyed by `.logicx` path. Used by
  * the cross-project rollup view (lpx-explorer-185) to aggregate plug-in
  * usage across the user's entire library without re-parsing on every
@@ -59,6 +90,7 @@ export const useLibrarySummariesStore = create<LibrarySummariesState>(
           return inflight;
         }
         const promise = (async () => {
+          await acquireSlot();
           try {
             const summary = await parseProject(path);
             const cur = get() as InternalState;
@@ -78,6 +110,8 @@ export const useLibrarySummariesStore = create<LibrarySummariesState>(
               errors: new Map(cur._errorsInner),
             });
             return null;
+          } finally {
+            releaseSlot();
           }
         })();
         s._inflight.set(path, promise);
@@ -88,6 +122,10 @@ export const useLibrarySummariesStore = create<LibrarySummariesState>(
         s._summariesInner.clear();
         s._errorsInner.clear();
         s._inflight.clear();
+        // Module-level concurrency state must reset too — otherwise a
+        // hung test or store reset leaves slots permanently consumed.
+        inFlightParseCount = 0;
+        parseSlotQueue.length = 0;
         set({
           summaries: new Map(),
           errors: new Map(),
