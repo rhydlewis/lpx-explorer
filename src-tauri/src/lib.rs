@@ -3,9 +3,35 @@ mod bundle;
 mod commands;
 mod library;
 
+use std::sync::OnceLock;
+use std::time::Instant;
+
 use serde::Deserialize;
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
 use tauri::{AppHandle, Emitter, Wry};
+
+/// Process-wide start instant used by the `tlog!` macro to prepend
+/// elapsed-since-startup to every diagnostic line. Initialised lazily
+/// on first use; `run()` forces initialisation on its very first line
+/// so the first log entry reads `+0ms`.
+static APP_START: OnceLock<Instant> = OnceLock::new();
+
+#[doc(hidden)]
+pub fn elapsed_ms() -> u128 {
+    APP_START.get_or_init(Instant::now).elapsed().as_millis()
+}
+
+/// Diagnostic logger. Prepends `[+Nms]` (since process start) to every
+/// line and writes to stderr — appears in the `tauri dev` terminal.
+/// Used by both Rust callers and the `log_event` Tauri command (which
+/// is invoked by the JS-side dev-log bridge), so JS and Rust events
+/// share a single timeline. Per the user's startup-triage request.
+#[macro_export]
+macro_rules! tlog {
+    ($($arg:tt)*) => {
+        eprintln!("[+{}ms] {}", $crate::elapsed_ms(), format_args!($($arg)*))
+    };
+}
 
 const MENU_OPEN_PROJECT: &str = "menu_open_project";
 const MENU_OPEN_FOLDER: &str = "menu_open_folder";
@@ -185,6 +211,11 @@ fn set_recent_menu(
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Force-initialise the app-start instant on the very first line so
+    // the `[main] start` entry reads `+0ms`. Every subsequent tlog!
+    // is relative to this point.
+    APP_START.get_or_init(Instant::now);
+    tlog!("[main] start");
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())

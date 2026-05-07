@@ -107,11 +107,11 @@ pub async fn scan_folder(
     on_event: Channel<ScanEvent>,
 ) -> Result<(), ScanError> {
     let started = std::time::Instant::now();
-    eprintln!("[scan_folder] start path={path:?}");
+    crate::tlog!("[scan_folder] start path={path:?}");
 
     let root = PathBuf::from(&path);
     if let Err(e) = validate_scan_root(&root) {
-        eprintln!("[scan_folder] validate failed: {e:?}");
+        crate::tlog!("[scan_folder] validate failed: {e:?}");
         return Err(e);
     }
 
@@ -121,7 +121,7 @@ pub async fn scan_folder(
         count += 1;
         // Periodic progress so a stalled scan vs a slow scan is visible.
         if count <= 5 || count % 50 == 0 {
-            eprintln!(
+            crate::tlog!(
                 "[scan_folder] hit {count} elapsed={:?} path={}",
                 started.elapsed(),
                 found.display()
@@ -134,7 +134,7 @@ pub async fn scan_folder(
         });
     });
 
-    eprintln!(
+    crate::tlog!(
         "[scan_folder] done count={count} elapsed={:?} path={path:?}",
         started.elapsed()
     );

@@ -38,11 +38,11 @@ pub enum ParseError {
 #[tauri::command]
 pub fn parse_project(path: String) -> Result<ProjectSummary, ParseError> {
     let started = std::time::Instant::now();
-    eprintln!("[parse_project] start path={path:?}");
+    crate::tlog!("[parse_project] start path={path:?}");
 
     let bundle = PathBuf::from(&path);
     let alt = locate_alternative(&bundle).ok_or_else(|| {
-        eprintln!("[parse_project] FAIL no Alternatives/*/ProjectData path={path:?}");
+        crate::tlog!("[parse_project] FAIL no Alternatives/*/ProjectData path={path:?}");
         ParseError::ProjectDataMissing(path.clone())
     })?;
 
@@ -69,7 +69,7 @@ pub fn parse_project(path: String) -> Result<ProjectSummary, ParseError> {
     let tracks_registry = lpx_parser::find_track_registry_records(&project_data_bytes);
     lpx_parser::assign_registry_names(&mut tracks, &tracks_registry);
 
-    eprintln!(
+    crate::tlog!(
         "[parse_project] done elapsed={:?} fps={} tracks={} path={path:?}",
         started.elapsed(),
         fingerprints.len(),
@@ -118,7 +118,7 @@ pub fn home_dir() -> Option<String> {
 /// renderer is hung.
 #[tauri::command]
 pub fn log_event(level: String, message: String) {
-    eprintln!("[js:{level}] {message}");
+    crate::tlog!("[js:{level}] {message}");
 }
 
 /// First `<bundle>/Alternatives/<n>/` directory containing ProjectData.
