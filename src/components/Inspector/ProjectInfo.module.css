@@ -13,7 +13,7 @@
   column-gap: var(--s-4);
   row-gap: var(--s-2);
   margin: 0;
-  font-size: var(--fs-secondary);
+  font-size: var(--fs-primary);
 }
 
 @media (max-width: 720px) {
