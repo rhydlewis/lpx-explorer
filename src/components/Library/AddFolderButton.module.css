@@ -1,7 +1,7 @@
 .button {
   width: 100%;
   text-align: left;
-  font-size: var(--fs-secondary);
+  font-size: var(--fs-caption);
   color: var(--c-text-secondary);
   background: transparent;
   border: 1px dashed var(--c-divider);

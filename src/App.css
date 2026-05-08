@@ -11,7 +11,7 @@
   padding: var(--s-2) var(--s-4);
   border: 1px solid var(--c-divider);
   border-radius: var(--radius-md);
-  font-size: var(--fs-secondary);
+  font-size: var(--fs-caption);
   z-index: var(--z-toast);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
 }
@@ -26,7 +26,7 @@
   border-radius: var(--radius-sm);
   color: var(--c-text);
   font-family: inherit;
-  font-size: var(--fs-secondary);
+  font-size: var(--fs-caption);
   padding: 2px var(--s-3);
   cursor: pointer;
 }

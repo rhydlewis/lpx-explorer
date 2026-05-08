@@ -24,7 +24,7 @@
 .icon {
   width: 16px;
   text-align: center;
-  font-size: var(--fs-secondary);
+  font-size: var(--fs-caption);
   color: var(--c-text-muted);
 }
 
@@ -46,7 +46,7 @@
 
 .summary {
   cursor: pointer;
-  font-size: var(--fs-secondary);
+  font-size: var(--fs-meta);
   color: var(--c-text-muted);
   list-style: revert;
   user-select: none;
@@ -70,24 +70,24 @@
 }
 
 .insertsTable td {
-  padding: 2px 0;
+  padding: 3px 0;
   vertical-align: middle;
-  font-size: var(--fs-secondary);
+  font-size: var(--fs-meta);
 }
 
 .typeCell {
   width: 5em;
   color: var(--c-text-muted);
-  font-size: var(--fs-secondary);
+  font-size: var(--fs-meta);
   text-align: right;
   white-space: nowrap;
 }
 
 .pill {
   display: inline-block;
-  padding: 1px var(--s-2);
+  padding: 2px var(--s-2);
   border-radius: var(--radius-sm);
-  font-size: var(--fs-secondary);
+  font-size: var(--fs-meta);
   font-weight: 500;
   background-color: var(--c-surface-2);
   color: var(--c-text-secondary);

@@ -39,14 +39,14 @@
 }
 
 .placeholder {
-  font-size: var(--fs-secondary);
+  font-size: var(--fs-meta);
   color: var(--c-text-muted);
   margin: 0;
   font-style: italic;
 }
 
 .error {
-  font-size: var(--fs-secondary);
+  font-size: var(--fs-meta);
   color: var(--c-status-fail);
   margin: 0;
 }
@@ -55,7 +55,7 @@
   display: flex;
   align-items: baseline;
   gap: var(--s-2);
-  font-size: var(--fs-h2);
+  font-size: var(--fs-body);
   color: var(--c-text);
   font-variant-numeric: tabular-nums;
 }
@@ -63,13 +63,13 @@
 .countsLine {
   display: flex;
   gap: var(--s-1);
-  font-size: var(--fs-secondary);
+  font-size: var(--fs-meta);
   color: var(--c-text-secondary);
 }
 
 .sizeLine {
   margin-top: auto;
-  font-size: var(--fs-secondary);
+  font-size: var(--fs-meta);
   color: var(--c-text-muted);
   font-variant-numeric: tabular-nums;
 }

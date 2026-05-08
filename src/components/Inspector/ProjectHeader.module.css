@@ -22,7 +22,7 @@
   border: 0;
   padding: 2px 0;
   font-family: inherit;
-  font-size: var(--fs-secondary);
+  font-size: var(--fs-caption);
   color: var(--c-accent);
   cursor: pointer;
   margin-bottom: var(--s-1);
@@ -55,7 +55,7 @@
 }
 
 .path {
-  font-size: var(--fs-secondary);
+  font-size: var(--fs-caption);
   color: var(--c-text-muted);
   margin: 0;
   flex: 1;
@@ -67,7 +67,7 @@
 
 .revealButton {
   flex-shrink: 0;
-  font-size: var(--fs-secondary);
+  font-size: var(--fs-caption);
   padding: var(--s-1) var(--s-3);
 }
 
@@ -94,7 +94,7 @@
   width: 100%;
   text-align: left;
   padding: var(--s-1) var(--s-3);
-  font-size: var(--fs-secondary);
+  font-size: var(--fs-caption);
   color: var(--c-text);
   cursor: pointer;
   font-family: inherit;

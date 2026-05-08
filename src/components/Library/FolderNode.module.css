@@ -45,7 +45,7 @@
 }
 
 .status {
-  font-size: var(--fs-secondary);
+  font-size: var(--fs-caption);
   color: var(--c-text-muted);
 }
 
@@ -55,7 +55,7 @@
   color: var(--c-text-muted);
   cursor: pointer;
   padding: 0 var(--s-1);
-  font-size: var(--fs-secondary);
+  font-size: var(--fs-caption);
 }
 
 .remove:hover {
@@ -70,7 +70,7 @@
   padding: var(--s-1) var(--s-2);
   color: var(--c-text-muted);
   font-style: italic;
-  font-size: var(--fs-secondary);
+  font-size: var(--fs-caption);
 }
 
 .list {

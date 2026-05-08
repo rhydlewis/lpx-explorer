@@ -8,7 +8,7 @@
   border: 1px solid var(--c-divider);
   border-radius: var(--radius-sm);
   padding: var(--s-2) var(--s-3);
-  font-size: var(--fs-secondary);
+  font-size: var(--fs-caption);
   font-family: inherit;
   color: var(--c-text);
 }
