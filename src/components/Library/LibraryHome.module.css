@@ -28,43 +28,6 @@
 }
 
 /*
- * Live progress line — visible while the folder scans (count of
- * projects found) AND while tiles parse after the scan completes
- * (count parsed / total). Hidden once everything's loaded.
- * lpx-explorer-bh4.
- */
-.progress {
-  display: flex;
-  align-items: center;
-  gap: var(--s-2);
-  font-size: var(--fs-secondary);
-  color: var(--c-text-secondary);
-  margin: 0;
-  font-variant-numeric: tabular-nums;
-}
-
-.progressBar {
-  flex: 1;
-  max-width: 240px;
-  height: 4px;
-  border: 0;
-  background-color: var(--c-divider);
-  border-radius: 2px;
-  overflow: hidden;
-}
-
-.progressBar::-webkit-progress-bar {
-  background-color: var(--c-divider);
-  border-radius: 2px;
-}
-
-.progressBar::-webkit-progress-value {
-  background-color: var(--c-accent);
-  border-radius: 2px;
-  transition: width 200ms ease;
-}
-
-/*
  * Responsive auto-fill grid — tile minimum 220px, fills the available
  * width, wraps cleanly. No virtualisation in v1; libraries with 1000+
  * projects can layer that on later if it bites (lpx-explorer-1di out

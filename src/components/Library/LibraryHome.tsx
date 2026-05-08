@@ -24,20 +24,13 @@ interface Props {
  */
 export function LibraryHome({ folder }: Props) {
   const name = folderNameOf(folder.path);
-  const summaries = useLibrarySummariesStore((s) => s.summaries);
   const errors = useLibrarySummariesStore((s) => s.errors);
   // Per-mount filter state (lpx-explorer-xxb). Reset implicitly on
   // folder switch via React's `key` semantics — each folder mounts a
   // fresh <LibraryHome /> from <App />.
   const [query, setQuery] = useState("");
 
-  const total = folder.projects.length;
-  const parsed = folder.projects.reduce(
-    (n, path) => n + (summaries.has(path) ? 1 : 0),
-    0,
-  );
   const failedPaths = folder.projects.filter((path) => errors.has(path));
-  const progress = computeProgress(folder, total, parsed, failedPaths.length);
 
   const trimmed = query.trim().toLowerCase();
   const visibleProjects = useMemo(() => {
@@ -55,18 +48,6 @@ export function LibraryHome({ folder }: Props) {
       <header className={styles.header}>
         <h2 className={styles.heading}>{name}</h2>
         <p className={styles.path}>{folder.path}</p>
-        {progress !== null && (
-          <p className={styles.progress} aria-live="polite">
-            {progress.label}
-            {progress.percent !== null && (
-              <progress
-                className={styles.progressBar}
-                value={progress.percent}
-                max={100}
-              />
-            )}
-          </p>
-        )}
         {folder.projects.length > 0 && (
           <input
             type="search"
@@ -118,35 +99,6 @@ function FailedList({ paths, errors }: FailedListProps) {
       </ul>
     </details>
   );
-}
-
-interface Progress {
-  readonly label: string;
-  /** 0-100; null when no determinate progress is available (mid-scan). */
-  readonly percent: number | null;
-}
-
-function computeProgress(
-  folder: FolderEntry,
-  total: number,
-  parsed: number,
-  errored: number,
-): Progress | null {
-  if (folder.status.kind === "scanning") {
-    return { label: `Scanning… ${total} found`, percent: null };
-  }
-  // Both successfully-parsed AND errored projects count as 'done' —
-  // otherwise a single corrupt bundle would trap the progress bar at
-  // 'N-1 of N…' forever. Once everything's settled, hide the line —
-  // <FailedList /> renders separately when there are errors.
-  const settled = parsed + errored;
-  if (folder.status.kind === "done" && total > 0 && settled < total) {
-    return {
-      label: `Reading ${settled} of ${total}…`,
-      percent: (settled / total) * 100,
-    };
-  }
-  return null;
 }
 
 interface BodyProps {
