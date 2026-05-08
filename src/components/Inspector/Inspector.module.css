@@ -4,7 +4,7 @@
 }
 
 .sectionLabel {
-  font-size: var(--fs-section-header);
+  font-size: var(--fs-eyebrow);
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -34,12 +34,12 @@
 
 .pluginFingerprint {
   font-family: var(--font-mono);
-  font-size: var(--fs-secondary);
+  font-size: var(--fs-caption);
   color: var(--c-text-muted);
 }
 
 .countBadge {
-  font-size: var(--fs-secondary);
+  font-size: var(--fs-caption);
   font-weight: 500;
   color: var(--c-text-secondary);
   background-color: var(--c-surface-2);
@@ -48,7 +48,7 @@
 }
 
 .installBadge {
-  font-size: var(--fs-secondary);
+  font-size: var(--fs-caption);
   font-weight: 500;
   padding: 1px var(--s-2);
   border-radius: var(--radius-sm);

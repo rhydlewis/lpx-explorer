@@ -84,11 +84,29 @@
    * spacing scale stays fixed (only text grows / shrinks).
    */
   --text-zoom: 1;
-  --fs-section-header: calc(10px * var(--text-zoom));
-  --fs-secondary: calc(11px * var(--text-zoom));
+  /*
+   * Semantic type ramp. Five rungs:
+   *   - eyebrow (10px): tracked uppercase section labels ('PLUG-INS').
+   *   - caption (11px): badges, chips, micro-labels.
+   *   - meta    (13px): metadata tier — counts, sizes, summaries, table cells.
+   *   - body    (14px): primary content (track names, plug-in names).
+   *   - h2/h1   (16/22px): tile + page headings.
+   * The 13px rung was added to give metadata its own home; previously it
+   * either masqueraded as caption (11px, too quiet) or body (14px, too
+   * loud). --fs-section-header / --fs-secondary remain as backwards-
+   * compatible aliases so unswept components still resolve. --fs-primary
+   * / --fs-base were undefined and silently fell back; now alias body.
+   */
+  --fs-eyebrow: calc(10px * var(--text-zoom));
+  --fs-caption: calc(11px * var(--text-zoom));
+  --fs-meta: calc(13px * var(--text-zoom));
   --fs-body: calc(14px * var(--text-zoom));
   --fs-h2: calc(16px * var(--text-zoom));
   --fs-h1: calc(22px * var(--text-zoom));
+  --fs-section-header: var(--fs-eyebrow);
+  --fs-secondary: var(--fs-caption);
+  --fs-primary: var(--fs-body);
+  --fs-base: var(--fs-body);
 
   /* ─── Layout ─────────────────────────────────────────────────────── */
   --row-height: 30px;

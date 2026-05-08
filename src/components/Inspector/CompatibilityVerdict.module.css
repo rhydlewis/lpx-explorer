@@ -16,7 +16,7 @@
   border-radius: var(--radius-md);
   border-left: 3px solid var(--c-status-neutral);
   background-color: var(--c-surface-2);
-  min-height: 48px;
+  min-height: 52px;
 }
 
 .band[data-status="clean"] {
@@ -69,7 +69,7 @@
  * so we keep it readable but dignified.
  */
 .badge {
-  font-size: var(--fs-secondary);
+  font-size: var(--fs-caption);
   font-weight: 600;
   letter-spacing: 0.02em;
   padding: 2px var(--s-2);
@@ -99,13 +99,13 @@
 }
 
 .headline {
-  font-size: var(--fs-base);
+  font-size: var(--fs-body);
   font-weight: 500;
   color: var(--c-text-primary);
 }
 
 .summary {
-  font-size: var(--fs-secondary);
+  font-size: var(--fs-meta);
   color: var(--c-text-secondary);
 }
 
@@ -113,7 +113,7 @@
   background-color: var(--c-accent);
   border-color: var(--c-accent);
   color: var(--c-on-saturated);
-  font-size: var(--fs-secondary);
+  font-size: var(--fs-meta);
   font-weight: 500;
   white-space: nowrap;
 }
@@ -128,14 +128,14 @@
 }
 
 .scanning {
-  font-size: var(--fs-secondary);
+  font-size: var(--fs-meta);
   color: var(--c-text-secondary);
   margin: 0;
   font-variant-numeric: tabular-nums;
 }
 
 .errorMessage {
-  font-size: var(--fs-secondary);
+  font-size: var(--fs-meta);
   color: var(--c-status-fail);
   flex: 1;
   min-width: 0;

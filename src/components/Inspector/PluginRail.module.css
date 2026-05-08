@@ -16,7 +16,7 @@
 }
 
 .count {
-  font-size: var(--fs-secondary);
+  font-size: var(--fs-caption);
   color: var(--c-text-muted);
   font-variant-numeric: tabular-nums;
 }
@@ -32,7 +32,7 @@
   border: 1px solid var(--c-divider);
   border-radius: var(--radius-sm);
   padding: 1px var(--s-2);
-  font-size: calc(10px * var(--text-zoom));
+  font-size: var(--fs-eyebrow);
   color: var(--c-text-muted);
   cursor: pointer;
   font-family: inherit;
@@ -57,7 +57,7 @@
  */
 .countLine {
   margin: 0;
-  font-size: var(--fs-secondary);
+  font-size: var(--fs-meta);
   color: var(--c-text-muted);
   font-variant-numeric: tabular-nums;
 }
@@ -76,7 +76,7 @@
   border: 1px solid var(--c-divider);
   border-radius: var(--radius-sm);
   padding: var(--s-2) var(--s-3);
-  font-size: var(--fs-secondary);
+  font-size: var(--fs-caption);
   font-family: inherit;
   color: var(--c-text);
 }
@@ -102,7 +102,7 @@
   border: 1px solid var(--c-divider);
   border-radius: var(--radius-sm);
   padding: 2px var(--s-2);
-  font-size: var(--fs-secondary);
+  font-size: var(--fs-caption);
   color: var(--c-text-secondary);
   cursor: pointer;
   font-family: inherit;
@@ -198,12 +198,12 @@
   overflow: hidden;
   text-overflow: ellipsis;
   font-family: var(--font-mono);
-  font-size: var(--fs-secondary);
+  font-size: var(--fs-meta);
   color: var(--c-text-muted);
 }
 
 .countBadge {
-  font-size: var(--fs-secondary);
+  font-size: var(--fs-caption);
   font-weight: 500;
   color: var(--c-text-secondary);
   background-color: var(--c-surface-2);
@@ -212,7 +212,7 @@
 }
 
 .installBadge {
-  font-size: var(--fs-secondary);
+  font-size: var(--fs-caption);
   font-weight: 500;
   padding: 1px var(--s-2);
   border-radius: var(--radius-sm);
@@ -247,7 +247,7 @@
   border: 1px solid var(--c-divider);
   border-radius: var(--radius-sm);
   padding: var(--s-1) var(--s-2);
-  font-size: var(--fs-secondary);
+  font-size: var(--fs-meta);
   color: var(--c-text-secondary);
   cursor: pointer;
   font-family: inherit;
@@ -286,7 +286,7 @@
   border: 0;
   border-radius: 3px;
   padding: 2px var(--s-2);
-  font-size: var(--fs-secondary);
+  font-size: var(--fs-caption);
   color: var(--c-text-secondary);
   cursor: pointer;
   font-family: inherit;
@@ -312,7 +312,7 @@
 
 .libraryProjectsSummary {
   cursor: pointer;
-  font-size: var(--fs-secondary);
+  font-size: var(--fs-caption);
   color: var(--c-text-muted);
   list-style: revert;
   user-select: none;
@@ -340,7 +340,7 @@
 }
 
 .libraryCount {
-  font-size: var(--fs-secondary);
+  font-size: var(--fs-meta);
   color: var(--c-text-secondary);
   font-variant-numeric: tabular-nums;
 }
@@ -364,7 +364,7 @@ details[open] > .libraryRowSummary .libraryCount {
   border: 0;
   padding: 0;
   font-family: inherit;
-  font-size: var(--fs-secondary);
+  font-size: var(--fs-meta);
   color: var(--c-text-secondary);
   cursor: pointer;
   text-align: left;

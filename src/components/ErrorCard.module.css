@@ -23,7 +23,7 @@
 }
 
 .details {
-  font-size: var(--fs-secondary);
+  font-size: var(--fs-caption);
   color: var(--c-text-secondary);
 }
 
@@ -38,7 +38,7 @@
   background-color: var(--c-surface);
   border-radius: var(--radius-sm);
   font-family: var(--font-mono);
-  font-size: var(--fs-secondary);
+  font-size: var(--fs-caption);
   white-space: pre-wrap;
   word-break: break-word;
 }

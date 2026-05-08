@@ -3,7 +3,7 @@
 }
 
 .sectionLabel {
-  font-size: var(--fs-section-header);
+  font-size: var(--fs-eyebrow);
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;

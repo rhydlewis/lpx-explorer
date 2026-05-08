@@ -42,7 +42,7 @@
 }
 
 .path {
-  font-size: var(--fs-secondary);
+  font-size: var(--fs-caption);
   color: var(--c-text-muted);
   white-space: nowrap;
   overflow: hidden;

@@ -47,13 +47,13 @@
 }
 
 .reassurance {
-  font-size: var(--fs-secondary);
+  font-size: var(--fs-caption);
   color: var(--c-text-muted);
   margin-top: var(--s-2);
 }
 
 .scanStatus {
-  font-size: var(--fs-secondary);
+  font-size: var(--fs-caption);
   color: var(--c-text-secondary);
   margin: 0;
   font-variant-numeric: tabular-nums;
@@ -61,7 +61,7 @@
 }
 
 .dropHint {
-  font-size: var(--fs-secondary);
+  font-size: var(--fs-caption);
   color: var(--c-text-muted);
   margin: 0;
   margin-top: calc(var(--s-2) * -1);

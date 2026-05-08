@@ -19,7 +19,7 @@
 }
 
 .path {
-  font-size: var(--fs-secondary);
+  font-size: var(--fs-caption);
   color: var(--c-text-muted);
   margin: 0;
   white-space: nowrap;
@@ -47,7 +47,7 @@
   border: 1px solid var(--c-divider);
   border-radius: var(--radius-sm);
   padding: var(--s-2) var(--s-3);
-  font-size: var(--fs-secondary);
+  font-size: var(--fs-caption);
   font-family: inherit;
   color: var(--c-text);
   margin-top: var(--s-2);
@@ -71,7 +71,7 @@
 .error {
   color: var(--c-status-fail);
   margin: 0;
-  font-size: var(--fs-secondary);
+  font-size: var(--fs-caption);
 }
 
 /*
@@ -81,7 +81,7 @@
  * "Untitled.logicx" stubs vs genuine corruption.
  */
 .failedList {
-  font-size: var(--fs-secondary);
+  font-size: var(--fs-caption);
   color: var(--c-text-secondary);
 }
 
@@ -135,7 +135,7 @@
   grid-area: path;
   color: var(--c-text-muted);
   font-family: var(--font-mono);
-  font-size: calc(10px * var(--text-zoom));
+  font-size: var(--fs-eyebrow);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
