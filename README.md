@@ -106,6 +106,16 @@ Beads (`bd`). Run `bd ready` to see what's open.
 - `BRIEF.md` — original walking-skeleton scope.
 - `docs/decisions.md` — architecture choices and rationale.
 
+## Support
+
+If LPX Explorer has saved you from opening sketchy old projects in Logic, tips are very welcome:
+
+[☕ Buy me a coffee](https://buymeacoffee.com/rhyd)
+
+Same link is wired into the Help menu inside the app.
+
 ## License
 
-TBD.
+GPL-3.0-or-later. See [`LICENSE`](LICENSE) for the full text.
+
+In short: you're free to use, modify, and redistribute LPX Explorer, but any distributed derivative must also be GPL-licensed with source available. The reverse-engineering work that went into the `.logicx` parser stays open.
