@@ -222,19 +222,28 @@ export async function loadParseCache(): Promise<
   return out;
 }
 
+/**
+ * Write a parse-cache entry. Crucially does NOT call store.save() —
+ * tauri-plugin-store-2.4.3 has auto_save = 100ms by default, and
+ * during a fresh library scan persistParseCacheEntry fires once per
+ * project (121× back-to-back on the user's library). 121 explicit
+ * save() calls queued through the plugin's write loop blocked
+ * shutdown — Cmd-Q wedged the app behind the drain (lpx-explorer-w6g).
+ * Auto-save coalesces the burst into a single disk write ~100ms after
+ * the last set. Worst-case loss on a hard quit is ~100ms of cache —
+ * benign, since the cache is reproducible from disk.
+ */
 export async function persistParseCacheEntry(
   path: string,
   entry: ParseCacheEntry,
 ): Promise<void> {
   const store = await getParseCacheStore();
   await store.set(path, entry);
-  await store.save();
 }
 
 export async function deleteParseCacheEntry(path: string): Promise<void> {
   const store = await getParseCacheStore();
   await store.delete(path);
-  await store.save();
 }
 
 /**
