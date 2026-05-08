@@ -1,7 +1,10 @@
-import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
 
 import { makeSummary } from "../../test/fixtures";
+import { useLibraryStore } from "../../store/library-store";
+import { useProjectStore } from "../../store/project-store";
+import { useUIStore } from "../../store/ui-store";
 
 import { ProjectInfo } from "./ProjectInfo";
 
@@ -124,6 +127,230 @@ describe("<ProjectInfo />", () => {
     render(<ProjectInfo metadata={s.metadata} stats={s.stats} now={fixedNow} />);
 
     expect(screen.queryByText(/identified/)).not.toBeInTheDocument();
+  });
+
+  describe("similarity pivots (lpx-explorer-89p)", () => {
+    beforeEach(() => {
+      useUIStore.setState({
+        librarySimilarityFilter: null,
+        selectedLibraryFolder: null,
+      });
+      useProjectStore.setState({ current: { kind: "idle" } });
+      useLibraryStore.setState({
+        recent: [],
+        recentFolders: [],
+        folders: [],
+        query: "",
+      });
+    });
+    afterEach(() => {
+      useUIStore.setState({
+        librarySimilarityFilter: null,
+        selectedLibraryFolder: null,
+      });
+      useProjectStore.setState({ current: { kind: "idle" } });
+      useLibraryStore.setState({
+        recent: [],
+        recentFolders: [],
+        folders: [],
+        query: "",
+      });
+    });
+
+    it("renders the Key cell as a button when key is known", () => {
+      const s = makeSummary({
+        metadata: { song_key: "C", song_gender: "Major" },
+      });
+      render(
+        <ProjectInfo metadata={s.metadata} stats={s.stats} now={fixedNow} />,
+      );
+
+      const btn = screen.getByRole("button", {
+        name: /find other projects in c major/i,
+      });
+      expect(btn).toHaveTextContent("C major");
+    });
+
+    it("renders the Key cell as plain text when song_key is unknown", () => {
+      const s = makeSummary({
+        metadata: { song_key: "?", song_gender: "?" },
+      });
+      render(
+        <ProjectInfo metadata={s.metadata} stats={s.stats} now={fixedNow} />,
+      );
+
+      expect(
+        screen.queryByRole("button", { name: /find other projects in/i }),
+      ).not.toBeInTheDocument();
+      expect(screen.getByText("?")).toBeInTheDocument();
+    });
+
+    it("renders the BPM cell as a button when bpm is known", () => {
+      const s = makeSummary({ metadata: { bpm: 92 } });
+      render(
+        <ProjectInfo metadata={s.metadata} stats={s.stats} now={fixedNow} />,
+      );
+
+      const btn = screen.getByRole("button", {
+        name: /find projects around 92 bpm \(88–92\)/i,
+      });
+      expect(btn).toHaveTextContent("92.0");
+    });
+
+    it("renders the BPM cell as plain text when bpm is 0", () => {
+      const s = makeSummary({ metadata: { bpm: 0 } });
+      render(
+        <ProjectInfo metadata={s.metadata} stats={s.stats} now={fixedNow} />,
+      );
+
+      expect(
+        screen.queryByRole("button", { name: /find projects around/i }),
+      ).not.toBeInTheDocument();
+      expect(screen.getAllByText("—").length).toBeGreaterThan(0);
+    });
+
+    it("renders the combined Key+BPM action only when both are known", () => {
+      const s = makeSummary({
+        metadata: { song_key: "C", song_gender: "Major", bpm: 92 },
+      });
+      render(
+        <ProjectInfo metadata={s.metadata} stats={s.stats} now={fixedNow} />,
+      );
+
+      expect(
+        screen.getByRole("button", {
+          name: /find projects in c major around 92 bpm/i,
+        }),
+      ).toBeInTheDocument();
+    });
+
+    it("hides the combined action when key is unknown", () => {
+      const s = makeSummary({
+        metadata: { song_key: "?", song_gender: "?", bpm: 92 },
+      });
+      render(
+        <ProjectInfo metadata={s.metadata} stats={s.stats} now={fixedNow} />,
+      );
+
+      expect(
+        screen.queryByRole("button", { name: /find projects in/i }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("hides the combined action when bpm is 0", () => {
+      const s = makeSummary({
+        metadata: { song_key: "C", song_gender: "Major", bpm: 0 },
+      });
+      render(
+        <ProjectInfo metadata={s.metadata} stats={s.stats} now={fixedNow} />,
+      );
+
+      expect(
+        screen.queryByRole("button", { name: /find projects in.*around/i }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("clicking the Key cell sets a key-axis filter, clears the project, and pivots to the containing folder", () => {
+      const s = makeSummary({
+        metadata: { song_key: "C", song_gender: "Major" },
+      });
+      useProjectStore.setState({
+        current: { kind: "loaded", path: "/lib/song-a.logicx", summary: s },
+      });
+      useLibraryStore.setState({
+        folders: [
+          {
+            path: "/lib",
+            status: { kind: "done" },
+            projects: ["/lib/song-a.logicx", "/lib/song-b.logicx"],
+          },
+        ],
+      });
+
+      render(
+        <ProjectInfo metadata={s.metadata} stats={s.stats} now={fixedNow} />,
+      );
+
+      fireEvent.click(
+        screen.getByRole("button", {
+          name: /find other projects in c major/i,
+        }),
+      );
+
+      expect(useUIStore.getState().librarySimilarityFilter).toEqual({
+        kind: "key",
+        song_key: "C",
+        song_gender: "Major",
+      });
+      expect(useProjectStore.getState().current.kind).toBe("idle");
+      expect(useUIStore.getState().selectedLibraryFolder).toBe("/lib");
+    });
+
+    it("clicking the BPM cell sets a bpm-axis filter", () => {
+      const s = makeSummary({ metadata: { bpm: 92 } });
+      useProjectStore.setState({
+        current: { kind: "loaded", path: "/lib/song-a.logicx", summary: s },
+      });
+      useLibraryStore.setState({
+        folders: [
+          {
+            path: "/lib",
+            status: { kind: "done" },
+            projects: ["/lib/song-a.logicx"],
+          },
+        ],
+      });
+
+      render(
+        <ProjectInfo metadata={s.metadata} stats={s.stats} now={fixedNow} />,
+      );
+
+      fireEvent.click(
+        screen.getByRole("button", {
+          name: /find projects around 92 bpm/i,
+        }),
+      );
+
+      expect(useUIStore.getState().librarySimilarityFilter).toEqual({
+        kind: "bpm",
+        bpm: 92,
+      });
+    });
+
+    it("clicking the combined action sets a key+bpm-axis filter", () => {
+      const s = makeSummary({
+        metadata: { song_key: "C", song_gender: "Major", bpm: 92 },
+      });
+      useProjectStore.setState({
+        current: { kind: "loaded", path: "/lib/song-a.logicx", summary: s },
+      });
+      useLibraryStore.setState({
+        folders: [
+          {
+            path: "/lib",
+            status: { kind: "done" },
+            projects: ["/lib/song-a.logicx"],
+          },
+        ],
+      });
+
+      render(
+        <ProjectInfo metadata={s.metadata} stats={s.stats} now={fixedNow} />,
+      );
+
+      fireEvent.click(
+        screen.getByRole("button", {
+          name: /find projects in c major around 92 bpm/i,
+        }),
+      );
+
+      expect(useUIStore.getState().librarySimilarityFilter).toEqual({
+        kind: "key+bpm",
+        song_key: "C",
+        song_gender: "Major",
+        bpm: 92,
+      });
+    });
   });
 
   it("renders a Lucide icon next to each metadata label (lpx-explorer-319)", () => {

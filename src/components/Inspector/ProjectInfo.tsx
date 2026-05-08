@@ -13,8 +13,12 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
+import { describeAxis, type SimilarityAxis } from "../../lib/similarity";
 import type { BundleStats, ProjectMetadata } from "../../lib/types";
 import { formatRelative } from "../../lib/time-utils";
+import { useLibraryStore } from "../../store/library-store";
+import { useProjectStore } from "../../store/project-store";
+import { useUIStore } from "../../store/ui-store";
 
 import sectionStyles from "./Inspector.module.css";
 import styles from "./ProjectInfo.module.css";
@@ -31,7 +35,7 @@ interface Props {
 
 interface MetaItem {
   readonly label: string;
-  readonly value: string | number;
+  readonly value: React.ReactNode;
   readonly icon: LucideIcon;
 }
 
@@ -111,14 +115,93 @@ function formatBytes(n: number): string {
   return `${(n / GB).toFixed(1)} GB`;
 }
 
+function isKeyKnown(meta: ProjectMetadata): boolean {
+  return (
+    meta.song_key !== "?" &&
+    meta.song_key !== "" &&
+    meta.song_gender !== "?" &&
+    meta.song_gender !== ""
+  );
+}
+
+function isBpmKnown(meta: ProjectMetadata): boolean {
+  return meta.bpm > 0;
+}
+
+/**
+ * Apply a similarity axis: stash the filter, close the current project,
+ * and pivot to the LibraryHome view of the folder that contained it
+ * (lpx-explorer-89p). Folder lookup runs at call time — the store is
+ * the source of truth for both the open project and the rail folders,
+ * so we don't need to plumb path through props.
+ */
+function pivotToSimilar(axis: SimilarityAxis): void {
+  const project = useProjectStore.getState().current;
+  const path = project.kind === "idle" ? null : project.path;
+  console.info(`[similar] axis=${describeAxis(axis)}`);
+  useUIStore.getState().setLibrarySimilarityFilter(axis);
+  useProjectStore.getState().clear();
+  if (path !== null) {
+    const folders = useLibraryStore.getState().folders;
+    const containing = folders.find((f) => f.projects.includes(path));
+    if (containing !== undefined) {
+      useUIStore.getState().setSelectedLibraryFolder(containing.path);
+    }
+  }
+}
+
 function buildItems(
   metadata: ProjectMetadata,
   stats: BundleStats,
   now: Date,
 ): ReadonlyArray<MetaItem> {
+  const keyText = formatKey(metadata);
+  const bpmText = formatBpm(metadata.bpm);
   const items: MetaItem[] = [
-    { label: "Key", value: formatKey(metadata), icon: Music },
-    { label: "BPM", value: formatBpm(metadata.bpm), icon: Activity },
+    {
+      label: "Key",
+      value: isKeyKnown(metadata) ? (
+        <PivotButton
+          ariaLabel={`Find other projects in ${keyText}`}
+          title={`Find other projects in ${keyText}`}
+          onClick={() =>
+            pivotToSimilar({
+              kind: "key",
+              song_key: metadata.song_key,
+              song_gender: metadata.song_gender,
+            })
+          }
+        >
+          {keyText}
+        </PivotButton>
+      ) : (
+        keyText
+      ),
+      icon: Music,
+    },
+    {
+      label: "BPM",
+      value: isBpmKnown(metadata) ? (
+        <PivotButton
+          ariaLabel={`Find projects ${describeAxis({
+            kind: "bpm",
+            bpm: metadata.bpm,
+          })}`}
+          title={`Find projects ${describeAxis({
+            kind: "bpm",
+            bpm: metadata.bpm,
+          })}`}
+          onClick={() =>
+            pivotToSimilar({ kind: "bpm", bpm: metadata.bpm })
+          }
+        >
+          {bpmText}
+        </PivotButton>
+      ) : (
+        bpmText
+      ),
+      icon: Activity,
+    },
     { label: "Time signature", value: formatSig(metadata), icon: Clock4 },
     {
       label: "Sample rate",
@@ -169,6 +252,15 @@ export function ProjectInfo({
   now = new Date(),
 }: Props) {
   const items = buildItems(metadata, stats, now);
+  const combined =
+    isKeyKnown(metadata) && isBpmKnown(metadata)
+      ? ({
+          kind: "key+bpm",
+          song_key: metadata.song_key,
+          song_gender: metadata.song_gender,
+          bpm: metadata.bpm,
+        } as const)
+      : null;
   return (
     <section aria-label="project info" className={sectionStyles.section}>
       <h3 className={sectionStyles.sectionLabel}>Project</h3>
@@ -182,6 +274,17 @@ export function ProjectInfo({
           );
         })}
       </dl>
+      {combined !== null && (
+        <button
+          type="button"
+          className={styles.combined}
+          aria-label={`Find projects in ${describeAxis(combined)}`}
+          title={`Find projects in ${describeAxis(combined)}`}
+          onClick={() => pivotToSimilar(combined)}
+        >
+          Find similar — {describeAxis(combined)}
+        </button>
+      )}
     </section>
   );
 }
@@ -201,5 +304,26 @@ function Pair({ icon, label, children }: PairProps) {
       </dt>
       <dd>{children}</dd>
     </>
+  );
+}
+
+interface PivotButtonProps {
+  readonly ariaLabel: string;
+  readonly title: string;
+  readonly onClick: () => void;
+  readonly children: React.ReactNode;
+}
+
+function PivotButton({ ariaLabel, title, onClick, children }: PivotButtonProps) {
+  return (
+    <button
+      type="button"
+      className={styles.pivot}
+      aria-label={ariaLabel}
+      title={title}
+      onClick={onClick}
+    >
+      {children}
+    </button>
   );
 }

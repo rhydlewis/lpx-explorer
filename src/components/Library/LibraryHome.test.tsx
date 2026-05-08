@@ -3,6 +3,8 @@ import { fireEvent, render, screen } from "@testing-library/react";
 
 import { useLibraryStore } from "../../store/library-store";
 import { useLibrarySummariesStore } from "../../store/library-summaries-store";
+import { useUIStore } from "../../store/ui-store";
+import { makeSummary } from "../../test/fixtures";
 import type { FolderEntry } from "../../lib/types";
 
 vi.mock("../../lib/parse", () => ({
@@ -42,6 +44,7 @@ describe("<LibraryHome />", () => {
       query: "",
     });
     useLibrarySummariesStore.getState().clear();
+    useUIStore.setState({ librarySimilarityFilter: null });
     mockedParse.mockReset();
     // Default: never resolves so tiles stay in loading state and don't
     // dominate the test output.
@@ -55,6 +58,7 @@ describe("<LibraryHome />", () => {
       query: "",
     });
     useLibrarySummariesStore.getState().clear();
+    useUIStore.setState({ librarySimilarityFilter: null });
   });
 
   it("renders the section under aria-label='library home'", () => {
@@ -161,6 +165,176 @@ describe("<LibraryHome />", () => {
     );
 
     expect(screen.getByText(/no projects match\s+["“]synth["”]/i)).toBeInTheDocument();
+  });
+
+  // ── lpx-explorer-0c5: similarity filter + chip ─────────────────────
+
+  function seedSummary(path: string, overrides: {
+    song_key?: string;
+    song_gender?: string;
+    bpm?: number;
+  }) {
+    const inner = useLibrarySummariesStore.getState() as unknown as {
+      _summariesInner: Map<string, ReturnType<typeof makeSummary>>;
+    };
+    inner._summariesInner.set(
+      path,
+      makeSummary({ metadata: overrides }),
+    );
+    useLibrarySummariesStore.setState({
+      summaries: new Map(inner._summariesInner),
+    });
+  }
+
+  it("renders a dismissible chip when the similarity filter is set", () => {
+    useUIStore.setState({
+      librarySimilarityFilter: { kind: "key", song_key: "C", song_gender: "Major" },
+    });
+    render(<LibraryHome folder={folder({ projects: ["/a.logicx"] })} />);
+
+    const chip = screen.getByRole("button", {
+      name: /clear similarity filter: c major/i,
+    });
+    expect(chip).toHaveTextContent(/filtered by:/i);
+    expect(chip).toHaveTextContent(/c major/i);
+  });
+
+  it("does not render the chip when no filter is set", () => {
+    render(<LibraryHome folder={folder({ projects: ["/a.logicx"] })} />);
+
+    expect(screen.queryByText(/filtered by:/i)).not.toBeInTheDocument();
+  });
+
+  it("describes a bpm-axis chip with the rounded band", () => {
+    useUIStore.setState({
+      librarySimilarityFilter: { kind: "bpm", bpm: 92 },
+    });
+    render(<LibraryHome folder={folder({ projects: ["/a.logicx"] })} />);
+
+    const chip = screen.getByRole("button", {
+      name: /clear similarity filter/i,
+    });
+    expect(chip).toHaveTextContent(/around 92 bpm \(88–92\)/i);
+  });
+
+  it("describes a key+bpm-axis chip combining both", () => {
+    useUIStore.setState({
+      librarySimilarityFilter: {
+        kind: "key+bpm",
+        song_key: "C",
+        song_gender: "Major",
+        bpm: 92,
+      },
+    });
+    render(<LibraryHome folder={folder({ projects: ["/a.logicx"] })} />);
+
+    const chip = screen.getByRole("button", {
+      name: /clear similarity filter/i,
+    });
+    expect(chip).toHaveTextContent(/c major around 92 bpm \(88–92\)/i);
+  });
+
+  it("clicking the chip clears the filter", () => {
+    useUIStore.setState({
+      librarySimilarityFilter: { kind: "key", song_key: "C", song_gender: "Major" },
+    });
+    render(<LibraryHome folder={folder({ projects: ["/a.logicx"] })} />);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /clear similarity filter/i }),
+    );
+
+    expect(useUIStore.getState().librarySimilarityFilter).toBeNull();
+  });
+
+  it("filters the tile grid to summaries matching the axis", () => {
+    seedSummary("/match.logicx", { song_key: "C", song_gender: "Major" });
+    seedSummary("/other.logicx", { song_key: "D", song_gender: "Major" });
+    useUIStore.setState({
+      librarySimilarityFilter: { kind: "key", song_key: "C", song_gender: "Major" },
+    });
+
+    render(
+      <LibraryHome
+        folder={folder({ projects: ["/match.logicx", "/other.logicx"] })}
+      />,
+    );
+
+    expect(screen.getByText("match")).toBeInTheDocument();
+    expect(screen.queryByText("other")).not.toBeInTheDocument();
+  });
+
+  it("excludes tiles whose summary hasn't been parsed yet — can't say if they match", () => {
+    seedSummary("/known.logicx", { song_key: "C", song_gender: "Major" });
+    useUIStore.setState({
+      librarySimilarityFilter: { kind: "key", song_key: "C", song_gender: "Major" },
+    });
+
+    render(
+      <LibraryHome
+        folder={folder({ projects: ["/known.logicx", "/unparsed.logicx"] })}
+      />,
+    );
+
+    expect(screen.getByText("known")).toBeInTheDocument();
+    expect(screen.queryByText("unparsed")).not.toBeInTheDocument();
+  });
+
+  it("combines name + similarity filtering — tile must pass both", () => {
+    seedSummary("/Bass C.logicx", { song_key: "C", song_gender: "Major" });
+    seedSummary("/Bass D.logicx", { song_key: "D", song_gender: "Major" });
+    seedSummary("/Drums C.logicx", { song_key: "C", song_gender: "Major" });
+    useUIStore.setState({
+      librarySimilarityFilter: { kind: "key", song_key: "C", song_gender: "Major" },
+    });
+
+    render(
+      <LibraryHome
+        folder={folder({
+          projects: ["/Bass C.logicx", "/Bass D.logicx", "/Drums C.logicx"],
+        })}
+      />,
+    );
+
+    fireEvent.change(
+      screen.getByRole("searchbox", { name: /search projects/i }),
+      { target: { value: "bass" } },
+    );
+
+    expect(screen.getByText("Bass C")).toBeInTheDocument();
+    expect(screen.queryByText("Bass D")).not.toBeInTheDocument();
+    expect(screen.queryByText("Drums C")).not.toBeInTheDocument();
+  });
+
+  it("similarity-only empty state reads 'No other projects in <axis>'", () => {
+    seedSummary("/a.logicx", { song_key: "D", song_gender: "Major" });
+    useUIStore.setState({
+      librarySimilarityFilter: { kind: "key", song_key: "C", song_gender: "Major" },
+    });
+
+    render(<LibraryHome folder={folder({ projects: ["/a.logicx"] })} />);
+
+    expect(
+      screen.getByText(/no other projects in c major/i),
+    ).toBeInTheDocument();
+  });
+
+  it("name + similarity empty state mentions both", () => {
+    seedSummary("/a.logicx", { song_key: "C", song_gender: "Major" });
+    useUIStore.setState({
+      librarySimilarityFilter: { kind: "key", song_key: "C", song_gender: "Major" },
+    });
+
+    render(<LibraryHome folder={folder({ projects: ["/a.logicx"] })} />);
+
+    fireEvent.change(
+      screen.getByRole("searchbox", { name: /search projects/i }),
+      { target: { value: "synth" } },
+    );
+
+    expect(
+      screen.getByText(/no projects in c major matching\s+["“]synth["”]/i),
+    ).toBeInTheDocument();
   });
 
   it("ESC clears the query and restores the full grid", () => {

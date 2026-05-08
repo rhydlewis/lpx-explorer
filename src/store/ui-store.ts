@@ -1,6 +1,7 @@
 import { create } from "zustand";
 
 import type { AuFineCategory } from "../lib/au-categories";
+import type { SimilarityAxis } from "../lib/similarity";
 
 /**
  * App theme mode (lpx-explorer-klh, sme epic). 'system' auto-follows
@@ -75,6 +76,15 @@ export interface UIState {
    */
   selectedLibraryFolder: string | null;
   setSelectedLibraryFolder: (path: string | null) => void;
+  /**
+   * "Find similar projects" filter applied on top of LibraryHome
+   * (lpx-explorer-c2u). Set by clicking the Key / BPM / Key+BPM cells
+   * in `<ProjectInfo />`; cleared by the dismiss-able chip on
+   * LibraryHome or by switching folders. In-session only — pivot is a
+   * transient browse mode, not a persisted preference.
+   */
+  librarySimilarityFilter: SimilarityAxis | null;
+  setLibrarySimilarityFilter: (filter: SimilarityAxis | null) => void;
   /**
    * Bump-counter the Compatibility pill increments to ask the rail to
    * scroll/highlight its first missing plug-in. PluginRail subscribes
@@ -157,6 +167,9 @@ export const useUIStore = create<UIState>((set) => ({
   selectedLibraryFolder: null,
   setSelectedLibraryFolder: (path: string | null) =>
     set({ selectedLibraryFolder: path }),
+  librarySimilarityFilter: null,
+  setLibrarySimilarityFilter: (filter: SimilarityAxis | null) =>
+    set({ librarySimilarityFilter: filter }),
   pluginRailJumpToMissingNonce: 0,
   requestJumpToMissing: () =>
     set((s) => ({

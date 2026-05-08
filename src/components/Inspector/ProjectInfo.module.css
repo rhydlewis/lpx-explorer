@@ -43,3 +43,65 @@
   color: var(--c-text-muted);
   flex-shrink: 0;
 }
+
+/*
+ * Promotes a metadata value cell into a clickable pivot
+ * (lpx-explorer-89p). Keeps the cell's neutral appearance until hover —
+ * subtle surface fill + accent text echoes the existing pattern used by
+ * `.libraryProjectButton` in PluginRail. No border, so the metadata
+ * grid's geometry doesn't shift between text and button cells.
+ */
+.pivot {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  padding: 0 var(--s-1);
+  margin: 0 calc(-1 * var(--s-1));
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  font-variant-numeric: tabular-nums;
+  text-align: left;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.pivot:hover {
+  background-color: var(--c-surface-2);
+  color: var(--c-accent);
+}
+
+.pivot:focus-visible {
+  outline: 2px solid var(--c-accent);
+  outline-offset: 2px;
+}
+
+/*
+ * Combined Key+BPM action sits below the metadata grid as a quiet
+ * chip-style button. Only rendered when both axes are known.
+ */
+.combined {
+  appearance: none;
+  background: transparent;
+  border: 1px solid var(--c-divider);
+  border-radius: var(--radius-sm);
+  padding: 2px var(--s-2);
+  margin-top: var(--s-3);
+  font: inherit;
+  font-size: var(--fs-meta);
+  color: var(--c-text-secondary);
+  cursor: pointer;
+  font-family: inherit;
+  align-self: flex-start;
+}
+
+.combined:hover {
+  color: var(--c-accent);
+  border-color: var(--c-text-muted);
+  background-color: var(--c-surface-2);
+}
+
+.combined:focus-visible {
+  outline: 2px solid var(--c-accent);
+  outline-offset: 2px;
+}

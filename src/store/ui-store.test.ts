@@ -19,6 +19,7 @@ describe("useUIStore", () => {
       pluginRailScope: "project",
       pluginRailShowFingerprints: false,
       selectedLibraryFolder: null,
+      librarySimilarityFilter: null,
       tracksAllExpanded: false,
       tracksExpansionNonce: 0,
       textZoom: TEXT_ZOOM_DEFAULT,
@@ -35,6 +36,7 @@ describe("useUIStore", () => {
       pluginRailScope: "project",
       pluginRailShowFingerprints: false,
       selectedLibraryFolder: null,
+      librarySimilarityFilter: null,
       tracksAllExpanded: false,
       tracksExpansionNonce: 0,
       textZoom: TEXT_ZOOM_DEFAULT,
@@ -166,6 +168,35 @@ describe("useUIStore", () => {
     useUIStore.getState().toggleAllTracks();
     expect(useUIStore.getState().tracksAllExpanded).toBe(false);
     expect(useUIStore.getState().tracksExpansionNonce).toBe(2);
+  });
+
+  describe("librarySimilarityFilter", () => {
+    it("starts null — no filter applied", () => {
+      expect(useUIStore.getState().librarySimilarityFilter).toBeNull();
+    });
+
+    it("setLibrarySimilarityFilter stores the axis as-is", () => {
+      useUIStore.getState().setLibrarySimilarityFilter({
+        kind: "key",
+        song_key: "C",
+        song_gender: "Major",
+      });
+
+      expect(useUIStore.getState().librarySimilarityFilter).toEqual({
+        kind: "key",
+        song_key: "C",
+        song_gender: "Major",
+      });
+    });
+
+    it("setLibrarySimilarityFilter(null) clears the filter", () => {
+      useUIStore
+        .getState()
+        .setLibrarySimilarityFilter({ kind: "bpm", bpm: 92 });
+      useUIStore.getState().setLibrarySimilarityFilter(null);
+
+      expect(useUIStore.getState().librarySimilarityFilter).toBeNull();
+    });
   });
 
   describe("textZoom", () => {
