@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
@@ -86,6 +86,16 @@ function App() {
   useEffect(() => installScanIdleGate(), []);
   useEffect(() => installThemeWatcher(), []);
 
+  // Hydration gates (lpx-explorer-04y). Each persisted preference
+  // has a hydrate-then-persist effect pair. The persist effect MUST
+  // wait for hydration to finish — otherwise the synchronous mount
+  // commit overwrites disk with the ui-store default value before
+  // the async loadXxx() resolves. The ref flips to true once the
+  // hydrate effect has decided whether to setXxx the persisted value.
+  const themeHydrated = useRef(false);
+  const textZoomHydrated = useRef(false);
+  const showFingerprintsHydrated = useRef(false);
+
   // Theme preference (lpx-explorer-6zn) — hydrate once on mount,
   // persist on every change. The watcher above re-applies the
   // resolved theme to documentElement when the store updates, so the
@@ -94,13 +104,14 @@ function App() {
     let cancelled = false;
     void (async () => {
       const persisted = await loadThemePreference();
-      if (!cancelled && persisted !== null) {
-        useUIStore.getState().setTheme(persisted);
-      }
+      if (cancelled) return;
+      themeHydrated.current = true;
+      if (persisted !== null) useUIStore.getState().setTheme(persisted);
     })();
     return () => { cancelled = true; };
   }, []);
   useEffect(() => {
+    if (!themeHydrated.current) return;
     void persistThemePreference(theme);
     void setThemeMenu(theme);
   }, [theme]);
@@ -113,8 +124,9 @@ function App() {
     let cancelled = false;
     void (async () => {
       const persisted = await loadTextZoom();
-      if (cancelled || persisted === null) return;
-      useUIStore.getState().setTextZoom(persisted);
+      if (cancelled) return;
+      textZoomHydrated.current = true;
+      if (persisted !== null) useUIStore.getState().setTextZoom(persisted);
     })();
     return () => {
       cancelled = true;
@@ -123,6 +135,7 @@ function App() {
 
   useEffect(() => {
     document.documentElement.style.setProperty("--text-zoom", String(textZoom));
+    if (!textZoomHydrated.current) return;
     void persistTextZoom(textZoom);
   }, [textZoom]);
 
@@ -131,13 +144,14 @@ function App() {
     let cancelled = false;
     void (async () => {
       const p = await loadShowFingerprints();
-      if (!cancelled && p !== null) {
-        useUIStore.getState().setPluginRailShowFingerprints(p);
-      }
+      if (cancelled) return;
+      showFingerprintsHydrated.current = true;
+      if (p !== null) useUIStore.getState().setPluginRailShowFingerprints(p);
     })();
     return () => { cancelled = true; };
   }, []);
   useEffect(() => {
+    if (!showFingerprintsHydrated.current) return;
     void persistShowFingerprints(showFingerprints);
   }, [showFingerprints]);
 
