@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Sparkle uses XPC services + AppleScript to install updates
+         (relaunches the new version). Network access is needed to
+         fetch the appcast + update payloads. Mirrors flowcus-v2's
+         entitlements. -->
+    <key>com.apple.security.automation.apple-events</key>
+    <true/>
+    <key>com.apple.security.network.client</key>
+    <true/>
+</dict>
+</plist>

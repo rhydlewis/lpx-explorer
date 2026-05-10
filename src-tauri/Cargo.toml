@@ -34,6 +34,14 @@ tauri-plugin-store = "2.4.3"
 # costs nothing in build time / binary size.
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
 
+# Sparkle auto-updater (lpx-explorer-tat). Native macOS update UI;
+# Sparkle handles dialog / progress / 'Remind Me Later' / background
+# checks so we don't have to. EdDSA-signed updates verified against
+# SUPublicEDKey in Info.plist. macOS-only since the Sparkle framework
+# is macOS-only.
+[target.'cfg(target_os = "macos")'.dependencies]
+tauri-plugin-sparkle-updater = "0.2"
+
 [dev-dependencies]
 tempfile = "3"
 

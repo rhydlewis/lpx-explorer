@@ -36,6 +36,7 @@ const MENU_CLEAR_RECENT_PROJECTS: &str = "clear_recent_projects";
 const MENU_CLEAR_RECENT_FOLDERS: &str = "clear_recent_folders";
 const MENU_REPORT_ISSUE: &str = "help_report_issue";
 const MENU_BUY_ME_COFFEE: &str = "help_buy_me_coffee";
+const MENU_CHECK_FOR_UPDATES: &str = "check_for_updates";
 const MENU_THEME_SYSTEM: &str = "theme_system";
 const MENU_THEME_LIGHT: &str = "theme_light";
 const MENU_THEME_DARK: &str = "theme_dark";
@@ -151,6 +152,18 @@ fn build_menu(
         true,
         &[
             &PredefinedMenuItem::about(app, None, None)?,
+            &PredefinedMenuItem::separator(app)?,
+            // Sparkle 'Check for Updates…' (lpx-explorer-tat). macOS-only;
+            // on other platforms the menu_event handler emits a no-op.
+            // The menu item itself is always present so menu rebuilds
+            // (theme / recents) don't have to branch on platform.
+            &MenuItem::with_id(
+                app,
+                MENU_CHECK_FOR_UPDATES,
+                "Check for Updates…",
+                true,
+                None::<&str>,
+            )?,
             &PredefinedMenuItem::separator(app)?,
             &PredefinedMenuItem::services(app, None)?,
             &PredefinedMenuItem::separator(app)?,
@@ -300,7 +313,7 @@ fn set_theme_menu(
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tlog!("[main] start");
-    tauri::Builder::default()
+    let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_store::Builder::default().build())
@@ -318,7 +331,17 @@ pub fn run() {
             library::scan_folder,
             set_recent_menu,
             set_theme_menu
-        ])
+        ]);
+
+    // Sparkle auto-updater (lpx-explorer-tat) — macOS only. The
+    // plugin handles dialog / progress / 'Remind Me Later' /
+    // background checks on its own once registered.
+    #[cfg(target_os = "macos")]
+    {
+        builder = builder.plugin(tauri_plugin_sparkle_updater::init());
+    }
+
+    builder
         .setup(|app| {
             tlog!("[main] setup() entered");
             // Initial menu uses 'system' as the default theme; the
@@ -331,6 +354,18 @@ pub fn run() {
         })
         .on_menu_event(|app, event| {
             let id = event.id().0.as_str();
+            // Sparkle 'Check for Updates…' is handled in-process so the
+            // plugin's UI flow runs on the macOS main thread without a
+            // round-trip through the JS menu-event channel. Other menu
+            // IDs continue to flow through the existing channel.
+            #[cfg(target_os = "macos")]
+            if id == MENU_CHECK_FOR_UPDATES {
+                use tauri_plugin_sparkle_updater::SparkleUpdaterExt;
+                if let Some(updater) = app.sparkle_updater() {
+                    let _ = updater.check_for_updates();
+                }
+                return;
+            }
             let _ = app.emit(MENU_EVENT, id.to_owned());
         })
         .run(tauri::generate_context!())
