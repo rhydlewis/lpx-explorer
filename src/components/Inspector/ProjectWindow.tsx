@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { convertFileSrc } from "@tauri-apps/api/core";
 
 import type { Alternative } from "../../lib/types";
@@ -6,6 +7,7 @@ import { formatRelative } from "../../lib/time-utils";
 import { AlternativeStrip } from "./AlternativeStrip";
 import sectionStyles from "./Inspector.module.css";
 import styles from "./ProjectWindow.module.css";
+import { WindowImageLightbox } from "./WindowImageLightbox";
 
 interface Props {
   readonly alternatives: ReadonlyArray<Alternative>;
@@ -26,6 +28,7 @@ export function ProjectWindow({
 }: Props) {
   const active = alternatives.find((a) => a.index === activeVariantIndex);
   const windowImagePath = active?.window_image_path ?? null;
+  const [lightboxOpen, setLightboxOpen] = useState(false);
 
   return (
     <section aria-label="project window" className={sectionStyles.section}>
@@ -44,6 +47,7 @@ export function ProjectWindow({
               alt="Logic window at last save"
               decoding="async"
               loading="lazy"
+              onDoubleClick={() => setLightboxOpen(true)}
             />
             <figcaption className={styles.caption}>
               Snapshot from last save · {formatRelative(lastSavedUnix, now)}
@@ -55,6 +59,13 @@ export function ProjectWindow({
           </p>
         )}
       </div>
+      {lightboxOpen && windowImagePath !== null && (
+        <WindowImageLightbox
+          imagePath={windowImagePath}
+          alternativeName={active?.display_name ?? ""}
+          onClose={() => setLightboxOpen(false)}
+        />
+      )}
     </section>
   );
 }
