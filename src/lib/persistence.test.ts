@@ -307,7 +307,8 @@ describe("parse cache versioning (lpx-explorer-ttb)", () => {
       summary,
     });
 
-    const stored = storeData.get("/x.logicx") as Record<string, unknown>;
+    // bxb: keys now include `#variant=N`; default variant is 0.
+    const stored = storeData.get("/x.logicx#variant=0") as Record<string, unknown>;
     expect(stored.parser_version).toBe(3);
     expect(stored.mtime_unix).toBe(100);
     expect(stored.size_bytes).toBe(50);
@@ -328,7 +329,7 @@ describe("parse cache versioning (lpx-explorer-ttb)", () => {
       size_bytes: 50,
       summary: makeSummary({}),
     });
-    // Current entry.
+    // Current entry — written with the post-bxb composite-key format.
     await persistParseCacheEntry("/fresh.logicx", {
       mtime_unix: 100,
       size_bytes: 50,
@@ -339,7 +340,46 @@ describe("parse cache versioning (lpx-explorer-ttb)", () => {
 
     expect(cache.has("/old.logicx")).toBe(false);
     expect(cache.has("/older.logicx")).toBe(false);
-    expect(cache.has("/fresh.logicx")).toBe(true);
+    expect(cache.has("/fresh.logicx#variant=0")).toBe(true);
+  });
+
+  // ── lpx-explorer-bxb: composite cache key ──────────────────────────
+
+  it("persistParseCacheEntry writes per-variant entries", async () => {
+    await persistParseCacheEntry(
+      "/multi.logicx",
+      { mtime_unix: 100, size_bytes: 50, summary: makeSummary({}) },
+      0,
+    );
+    await persistParseCacheEntry(
+      "/multi.logicx",
+      { mtime_unix: 200, size_bytes: 80, summary: makeSummary({}) },
+      1,
+    );
+
+    expect(storeData.has("/multi.logicx#variant=0")).toBe(true);
+    expect(storeData.has("/multi.logicx#variant=1")).toBe(true);
+    const v0 = storeData.get("/multi.logicx#variant=0") as Record<string, unknown>;
+    const v1 = storeData.get("/multi.logicx#variant=1") as Record<string, unknown>;
+    expect(v0.mtime_unix).toBe(100);
+    expect(v1.mtime_unix).toBe(200);
+  });
+
+  it("loadParseCache normalises pre-bxb keys (bare path) to variant=0", async () => {
+    // Pre-bxb format: stored under the raw path. Carries the
+    // current parser_version so it isn't filtered out by the version
+    // check. After load, the composite key should appear in the map.
+    storeData.set("/legacy.logicx", {
+      parser_version: 3,
+      mtime_unix: 50,
+      size_bytes: 30,
+      summary: makeSummary({}),
+    });
+
+    const cache = await loadParseCache();
+
+    expect(cache.has("/legacy.logicx#variant=0")).toBe(true);
+    expect(cache.has("/legacy.logicx")).toBe(false);
   });
 });
 

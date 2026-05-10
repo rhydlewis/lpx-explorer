@@ -3,6 +3,7 @@ import { create } from "zustand";
 import { parseProject, projectDataStat } from "../lib/parse";
 import {
   deleteParseCacheEntry,
+  parseCacheKeyToParts,
   persistParseCacheEntry,
   type ParseCacheEntry,
 } from "../lib/persistence";
@@ -190,8 +191,17 @@ export const useLibrarySummariesStore = create<LibrarySummariesState>(
         }
       },
       hydrateCache: (entries) => {
+        // Disk cache is composite-keyed (`${path}#variant=${index}`)
+        // post-bxb. The in-memory store still operates on bare paths
+        // — equivalent to "the active variant's summary per project"
+        // — so we filter to variant=0 entries on hydrate. The
+        // alternatives chain (lpx-explorer-4qf) will introduce a
+        // variant-aware in-memory layer when the frontend actually
+        // needs to load non-zero variants.
         const s = get() as InternalState;
-        for (const [path, entry] of entries) {
+        for (const [key, entry] of entries) {
+          const { path, variant } = parseCacheKeyToParts(key);
+          if (variant !== 0) continue;
           s._summariesInner.set(path, entry.summary);
           s._cacheStats.set(path, {
             mtime_unix: entry.mtime_unix,

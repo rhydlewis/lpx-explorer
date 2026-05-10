@@ -200,6 +200,31 @@ export async function persistThemePreference(
  */
 const CURRENT_PARSER_VERSION = 3;
 
+/** Per-variant cache key: `${path}#variant=${index}`. Pre-bxb caches
+ * stored entries under bare path; they're treated as variant 0 on
+ * load (lpx-explorer-bxb). */
+const VARIANT_SUFFIX = "#variant=";
+
+export function parseCacheKey(path: string, variant: number): string {
+  return `${path}${VARIANT_SUFFIX}${variant}`;
+}
+
+/** Parse a composite key into (path, variant). Returns variant 0 when
+ * the key has no `#variant=` suffix (pre-bxb format). */
+export function parseCacheKeyToParts(
+  key: string,
+): { readonly path: string; readonly variant: number } {
+  const sep = key.lastIndexOf(VARIANT_SUFFIX);
+  if (sep < 0) {
+    return { path: key, variant: 0 };
+  }
+  const variant = Number.parseInt(key.slice(sep + VARIANT_SUFFIX.length), 10);
+  return {
+    path: key.slice(0, sep),
+    variant: Number.isFinite(variant) ? variant : 0,
+  };
+}
+
 export interface ParseCacheEntry {
   readonly parser_version: number;
   readonly mtime_unix: number;
@@ -220,16 +245,26 @@ function isParseCacheEntry(value: unknown): value is ParseCacheEntry {
   );
 }
 
+/**
+ * Load every cached entry. Returned map is keyed by the composite
+ * `${path}#variant=${index}` form. Old pre-bxb keys (bare path) are
+ * normalised to `${path}#variant=0` on read so consumers see one
+ * consistent format. The disk file may still hold the old keys until
+ * they're overwritten by the next persist for that path; harmless
+ * since loadParseCache filters by version.
+ */
 export async function loadParseCache(): Promise<
   ReadonlyMap<string, ParseCacheEntry>
 > {
   const store = await getParseCacheStore();
   const out = new Map<string, ParseCacheEntry>();
-  for (const path of await store.keys()) {
-    const raw = await store.get(path);
-    if (isParseCacheEntry(raw)) {
-      out.set(path, raw);
-    }
+  for (const key of await store.keys()) {
+    const raw = await store.get(key);
+    if (!isParseCacheEntry(raw)) continue;
+    const composite = key.includes(VARIANT_SUFFIX)
+      ? key
+      : parseCacheKey(key, 0);
+    out.set(composite, raw);
   }
   return out;
 }
@@ -247,19 +282,27 @@ export async function loadParseCache(): Promise<
  *
  * Callers pass a version-less entry; this function stamps
  * `parser_version: CURRENT_PARSER_VERSION` so callsites don't need
- * to import the constant.
+ * to import the constant. Variant defaults to 0 so callers that
+ * predate the alternatives chain (lpx-explorer-bxb) keep working.
  */
 export async function persistParseCacheEntry(
   path: string,
   entry: Omit<ParseCacheEntry, "parser_version">,
+  variant = 0,
 ): Promise<void> {
   const store = await getParseCacheStore();
-  await store.set(path, { ...entry, parser_version: CURRENT_PARSER_VERSION });
+  await store.set(parseCacheKey(path, variant), {
+    ...entry,
+    parser_version: CURRENT_PARSER_VERSION,
+  });
 }
 
-export async function deleteParseCacheEntry(path: string): Promise<void> {
+export async function deleteParseCacheEntry(
+  path: string,
+  variant = 0,
+): Promise<void> {
   const store = await getParseCacheStore();
-  await store.delete(path);
+  await store.delete(parseCacheKey(path, variant));
 }
 
 /**

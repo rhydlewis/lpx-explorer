@@ -20,6 +20,11 @@ vi.mock("../lib/parse", () => ({
 }));
 
 vi.mock("../lib/persistence", () => ({
+  parseCacheKeyToParts: (key: string) => {
+    const i = key.lastIndexOf("#variant=");
+    if (i < 0) return { path: key, variant: 0 };
+    return { path: key.slice(0, i), variant: Number.parseInt(key.slice(i + 9), 10) };
+  },
   persistParseCacheEntry: vi.fn().mockResolvedValue(undefined),
   deleteParseCacheEntry: vi.fn().mockResolvedValue(undefined),
 }));
