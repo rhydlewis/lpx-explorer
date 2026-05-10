@@ -4,6 +4,8 @@ Read-only inspector for Logic Pro `.logicx` project bundles. macOS desktop app â
 
 The headline question: **"Will this project open cleanly on this Mac?"** LPX Explorer answers it by parsing the undocumented binary `ProjectData` file inside a `.logicx` bundle and cross-referencing the Audio Unit plug-ins it references against the AUs installed on your machine â€” without launching Logic and without touching a byte of the bundle.
 
+![](./screenshot.png)
+
 ## What it does
 
 **Pick a project, see the verdict.**
