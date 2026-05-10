@@ -11,10 +11,16 @@ const mockSave = vi.fn(async () => {
   // tauri-plugin-store auto-saves with a debounce; the explicit save in
   // persistLibrary forces it through immediately for tests.
 });
+const mockKeys = vi.fn(async () => Array.from(storeData.keys()));
+const mockDelete = vi.fn(async (key: string) => {
+  storeData.delete(key);
+});
 const mockLoad = vi.fn(async () => ({
   get: mockGet,
   set: mockSet,
   save: mockSave,
+  keys: mockKeys,
+  delete: mockDelete,
 }));
 
 vi.mock("@tauri-apps/plugin-store", () => ({
@@ -27,17 +33,21 @@ vi.mock("@tauri-apps/api/core", () => ({
 }));
 
 import {
+  loadParseCache,
   loadPersistedFolderPaths,
   loadPersistedLibrary,
   loadTextZoom,
   loadThemePreference,
   persistFolderPaths,
   persistLibrary,
+  persistParseCacheEntry,
   persistTextZoom,
   persistThemePreference,
   setRecentMenu,
   setThemeMenu,
 } from "./persistence";
+
+import { makeSummary } from "../test/fixtures";
 
 const entry = (path: string, lastLoadedMs = 1): RecentEntry => ({
   path,
@@ -278,6 +288,58 @@ describe("theme preference (lpx-explorer-6zn)", () => {
   it("persistThemePreference calls save() immediately", async () => {
     await persistThemePreference("light");
     expect(mockSave).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("parse cache versioning (lpx-explorer-ttb)", () => {
+  beforeEach(() => {
+    storeData.clear();
+    mockGet.mockClear();
+    mockSet.mockClear();
+    mockSave.mockClear();
+  });
+
+  it("persistParseCacheEntry stamps parser_version automatically", async () => {
+    const summary = makeSummary({});
+    await persistParseCacheEntry("/x.logicx", {
+      mtime_unix: 100,
+      size_bytes: 50,
+      summary,
+    });
+
+    const stored = storeData.get("/x.logicx") as Record<string, unknown>;
+    expect(stored.parser_version).toBe(2);
+    expect(stored.mtime_unix).toBe(100);
+    expect(stored.size_bytes).toBe(50);
+  });
+
+  it("loadParseCache skips entries with a stale or missing parser_version", async () => {
+    // Older entry without the version field — this is what every
+    // pre-ttb cache row looks like on disk.
+    storeData.set("/old.logicx", {
+      mtime_unix: 100,
+      size_bytes: 50,
+      summary: makeSummary({}),
+    });
+    // Older entry with an explicitly stale version.
+    storeData.set("/older.logicx", {
+      parser_version: 1,
+      mtime_unix: 100,
+      size_bytes: 50,
+      summary: makeSummary({}),
+    });
+    // Current entry.
+    await persistParseCacheEntry("/fresh.logicx", {
+      mtime_unix: 100,
+      size_bytes: 50,
+      summary: makeSummary({}),
+    });
+
+    const cache = await loadParseCache();
+
+    expect(cache.has("/old.logicx")).toBe(false);
+    expect(cache.has("/older.logicx")).toBe(false);
+    expect(cache.has("/fresh.logicx")).toBe(true);
   });
 });
 

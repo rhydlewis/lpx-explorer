@@ -86,24 +86,25 @@ pub fn assign_user_names(tracks: &mut [Track], clusters: &[RegionCluster]) {
 }
 
 /// Fill `user_name` from the track-registry list for tracks that don't
-/// already have a name from a region cluster. Pairs registry entries to
-/// channel-strip records by ordinal position within each track kind:
-/// the Nth instrument-kind registry entry (sorted by offset) matches
-/// the Nth instrument-kind active channel strip (sorted by offset).
+/// already have a name from a region cluster.
 ///
-/// The byte-level join (registry `track_id` → channel-strip record) is
-/// unsolved upstream (see lpx-toolkit/CLAUDE.md "UI track-row order").
-/// Channel-strip storage order empirically matches registry storage
-/// order on every project verified so far — both are written by Logic
-/// in track-creation order — so ordinal pairing is the working
-/// approximation. This is a P3 working approximation; misalignments in
-/// projects with non-standard track ordering are tolerated until the
-/// real join key surfaces.
+/// **Audio tracks**: paired by `strip_id` (lpx-explorer-ttb). Each
+/// channel-strip record is named `"Audio N"` by Logic; each
+/// `Audio`-kind registry entry carries `strip_id = N`. The match is
+/// exact and reliable. Registry names that just mirror the channel-
+/// strip default ("Audio 3" for strip 3) are skipped — they're not
+/// renames, just the Tracks Area echoing the strip's stub label.
+///
+/// **Instrument tracks**: registry `strip_id` is always 0 for
+/// instrument entries, so it can't act as a join key. We fall back to
+/// ordinal-in-kind pairing (sorted by offset, both sides). Channel-
+/// strip storage order empirically matches registry storage order on
+/// every project verified so far — both are written by Logic in
+/// track-creation order. Misalignments in non-standard projects are
+/// tolerated until a real instrument-kind join key surfaces.
 ///
 /// Existing `user_name` values (set by [`assign_user_names`] from
-/// region clusters) are not overwritten. Audio-track strips are paired
-/// against `Audio`-kind registry entries; instrument-track strips
-/// against `Instrument`-kind entries.
+/// region clusters) are never overwritten.
 pub fn assign_registry_names(
     tracks: &mut [Track],
     registry: &[TrackRegistryEntry],
@@ -111,25 +112,66 @@ pub fn assign_registry_names(
     if tracks.is_empty() || registry.is_empty() {
         return;
     }
-    pair_in_kind(tracks, registry, TrackKind::Instrument);
-    pair_in_kind(tracks, registry, TrackKind::Audio);
+    pair_audio_by_strip_id(tracks, registry);
+    pair_instruments_by_ordinal(tracks, registry);
 }
 
-fn pair_in_kind(
+/// Extract the strip number from a channel-strip default name.
+/// `"Audio 3"` → `Some(3)`. Returns `None` for non-Audio names or
+/// names that have somehow been renamed in the strip record itself
+/// (we don't see this in the wild but defending against it).
+fn parse_audio_strip_number(name: &str) -> Option<u16> {
+    name.strip_prefix("Audio ")?.trim().parse().ok()
+}
+
+fn pair_audio_by_strip_id(tracks: &mut [Track], registry: &[TrackRegistryEntry]) {
+    use std::collections::HashMap;
+    let by_strip_id: HashMap<u16, &str> = registry
+        .iter()
+        .filter(|e| e.kind == TrackKind::Audio)
+        .map(|e| (e.strip_id, e.name.as_str()))
+        .collect();
+    if by_strip_id.is_empty() {
+        return;
+    }
+    for track in tracks.iter_mut() {
+        if track.kind != TrackKind::Audio || !track.is_active {
+            continue;
+        }
+        if track.user_name.is_some() {
+            continue;
+        }
+        let Some(strip_n) = parse_audio_strip_number(&track.name) else {
+            continue;
+        };
+        let Some(registry_name) = by_strip_id.get(&strip_n) else {
+            continue;
+        };
+        // Skip when the registry name is just the channel-strip default
+        // ('Audio 3' for strip 3) — not a real rename.
+        if *registry_name == track.name {
+            continue;
+        }
+        track.user_name = Some((*registry_name).to_string());
+    }
+}
+
+fn pair_instruments_by_ordinal(
     tracks: &mut [Track],
     registry: &[TrackRegistryEntry],
-    kind: TrackKind,
 ) {
     let mut strip_indices: Vec<usize> = tracks
         .iter()
         .enumerate()
-        .filter(|(_, t)| t.kind == kind && t.is_active)
+        .filter(|(_, t)| t.kind == TrackKind::Instrument && t.is_active)
         .map(|(i, _)| i)
         .collect();
     strip_indices.sort_by_key(|&i| tracks[i].offset);
 
-    let mut registry_entries: Vec<&TrackRegistryEntry> =
-        registry.iter().filter(|e| e.kind == kind).collect();
+    let mut registry_entries: Vec<&TrackRegistryEntry> = registry
+        .iter()
+        .filter(|e| e.kind == TrackKind::Instrument)
+        .collect();
     registry_entries.sort_by_key(|e| e.offset);
 
     for (i, entry) in strip_indices.iter().zip(registry_entries.iter()) {
@@ -736,6 +778,16 @@ mod tests {
         }
     }
 
+    fn audio_registry_entry(offset: usize, strip_id: u16, name: &str) -> TrackRegistryEntry {
+        TrackRegistryEntry {
+            offset,
+            name: name.into(),
+            kind: TrackKind::Audio,
+            track_id: 0,
+            strip_id,
+        }
+    }
+
     fn active_track(name: &str, kind: TrackKind, offset: usize) -> Track {
         Track {
             name: name.into(),
@@ -779,13 +831,80 @@ mod tests {
         ];
         let registry = vec![
             registry_entry(1000, "Piano", TrackKind::Instrument),
-            registry_entry(1100, "Acoustic GTR", TrackKind::Audio),
+            audio_registry_entry(1100, 1, "Acoustic GTR"),
         ];
 
         assign_registry_names(&mut tracks, &registry);
 
         assert_eq!(tracks[0].user_name.as_deref(), Some("Acoustic GTR"));
         assert_eq!(tracks[1].user_name.as_deref(), Some("Piano"));
+    }
+
+    // ─── lpx-explorer-ttb: audio-kind strip_id pairing ─────────────────
+
+    #[test]
+    fn pairs_audio_strips_to_registry_by_strip_id_not_offset_order() {
+        // Repro the user's bug: registry-offset order does NOT match
+        // strip number. The strip-id-based pairing must still attach
+        // the right name to the right strip.
+        let mut tracks = vec![
+            active_track("Audio 1", TrackKind::Audio, 100),
+            active_track("Audio 4", TrackKind::Audio, 200),
+            active_track("Audio 10", TrackKind::Audio, 300),
+        ];
+        // Registry written in non-strip order — second entry is strip 10,
+        // last entry is strip 4. Pure offset ordering would mismatch.
+        let registry = vec![
+            audio_registry_entry(1000, 1, "Andy & Red"),
+            audio_registry_entry(1500, 10, "Intro Lead GTR Low"),
+            audio_registry_entry(2000, 4, "Acoustic GTR"),
+        ];
+
+        assign_registry_names(&mut tracks, &registry);
+
+        assert_eq!(tracks[0].user_name.as_deref(), Some("Andy & Red"));
+        assert_eq!(tracks[1].user_name.as_deref(), Some("Acoustic GTR"));
+        assert_eq!(tracks[2].user_name.as_deref(), Some("Intro Lead GTR Low"));
+    }
+
+    #[test]
+    fn skips_audio_strip_when_registry_name_matches_default() {
+        // Logic emits a registry entry for every Tracks Area row,
+        // including ones the user hasn't renamed. Those carry the
+        // strip-default name ('Audio 3') — don't apply as user_name,
+        // we'd just be redundantly setting it.
+        let mut tracks = vec![active_track("Audio 3", TrackKind::Audio, 100)];
+        let registry = vec![audio_registry_entry(1000, 3, "Audio 3")];
+
+        assign_registry_names(&mut tracks, &registry);
+
+        assert_eq!(tracks[0].user_name, None);
+    }
+
+    #[test]
+    fn audio_strip_with_no_matching_registry_entry_keeps_default_name() {
+        // Strip 7 has no Tracks Area entry (e.g. user deleted the row
+        // but the strip lingers as part of the 256 default channels).
+        let mut tracks = vec![
+            active_track("Audio 7", TrackKind::Audio, 100),
+            active_track("Audio 4", TrackKind::Audio, 200),
+        ];
+        let registry = vec![audio_registry_entry(1000, 4, "Acoustic GTR")];
+
+        assign_registry_names(&mut tracks, &registry);
+
+        assert_eq!(tracks[0].user_name, None);
+        assert_eq!(tracks[1].user_name.as_deref(), Some("Acoustic GTR"));
+    }
+
+    #[test]
+    fn parse_audio_strip_number_handles_realistic_inputs() {
+        assert_eq!(parse_audio_strip_number("Audio 1"), Some(1));
+        assert_eq!(parse_audio_strip_number("Audio 256"), Some(256));
+        assert_eq!(parse_audio_strip_number("Audio  3"), Some(3)); // whitespace tolerant
+        assert_eq!(parse_audio_strip_number("Inst 1"), None);
+        assert_eq!(parse_audio_strip_number("Audio Bass"), None);
+        assert_eq!(parse_audio_strip_number(""), None);
     }
 
     #[test]

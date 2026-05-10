@@ -190,8 +190,18 @@ export async function persistThemePreference(
  * `parse-cache.json` (separate from `library.json`) because it grows
  * with library size; keeping the small/static prefs file untouched
  * avoids churn on every parse.
+ *
+ * Entries also carry a `parser_version` (lpx-explorer-ttb). When the
+ * Rust parser changes its output for inputs we can't detect via stat
+ * (e.g. the strip_id-based registry-name pairing), we bump
+ * CURRENT_PARSER_VERSION so older entries are treated as cache
+ * misses and re-parsed against the new code. Same disk file, no
+ * cleanup required — orphans are inert.
  */
+const CURRENT_PARSER_VERSION = 2;
+
 export interface ParseCacheEntry {
+  readonly parser_version: number;
   readonly mtime_unix: number;
   readonly size_bytes: number;
   readonly summary: ProjectSummary;
@@ -201,6 +211,8 @@ function isParseCacheEntry(value: unknown): value is ParseCacheEntry {
   if (typeof value !== "object" || value === null) return false;
   const v = value as Record<string, unknown>;
   return (
+    typeof v.parser_version === "number" &&
+    v.parser_version === CURRENT_PARSER_VERSION &&
     typeof v.mtime_unix === "number" &&
     typeof v.size_bytes === "number" &&
     typeof v.summary === "object" &&
@@ -232,13 +244,17 @@ export async function loadParseCache(): Promise<
  * Auto-save coalesces the burst into a single disk write ~100ms after
  * the last set. Worst-case loss on a hard quit is ~100ms of cache —
  * benign, since the cache is reproducible from disk.
+ *
+ * Callers pass a version-less entry; this function stamps
+ * `parser_version: CURRENT_PARSER_VERSION` so callsites don't need
+ * to import the constant.
  */
 export async function persistParseCacheEntry(
   path: string,
-  entry: ParseCacheEntry,
+  entry: Omit<ParseCacheEntry, "parser_version">,
 ): Promise<void> {
   const store = await getParseCacheStore();
-  await store.set(path, entry);
+  await store.set(path, { ...entry, parser_version: CURRENT_PARSER_VERSION });
 }
 
 export async function deleteParseCacheEntry(path: string): Promise<void> {
