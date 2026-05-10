@@ -35,6 +35,11 @@ const TRACK_SIGNATURE_KIND: &[([u8; 2], TrackKind)] = &[
     ([0xa8, 0x11], TrackKind::Instrument),   // single-instrument tracks (Dome Kick)
     ([0xda, 0x11], TrackKind::Instrument),   // Apple stock-instrument tracks (Bass)
     ([0xe7, 0x10], TrackKind::Instrument),   // Alchemy / sampler instrument tracks
+    // 0x03 0x10 (stand-alone instrument w/ ff-ff parent) intentionally
+    // deferred — the registry record IS real (Piano in for-my-lover.logicx)
+    // but pair_instruments_by_ordinal would attach it to Inst 1 instead
+    // of Inst 5. Surfacing wrong names is worse than letting the auval
+    // fallback show. Filed for proper join-key research.
     ([0x23, 0x12], TrackKind::Audio),        // audio tracks (Andy & Red)
     ([0xdc, 0x11], TrackKind::Audio),        // audio tracks (some)
     ([0xdf, 0x11], TrackKind::Audio),        // audio tracks (Slide GTR / Intro Lead GTR)
