@@ -121,12 +121,29 @@ jobs:
       - name: Import Sparkle Ed25519 key
         env:
           SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
         run: |
           set -euo pipefail
+          KEYCHAIN_PATH="$RUNNER_TEMP/build.keychain-db"
+
+          # -A allows any application (including sign_update) to read
+          # the password without triggering an "Allow access?" prompt,
+          # which would hang forever on a headless runner.
           security add-generic-password \
             -a "ed25519" -s "https://sparkle-project.org" \
-            -w "$SPARKLE_PRIVATE_KEY" -U \
-            "$RUNNER_TEMP/build.keychain-db"
+            -w "$SPARKLE_PRIVATE_KEY" -A -U \
+            "$KEYCHAIN_PATH"
+
+          # Belt-and-braces: explicitly authorise the partition list
+          # for non-Apple-signed binaries (sparkle-bin/sign_update is
+          # ad-hoc signed). Without this, sign_update fails with
+          # 'errSecAuthFailed' on some macOS versions even with -A.
+          security set-generic-password-partition-list \
+            -a "ed25519" -s "https://sparkle-project.org" \
+            -S "apple-tool:,apple:,unsigned:" \
+            -k "$KEYCHAIN_PASSWORD" \
+            "$KEYCHAIN_PATH" \
+            >/dev/null 2>&1 || true
 
       # ─── Build, sign, notarize, generate appcast ─────────────────────
       - name: Build release
