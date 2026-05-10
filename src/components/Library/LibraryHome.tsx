@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { folderNameOf, projectNameOf } from "../../lib/path-utils";
 import { describeAxis, matchesAxis } from "../../lib/similarity";
@@ -39,12 +39,22 @@ export function LibraryHome({ folder }: Props) {
 
   // Switching folders clears the similarity filter — the user has
   // navigated away from the result of the pivot, so the chip would be
-  // misleading on the new folder. Cleanup on unmount also clears so a
-  // subsequent navigation back into LibraryHome starts clean.
+  // misleading on the new folder. Tracked via a prev-value ref rather
+  // than a useEffect cleanup, because under React.StrictMode (enabled
+  // in main.tsx) cleanup runs once on initial mount as part of the
+  // setup → cleanup → setup verification cycle — and a cleanup that
+  // wipes global state was wiping the filter on the very mount that
+  // received it. Compare prev vs current path explicitly so we only
+  // clear on a genuine switch (lpx-explorer-m1w).
+  const prevFolderPathRef = useRef<string | null>(null);
   useEffect(() => {
-    return () => {
+    if (
+      prevFolderPathRef.current !== null &&
+      prevFolderPathRef.current !== folder.path
+    ) {
       useUIStore.getState().setLibrarySimilarityFilter(null);
-    };
+    }
+    prevFolderPathRef.current = folder.path;
   }, [folder.path]);
 
   const failedPaths = folder.projects.filter((path) => errors.has(path));

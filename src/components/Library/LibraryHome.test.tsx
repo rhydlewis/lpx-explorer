@@ -1,3 +1,4 @@
+import { StrictMode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 
@@ -351,5 +352,46 @@ describe("<LibraryHome />", () => {
 
     expect(screen.getByText("Bass")).toBeInTheDocument();
     expect(screen.getByText("Drums")).toBeInTheDocument();
+  });
+
+  // ── lpx-explorer-m1w: filter survives StrictMode initial-mount cycle
+  // React.StrictMode runs every effect setup → cleanup → setup on the
+  // first commit to surface cleanup-correctness bugs. The earlier
+  // 'clear filter on cleanup' implementation wiped the filter on the
+  // mount that followed a pivot — the user saw chip + filtering
+  // silently fail. <React.StrictMode> wrapping the render reproduces
+  // the dev-mode lifecycle.
+
+  it("similarity filter set before mount survives the StrictMode initial-mount cycle", () => {
+    useUIStore.setState({
+      librarySimilarityFilter: { kind: "key", song_key: "C", song_gender: "Major" },
+    });
+
+    render(
+      <StrictMode>
+        <LibraryHome folder={folder({ projects: ["/a.logicx"] })} />
+      </StrictMode>,
+    );
+
+    expect(useUIStore.getState().librarySimilarityFilter).not.toBeNull();
+    expect(
+      screen.getByRole("button", { name: /clear similarity filter/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("switching folders DOES clear the filter (genuine path change)", () => {
+    useUIStore.setState({
+      librarySimilarityFilter: { kind: "key", song_key: "C", song_gender: "Major" },
+    });
+    const { rerender } = render(
+      <LibraryHome folder={folder({ path: "/lib/A", projects: [] })} />,
+    );
+    expect(useUIStore.getState().librarySimilarityFilter).not.toBeNull();
+
+    rerender(
+      <LibraryHome folder={folder({ path: "/lib/B", projects: [] })} />,
+    );
+
+    expect(useUIStore.getState().librarySimilarityFilter).toBeNull();
   });
 });
