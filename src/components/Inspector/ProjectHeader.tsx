@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, FolderOpen } from "lucide-react";
 
 import { folderNameOf } from "../../lib/path-utils";
 import { useProjectStore } from "../../store/project-store";
@@ -80,22 +80,19 @@ export function ProjectHeader({ path, children }: Props) {
         </h2>
       </div>
       <div className={styles.pathRow}>
-        <p
-          className={styles.path}
-          title={trimmed}
+        <button
+          type="button"
+          className={styles.pathButton}
+          title="Reveal in Finder"
+          aria-label={`Reveal ${trimmed} in Finder`}
+          onClick={() => void revealItemInDir(trimmed)}
           onContextMenu={(e) => {
             e.preventDefault();
             setMenuPos({ x: e.clientX, y: e.clientY });
           }}
         >
-          {trimmed}
-        </p>
-        <button
-          type="button"
-          className={styles.revealButton}
-          onClick={() => void revealItemInDir(trimmed)}
-        >
-          Reveal in Finder
+          <span className={styles.path}>{trimmed}</span>
+          <FolderOpen size="0.9em" aria-hidden="true" className={styles.pathIcon} />
         </button>
         {children}
       </div>
