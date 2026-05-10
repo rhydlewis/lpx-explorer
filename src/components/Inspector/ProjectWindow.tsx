@@ -29,7 +29,7 @@ export function ProjectWindow({
 
   return (
     <section aria-label="project window" className={sectionStyles.section}>
-      <h3 className={sectionStyles.sectionLabel}>Project window</h3>
+      <h3 className={sectionStyles.sectionLabel}>Project</h3>
       <div className={styles.layout}>
         <AlternativeStrip
           alternatives={alternatives}

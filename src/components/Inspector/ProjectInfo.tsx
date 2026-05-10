@@ -263,7 +263,7 @@ export function ProjectInfo({
       : null;
   return (
     <section aria-label="project info" className={sectionStyles.section}>
-      <h3 className={sectionStyles.sectionLabel}>Project</h3>
+      <h3 className={sectionStyles.sectionLabel}>Metadata</h3>
       <dl className={styles.grid}>
         {items.map((item) => {
           const Icon = item.icon;
