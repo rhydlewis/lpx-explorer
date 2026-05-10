@@ -38,6 +38,30 @@
   text-overflow: ellipsis;
 }
 
+/*
+ * Multi-alternative indicator (lpx-explorer-hcb). Sits in the top-
+ * right of the card via absolute positioning so it doesn't push the
+ * project name. Hidden entirely for single-variant projects.
+ */
+.altsBadge {
+  position: absolute;
+  top: var(--s-2);
+  right: var(--s-2);
+  font-size: var(--fs-eyebrow);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 2px var(--s-2);
+  border-radius: var(--radius-sm);
+  color: var(--c-accent);
+  background: var(--c-surface-2);
+  border: 1px solid var(--c-divider);
+}
+
+.tile {
+  position: relative;
+}
+
 .placeholder {
   font-size: var(--fs-meta);
   color: var(--c-text-muted);

@@ -12,89 +12,22 @@ import {
   persistParseCacheEntry,
   type ParseCacheEntry,
 } from "../lib/persistence";
-import type { ProjectSummary } from "../lib/types";
+import type { Alternative, ProjectSummary } from "../lib/types";
 
-/**
- * Cap on concurrent `parseProject` invocations. Without this, the
- * library-home tile grid spawns N parses on the same frame for an
- * N-project folder, flooding the IPC bridge and freezing the UI thread
- * (lpx-explorer-bh4). Bumped from 4 → 8 after observing ~380ms
- * effective per-parse with cap=4 on a 120-project library — IPC bridge
- * round-trip dominated; the parser itself runs in ms.
- */
-export const PARSE_CONCURRENCY = 8;
+import {
+  acquireSlot,
+  releaseSlot,
+  resetGate,
+  setScanPaused,
+} from "./library-summaries-gate";
+export {
+  PARSE_CONCURRENCY,
+  isScanPaused,
+  queuedParseCount,
+  setScanPaused,
+} from "./library-summaries-gate";
 
-let inFlightParseCount = 0;
-const parseSlotQueue: Array<() => void> = [];
-/**
- * Idle gate (lpx-explorer-fz4). When `scanPaused` is true, calls to
- * `acquireSlot` queue without ever running until a pause-release tick
- * drains them. The cap is still PARSE_CONCURRENCY; "paused" simply
- * means no new acquisitions get a slot.
- */
-let scanPaused = true;
-
-function acquireSlot(path: string): Promise<void> {
-  if (!scanPaused && inFlightParseCount < PARSE_CONCURRENCY) {
-    inFlightParseCount += 1;
-    console.info(
-      `[parse] acquire path=${path} inFlight=${inFlightParseCount} queued=${parseSlotQueue.length}`,
-    );
-    return Promise.resolve();
-  }
-  console.info(
-    `[parse] queue path=${path} queued=${parseSlotQueue.length + 1} paused=${scanPaused}`,
-  );
-  return new Promise<void>((resolve) => {
-    parseSlotQueue.push(() => {
-      inFlightParseCount += 1;
-      console.info(
-        `[parse] acquire(queued) path=${path} inFlight=${inFlightParseCount} queued=${parseSlotQueue.length}`,
-      );
-      resolve();
-    });
-  });
-}
-
-function releaseSlot(path: string): void {
-  inFlightParseCount -= 1;
-  console.info(
-    `[parse] release path=${path} inFlight=${inFlightParseCount} queued=${parseSlotQueue.length}`,
-  );
-  drainSlotQueue();
-}
-
-function drainSlotQueue(): void {
-  if (scanPaused) return;
-  while (
-    inFlightParseCount < PARSE_CONCURRENCY &&
-    parseSlotQueue.length > 0
-  ) {
-    const next = parseSlotQueue.shift();
-    if (next !== undefined) next();
-  }
-}
-
-/**
- * Module-level pause toggle. Exported for the App-level idle detector
- * to flip when the user goes idle / active. Kept on the module (not
- * the Zustand state) so it directly gates `acquireSlot` without a
- * subscription dance — the queue resumes synchronously.
- */
-export function setScanPaused(paused: boolean): void {
-  if (scanPaused === paused) return;
-  scanPaused = paused;
-  console.info(`[parse] scan ${paused ? "PAUSE" : "RESUME"} queued=${parseSlotQueue.length}`);
-  if (!paused) drainSlotQueue();
-}
-
-export function isScanPaused(): boolean {
-  return scanPaused;
-}
-
-export function queuedParseCount(): number {
-  return parseSlotQueue.length;
-}
+import { mergeAcrossVariants } from "./library-summaries-merge";
 
 /**
  * In-session cache of `ProjectSummary` keyed by `.logicx` path. Used by
@@ -150,6 +83,14 @@ export interface LibrarySummariesState {
    */
   getOrParseAllVariants: (path: string) => Promise<ProjectSummary | null>;
   /**
+   * Per-path alternatives manifest cache (lpx-explorer-hcb). Populated
+   * lazily by `loadAlternatives(path)`. Used by LibraryHomeTile to
+   * surface a 'N alternatives' badge without triggering a full
+   * variant parse.
+   */
+  readonly alternativesByPath: ReadonlyMap<string, ReadonlyArray<Alternative>>;
+  loadAlternatives: (path: string) => Promise<ReadonlyArray<Alternative>>;
+  /**
    * Pre-fill the in-memory summaries from a persisted parse cache
    * (lpx-explorer-aay). Stat-validation is deferred to the first
    * `getOrParse(path)` per session — calling that before the disk
@@ -178,22 +119,12 @@ interface InternalState extends LibrarySummariesState {
   _mergedSummariesInner: Map<string, ProjectSummary>;
   /** In-flight merge promises — collapses concurrent calls. */
   _mergeInflight: Map<string, Promise<ProjectSummary | null>>;
+  /** Per-path alternatives manifest cache (lpx-explorer-hcb). */
+  _alternativesByPathInner: Map<string, ReadonlyArray<Alternative>>;
+  /** In-flight loadAlternatives promises. */
+  _alternativesInflight: Map<string, Promise<ReadonlyArray<Alternative>>>;
 }
 
-/**
- * Synthesise a merged ProjectSummary whose `fingerprints` is the
- * union across all variants. The library rollup (aggregateLibrary)
- * only reads fingerprints, so other fields safely take variant 0's
- * values.
- */
-function mergeAcrossVariants(
-  variants: ReadonlyArray<ProjectSummary>,
-): ProjectSummary {
-  const base = variants[0];
-  if (variants.length === 1) return base;
-  const fingerprints = variants.flatMap((v) => v.fingerprints);
-  return { ...base, fingerprints };
-}
 
 function messageOf(e: unknown): string {
   if (e instanceof Error) return e.message;
@@ -223,6 +154,9 @@ export const useLibrarySummariesStore = create<LibrarySummariesState>(
       _statValidated: new Set(),
       _mergedSummariesInner: new Map(),
       _mergeInflight: new Map(),
+      _alternativesByPathInner: new Map(),
+      _alternativesInflight: new Map(),
+      alternativesByPath: new Map(),
       has: (path: string) => {
         const s = get() as InternalState;
         return s._summariesInner.has(path);
@@ -389,6 +323,31 @@ export const useLibrarySummariesStore = create<LibrarySummariesState>(
         s._mergeInflight.set(path, promise);
         return promise;
       },
+      loadAlternatives: async (path: string) => {
+        const s = get() as InternalState;
+        const cached = s._alternativesByPathInner.get(path);
+        if (cached !== undefined) return cached;
+        const inflight = s._alternativesInflight.get(path);
+        if (inflight !== undefined) return inflight;
+
+        const promise = (async () => {
+          let alts: ReadonlyArray<Alternative>;
+          try {
+            alts = await listAlternatives(path);
+          } catch {
+            // Treat failure as single-variant fallback so the tile
+            // doesn't render a misleading badge.
+            alts = [];
+          }
+          const cur = get() as InternalState;
+          cur._alternativesByPathInner.set(path, alts);
+          cur._alternativesInflight.delete(path);
+          set({ alternativesByPath: new Map(cur._alternativesByPathInner) });
+          return alts;
+        })();
+        s._alternativesInflight.set(path, promise);
+        return promise;
+      },
       clear: () => {
         const s = get() as InternalState;
         s._summariesInner.clear();
@@ -398,18 +357,16 @@ export const useLibrarySummariesStore = create<LibrarySummariesState>(
         s._statValidated.clear();
         s._mergedSummariesInner.clear();
         s._mergeInflight.clear();
+        s._alternativesByPathInner.clear();
+        s._alternativesInflight.clear();
         // Module-level concurrency state must reset too — otherwise a
         // hung test or store reset leaves slots permanently consumed.
-        // scanPaused resets to false so test code reaching for clear()
-        // doesn't have to know about the idle gate; production callers
-        // (App boot) flip it on explicitly via setScanPaused.
-        inFlightParseCount = 0;
-        parseSlotQueue.length = 0;
-        scanPaused = false;
+        resetGate();
         set({
           summaries: new Map(),
           mergedSummaries: new Map(),
           errors: new Map(),
+          alternativesByPath: new Map(),
           scanPaused: false,
           userPaused: false,
         });

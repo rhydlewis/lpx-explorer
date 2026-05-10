@@ -54,6 +54,12 @@ export function LibraryHomeTile({ path }: Props) {
   const summary = useLibrarySummariesStore((s) => s.summaries.get(path));
   const error = useLibrarySummariesStore((s) => s.errors.get(path));
   const getOrParse = useLibrarySummariesStore((s) => s.getOrParse);
+  const alternatives = useLibrarySummariesStore((s) =>
+    s.alternativesByPath.get(path),
+  );
+  const loadAlternatives = useLibrarySummariesStore(
+    (s) => s.loadAlternatives,
+  );
   const [, setTick] = useState(0);
 
   useEffect(() => {
@@ -71,7 +77,16 @@ export function LibraryHomeTile({ path }: Props) {
     };
   }, [path, getOrParse]);
 
+  // Lightweight per-tile alternatives count (lpx-explorer-hcb).
+  // listAlternatives is a small plist read; firing one per tile is
+  // acceptable. Cached in the store, so re-mounts (tile reorder)
+  // don't re-fire.
+  useEffect(() => {
+    void loadAlternatives(path);
+  }, [path, loadAlternatives]);
+
   const state = resolveState(summary, error);
+  const altCount = alternatives?.length ?? 0;
 
   const name = projectNameOf(path);
 
@@ -84,6 +99,15 @@ export function LibraryHomeTile({ path }: Props) {
       title={path}
     >
       <h3 className={styles.name}>{name}</h3>
+      {altCount > 1 && (
+        <span
+          className={styles.altsBadge}
+          title={`${altCount} alternatives`}
+          aria-label={`${altCount} alternatives`}
+        >
+          {altCount} alts
+        </span>
+      )}
       <TileBody state={state} />
     </button>
   );

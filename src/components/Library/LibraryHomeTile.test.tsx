@@ -7,9 +7,18 @@ import { makeSummary } from "../../test/fixtures";
 vi.mock("../../lib/parse", () => ({
   parseProject: vi.fn(),
   projectDataStat: vi.fn().mockResolvedValue(null),
+  listAlternatives: vi.fn().mockResolvedValue([
+    { index: 0, display_name: "x", is_active: true },
+  ]),
+  parseAlternative: vi.fn(),
 }));
 
 vi.mock("../../lib/persistence", () => ({
+  parseCacheKeyToParts: (key: string) => {
+    const i = key.lastIndexOf("#variant=");
+    if (i < 0) return { path: key, variant: 0 };
+    return { path: key.slice(0, i), variant: Number.parseInt(key.slice(i + 9), 10) };
+  },
   persistParseCacheEntry: vi.fn().mockResolvedValue(undefined),
   deleteParseCacheEntry: vi.fn().mockResolvedValue(undefined),
 }));
@@ -127,5 +136,30 @@ describe("<LibraryHomeTile />", () => {
     await screen.findByText("x");
 
     expect(mockedParse).toHaveBeenCalledTimes(1);
+  });
+
+  // ── lpx-explorer-hcb: multi-alternative indicator ────────────────
+
+  it("does NOT render the alts badge for a single-variant project", async () => {
+    mockedParse.mockResolvedValueOnce(makeSummary());
+    render(<LibraryHomeTile path="/x.logicx" />);
+    await screen.findByText("x");
+
+    expect(screen.queryByText(/alts/i)).not.toBeInTheDocument();
+  });
+
+  it("renders an 'N alts' badge when the project has > 1 alternative", async () => {
+    const { listAlternatives } = await import("../../lib/parse");
+    vi.mocked(listAlternatives).mockResolvedValueOnce([
+      { index: 0, display_name: "v0", is_active: true },
+      { index: 1, display_name: "v1", is_active: false },
+      { index: 2, display_name: "v2", is_active: false },
+    ]);
+    mockedParse.mockResolvedValueOnce(makeSummary());
+
+    render(<LibraryHomeTile path="/multi.logicx" />);
+
+    const badge = await screen.findByText(/3 alts/i);
+    expect(badge).toBeInTheDocument();
   });
 });
