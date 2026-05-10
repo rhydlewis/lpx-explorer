@@ -49,9 +49,13 @@ fn main() {
         if !visible {
             continue;
         }
+        // Dump 32 bytes around the strip record (16 before + 32 after).
+        let strip_start = t.offset.saturating_sub(16);
+        let strip_end = (t.offset + 32).min(bytes.len());
+        let context = &bytes[strip_start..strip_end];
         println!(
-            "    [{i}] {:<20} kind={:?} parent={:?} user_name={:?}",
-            t.name, t.kind, t.parent_offset, t.user_name,
+            "    [{i}] {:<20} kind={:?} parent={:?} user_name={:?}\n      offset=0x{:x} bytes={:02x?}",
+            t.name, t.kind, t.parent_offset, t.user_name, t.offset, context,
         );
     }
 
@@ -139,9 +143,19 @@ fn main() {
             | [0xe4, 0x10] | [0xeb, 0x11] | [0xe7, 0x11],
         );
         let known_str = if known { "✓" } else { "?" };
+        // Dump 64 bytes of preamble (the bytes before the record header)
+        // and the 12 bytes immediately following the name. The known
+        // 'audio Tracks Area entry' shape has a 32-byte 'track-link'
+        // structure starting 62 bytes before the header — we want to
+        // see if unknown signatures have the same shape.
+        let pre_start = i.saturating_sub(96);
+        let trailer_end = (name_off + length + 64).min(bytes.len());
+        let preamble = &bytes[pre_start..i];
+        let trailer = &bytes[name_off + length..trailer_end];
         println!(
-            "  off=0x{:06x} sig=0x{:02x}{:02x} {} name={name:?}",
+            "  off=0x{:06x} sig=0x{:02x}{:02x} {} name={name:?}\n    pre={:02x?}\n    tail={:02x?}",
             i, sig[0], sig[1], known_str,
+            preamble, trailer,
         );
         i = name_off + length;
     }
