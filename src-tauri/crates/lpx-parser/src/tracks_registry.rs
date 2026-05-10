@@ -23,17 +23,26 @@ const REGISTRY_NAME_MAX_LEN: usize = 200;
 const PREAMBLE_LEN: usize = 16;
 
 /// Empirically-derived 2-byte signatures and the track kind they represent.
-/// Sourced from `lpx_inspect.py:516-528`. Buses and preset entries share
-/// the outer structure; only signatures observed against real user tracks
-/// are whitelisted.
+/// Sourced from `lpx_inspect.py:516-528` plus 04d additions captured against
+/// `for my lover.logicx` (docs/audits/2026-05-10-for-my-lover-registry-scan.txt).
+/// Buses and plug-in preset entries share the outer record shape, so the
+/// pairing in `assign_registry_names` filters entries by strip_id range
+/// (registry entries whose strip_id exceeds the project's audio strip count
+/// are dropped — catches arrangement-marker / song-title records like
+/// "For My Lover (Cm)" that share signature 0x9a11 with real audio tracks).
 const TRACK_SIGNATURE_KIND: &[([u8; 2], TrackKind)] = &[
     ([0x22, 0x12], TrackKind::Instrument),   // MIDI / instrument tracks
     ([0xa8, 0x11], TrackKind::Instrument),   // single-instrument tracks (Dome Kick)
     ([0xda, 0x11], TrackKind::Instrument),   // Apple stock-instrument tracks (Bass)
     ([0xe7, 0x10], TrackKind::Instrument),   // Alchemy / sampler instrument tracks
-    ([0x23, 0x12], TrackKind::Audio),        // audio tracks (some)
+    ([0x23, 0x12], TrackKind::Audio),        // audio tracks (Andy & Red)
     ([0xdc, 0x11], TrackKind::Audio),        // audio tracks (some)
     ([0xdf, 0x11], TrackKind::Audio),        // audio tracks (Slide GTR / Intro Lead GTR)
+    ([0x47, 0x11], TrackKind::Audio),        // audio tracks (Lead GTR L/R/C — 04d)
+    ([0xc7, 0x10], TrackKind::Audio),        // audio tracks (Backing Vox L/R — 04d)
+    ([0x4c, 0x10], TrackKind::Audio),        // audio tracks (Acoustic Gtr — 04d)
+    ([0x9a, 0x11], TrackKind::Audio),        // audio tracks (Lead Vox / Vocal — 04d)
+    ([0x7a, 0x11], TrackKind::Audio),        // audio tracks (Rhythm Gtr R — 04d)
     ([0x74, 0x10], TrackKind::Folder),       // sub / percussion
     ([0xcb, 0x10], TrackKind::Folder),       // sub / dialogue
     ([0xe3, 0x11], TrackKind::Folder),       // sub / keys
@@ -288,6 +297,11 @@ mod tests {
             ([0x23, 0x12], TrackKind::Audio, "A23"),
             ([0xdc, 0x11], TrackKind::Audio, "Adc"),
             ([0xdf, 0x11], TrackKind::Audio, "Adf"),
+            ([0x47, 0x11], TrackKind::Audio, "A47lo"),     // 04d
+            ([0xc7, 0x10], TrackKind::Audio, "Ac7"),       // 04d
+            ([0x4c, 0x10], TrackKind::Audio, "A4c"),       // 04d
+            ([0x9a, 0x11], TrackKind::Audio, "A9a"),       // 04d
+            ([0x7a, 0x11], TrackKind::Audio, "A7a"),       // 04d
             ([0x74, 0x10], TrackKind::Folder, "F74"),
             ([0xcb, 0x10], TrackKind::Folder, "Fcb"),
             ([0xe3, 0x11], TrackKind::Folder, "Fe3"),

@@ -175,7 +175,7 @@ describe("useLibrarySummariesStore", () => {
     const cache = new Map([
       [
         "/x.logicx",
-        { parser_version: 2, mtime_unix: 100, size_bytes: 50, summary },
+        { parser_version: 3, mtime_unix: 100, size_bytes: 50, summary },
       ],
     ]);
 
@@ -188,7 +188,7 @@ describe("useLibrarySummariesStore", () => {
   it("getOrParse stat-validates a hydrated entry and serves the cache when fresh", async () => {
     const summary = makeSummary({});
     useLibrarySummariesStore.getState().hydrateCache(
-      new Map([["/x.logicx", { parser_version: 2, mtime_unix: 100, size_bytes: 50, summary }]]),
+      new Map([["/x.logicx", { parser_version: 3, mtime_unix: 100, size_bytes: 50, summary }]]),
     );
     mockedStat.mockResolvedValueOnce({ mtime_unix: 100, size_bytes: 50 });
 
@@ -207,7 +207,7 @@ describe("useLibrarySummariesStore", () => {
       .getState()
       .hydrateCache(
         new Map([
-          ["/x.logicx", { parser_version: 2, mtime_unix: 100, size_bytes: 50, summary: oldSummary }],
+          ["/x.logicx", { parser_version: 3, mtime_unix: 100, size_bytes: 50, summary: oldSummary }],
         ]),
       );
     mockedStat.mockResolvedValueOnce({ mtime_unix: 200, size_bytes: 50 }); // changed
@@ -230,7 +230,7 @@ describe("useLibrarySummariesStore", () => {
       .getState()
       .hydrateCache(
         new Map([
-          ["/x.logicx", { parser_version: 2, mtime_unix: 100, size_bytes: 50, summary: oldSummary }],
+          ["/x.logicx", { parser_version: 3, mtime_unix: 100, size_bytes: 50, summary: oldSummary }],
         ]),
       );
     mockedStat.mockResolvedValueOnce({ mtime_unix: 100, size_bytes: 200 });
@@ -249,7 +249,7 @@ describe("useLibrarySummariesStore", () => {
   it("getOrParse only stat-validates once per session per path", async () => {
     const summary = makeSummary({});
     useLibrarySummariesStore.getState().hydrateCache(
-      new Map([["/x.logicx", { parser_version: 2, mtime_unix: 100, size_bytes: 50, summary }]]),
+      new Map([["/x.logicx", { parser_version: 3, mtime_unix: 100, size_bytes: 50, summary }]]),
     );
     mockedStat.mockResolvedValueOnce({ mtime_unix: 100, size_bytes: 50 });
 

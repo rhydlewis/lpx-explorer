@@ -48,8 +48,8 @@ describe("<ScanBanner />", () => {
     seedFolders(["/a.logicx", "/b.logicx"]);
     useLibrarySummariesStore.getState().hydrateCache(
       new Map([
-        ["/a.logicx", { parser_version: 2, mtime_unix: 1, size_bytes: 1, summary: makeSummary({}) }],
-        ["/b.logicx", { parser_version: 2, mtime_unix: 1, size_bytes: 1, summary: makeSummary({}) }],
+        ["/a.logicx", { parser_version: 3, mtime_unix: 1, size_bytes: 1, summary: makeSummary({}) }],
+        ["/b.logicx", { parser_version: 3, mtime_unix: 1, size_bytes: 1, summary: makeSummary({}) }],
       ]),
     );
 
@@ -62,7 +62,7 @@ describe("<ScanBanner />", () => {
     seedFolders(["/a.logicx", "/b.logicx", "/c.logicx"]);
     useLibrarySummariesStore.getState().hydrateCache(
       new Map([
-        ["/a.logicx", { parser_version: 2, mtime_unix: 1, size_bytes: 1, summary: makeSummary({}) }],
+        ["/a.logicx", { parser_version: 3, mtime_unix: 1, size_bytes: 1, summary: makeSummary({}) }],
       ]),
     );
 

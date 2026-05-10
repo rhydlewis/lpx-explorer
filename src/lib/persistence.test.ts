@@ -308,7 +308,7 @@ describe("parse cache versioning (lpx-explorer-ttb)", () => {
     });
 
     const stored = storeData.get("/x.logicx") as Record<string, unknown>;
-    expect(stored.parser_version).toBe(2);
+    expect(stored.parser_version).toBe(3);
     expect(stored.mtime_unix).toBe(100);
     expect(stored.size_bytes).toBe(50);
   });

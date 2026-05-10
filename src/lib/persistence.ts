@@ -198,7 +198,7 @@ export async function persistThemePreference(
  * misses and re-parsed against the new code. Same disk file, no
  * cleanup required — orphans are inert.
  */
-const CURRENT_PARSER_VERSION = 2;
+const CURRENT_PARSER_VERSION = 3;
 
 export interface ParseCacheEntry {
   readonly parser_version: number;

@@ -126,9 +126,24 @@ fn parse_audio_strip_number(name: &str) -> Option<u16> {
 
 fn pair_audio_by_strip_id(tracks: &mut [Track], registry: &[TrackRegistryEntry]) {
     use std::collections::HashMap;
+    // The project's max audio strip number — used to drop registry
+    // entries whose strip_id exceeds it (lpx-explorer-04d). The
+    // newly-whitelisted signature 0x9a11 catches both real audio
+    // tracks AND song-title / arrangement-marker records that share
+    // the same record shape ("For My Lover (Cm)" decoded to strip_id
+    // 256, "Hidden" to 329, vs. only 34 actual audio strips). Ignore
+    // any registry entry whose strip_id can't possibly point at a
+    // real strip in this project.
+    let max_strip: u16 = tracks
+        .iter()
+        .filter(|t| t.kind == TrackKind::Audio && t.is_active)
+        .filter_map(|t| parse_audio_strip_number(&t.name))
+        .max()
+        .unwrap_or(0);
     let by_strip_id: HashMap<u16, &str> = registry
         .iter()
         .filter(|e| e.kind == TrackKind::Audio)
+        .filter(|e| e.strip_id > 0 && e.strip_id <= max_strip)
         .map(|e| (e.strip_id, e.name.as_str()))
         .collect();
     if by_strip_id.is_empty() {
@@ -895,6 +910,35 @@ mod tests {
 
         assert_eq!(tracks[0].user_name, None);
         assert_eq!(tracks[1].user_name.as_deref(), Some("Acoustic GTR"));
+    }
+
+    #[test]
+    fn skips_registry_entries_whose_strip_id_exceeds_project_max() {
+        // 04d: signature 0x9a11 catches both real audio tracks AND
+        // arrangement-marker / song-title records with bogus strip_ids
+        // (e.g. "For My Lover (Cm)" decodes to strip_id=256). Filter
+        // them out by capping at the project's max audio strip number.
+        let mut tracks = vec![
+            active_track("Audio 1", TrackKind::Audio, 100),
+            active_track("Audio 2", TrackKind::Audio, 200),
+        ];
+        // Project only has strips 1 and 2.
+        let registry = vec![
+            audio_registry_entry(1000, 1, "Real Track"),
+            audio_registry_entry(2000, 256, "For My Lover (Cm)"),
+            audio_registry_entry(3000, 329, "Hidden"),
+        ];
+
+        assign_registry_names(&mut tracks, &registry);
+
+        assert_eq!(tracks[0].user_name.as_deref(), Some("Real Track"));
+        assert_eq!(tracks[1].user_name, None);
+        // The bogus strip_id=256 entry must NOT have leaked into any
+        // strip. If it had, one of the tracks would carry that name.
+        for t in &tracks {
+            assert_ne!(t.user_name.as_deref(), Some("For My Lover (Cm)"));
+            assert_ne!(t.user_name.as_deref(), Some("Hidden"));
+        }
     }
 
     #[test]
