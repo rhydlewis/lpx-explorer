@@ -354,6 +354,42 @@ describe("<LibraryHome />", () => {
     expect(screen.getByText("Drums")).toBeInTheDocument();
   });
 
+  // ── lpx-explorer-zh6: result-count line appears when a filter is active
+
+  it("does not render the count line with no filter active", () => {
+    render(<LibraryHome folder={folder({ projects: ["/a.logicx", "/b.logicx"] })} />);
+
+    expect(screen.queryByText(/^\d+ of \d+$/)).toBeNull();
+  });
+
+  it("shows 'M of N' when a similarity filter is active", () => {
+    seedSummary("/match.logicx", { song_key: "C", song_gender: "Major" });
+    seedSummary("/other.logicx", { song_key: "D", song_gender: "Major" });
+    useUIStore.setState({
+      librarySimilarityFilter: { kind: "key", song_key: "C", song_gender: "Major" },
+    });
+
+    render(
+      <LibraryHome
+        folder={folder({ projects: ["/match.logicx", "/other.logicx"] })}
+      />,
+    );
+
+    expect(screen.getByText("1 of 2")).toBeInTheDocument();
+  });
+
+  it("updates the count as the user types in the search box", () => {
+    const f = folder({
+      projects: ["/Bass.logicx", "/Drums.logicx", "/Synth.logicx"],
+    });
+    render(<LibraryHome folder={f} />);
+
+    const search = screen.getByRole("searchbox", { name: /search projects/i });
+    fireEvent.change(search, { target: { value: "bass" } });
+
+    expect(screen.getByText("1 of 3")).toBeInTheDocument();
+  });
+
   // ── lpx-explorer-m1w: filter survives StrictMode initial-mount cycle
   // React.StrictMode runs every effect setup → cleanup → setup on the
   // first commit to surface cleanup-correctness bugs. The earlier

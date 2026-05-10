@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { ChevronLeft } from "lucide-react";
 
+import { folderNameOf } from "../../lib/path-utils";
 import { useProjectStore } from "../../store/project-store";
 import { useUIStore } from "../../store/ui-store";
 
@@ -59,9 +60,12 @@ export function ProjectHeader({ path }: Props) {
           type="button"
           className={styles.backButton}
           onClick={() => clearProject()}
+          title={`Back to ${folderNameOf(selectedLibraryFolder)}`}
         >
           <ChevronLeft size="0.9em" aria-hidden="true" />
-          <span>Library</span>
+          <span className={styles.backLabel}>
+            {folderNameOf(selectedLibraryFolder)}
+          </span>
         </button>
       )}
       <h2 className={styles.name} title={trimmed}>

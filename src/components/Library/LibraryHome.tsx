@@ -117,6 +117,12 @@ export function LibraryHome({ folder }: Props) {
             }}
           />
         )}
+        {(similarityFilter !== null || trimmed !== "") &&
+          folder.projects.length > 0 && (
+            <p className={styles.countLine} aria-live="polite">
+              {visibleProjects.length} of {folder.projects.length}
+            </p>
+          )}
         {failedPaths.length > 0 && (
           <FailedList paths={failedPaths} errors={errors} />
         )}

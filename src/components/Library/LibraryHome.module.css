@@ -120,6 +120,18 @@
   color: var(--c-text-muted);
 }
 
+/*
+ * Result count surfaced when at least one filter is active
+ * (lpx-explorer-zh6). Sits below the search input; same chrome
+ * rhythm as PluginRail's '47 plug-ins · 3 missing' line.
+ */
+.countLine {
+  margin: 0;
+  font-size: var(--fs-meta);
+  color: var(--c-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
 .placeholder {
   color: var(--c-text-muted);
   font-style: italic;

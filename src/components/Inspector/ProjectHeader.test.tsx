@@ -128,29 +128,29 @@ describe("<ProjectHeader />", () => {
       useProjectStore.getState().clear();
     });
 
-    it("renders a 'Library' button when a library folder is selected", () => {
+    it("labels the back button with the selected folder name (lpx-explorer-pl1)", () => {
       useUIStore.setState({ selectedLibraryFolder: "/Users/rhyd/Music/Logic" });
       render(<ProjectHeader path="/x.logicx" />);
 
-      expect(
-        screen.getByRole("button", { name: /library/i }),
-      ).toBeInTheDocument();
+      // Visible label is the folder name; tooltip ('Back to Logic')
+      // sits in the title attribute so screen-readers get a fuller
+      // description without the visible chrome ballooning.
+      const button = screen.getByRole("button", { name: /^logic$/i });
+      expect(button).toHaveAttribute("title", "Back to Logic");
     });
 
     it("does NOT render the button when no library folder is selected", () => {
       useUIStore.setState({ selectedLibraryFolder: null });
       render(<ProjectHeader path="/x.logicx" />);
 
-      expect(
-        screen.queryByRole("button", { name: /^library$/i }),
-      ).toBeNull();
+      expect(screen.queryByRole("button", { name: /^logic$/i })).toBeNull();
     });
 
     it("clicking the button clears the project store (returns to LibraryHome)", () => {
       useUIStore.setState({ selectedLibraryFolder: "/Users/rhyd/Music/Logic" });
       render(<ProjectHeader path="/x.logicx" />);
 
-      fireEvent.click(screen.getByRole("button", { name: /library/i }));
+      fireEvent.click(screen.getByRole("button", { name: /^logic$/i }));
 
       expect(useProjectStore.getState().current.kind).toBe("idle");
     });
