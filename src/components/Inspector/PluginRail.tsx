@@ -85,8 +85,10 @@ export function PluginRail({ summary }: Props) {
 
   const recentEntries = useLibraryStore((s) => s.recent);
   const folderEntries = useLibraryStore((s) => s.folders);
-  const summariesMap = useLibrarySummariesStore((s) => s.summaries);
-  const getOrParse = useLibrarySummariesStore((s) => s.getOrParse);
+  const mergedSummariesMap = useLibrarySummariesStore((s) => s.mergedSummaries);
+  const getOrParseAllVariants = useLibrarySummariesStore(
+    (s) => s.getOrParseAllVariants,
+  );
 
   const libraryPaths = useMemo<ReadonlyArray<string>>(() => {
     const seen = new Set<string>();
@@ -101,26 +103,30 @@ export function PluginRail({ summary }: Props) {
     if (scope !== "library") return;
     let cancelled = false;
     void (async () => {
+      // bpp: getOrParseAllVariants reuses the variant-0 cache for
+      // variant 0; variants ≥ 1 parse on the IPC bridge once per
+      // session. Single-variant projects collapse to a single
+      // existing-cache hit (no extra IPC).
       for (const path of libraryPaths) {
         if (cancelled) return;
-        await getOrParse(path);
+        await getOrParseAllVariants(path);
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [scope, libraryPaths, getOrParse]);
+  }, [scope, libraryPaths, getOrParseAllVariants]);
 
   const all = useMemo<ReadonlyArray<DisplayGroup>>(() => {
     if (scope !== "library") {
       return buildDisplayGroups(summary, registry);
     }
-    const map = new Map<string, ProjectSummary>(summariesMap);
+    const map = new Map<string, ProjectSummary>(mergedSummariesMap);
     map.set("__current__", summary);
     return sortLibraryGroups(
       buildLibraryGroups(aggregateLibrary(map), registry),
     );
-  }, [scope, summary, registry, summariesMap]);
+  }, [scope, summary, registry, mergedSummariesMap]);
 
   const visible = useMemo(
     () => applyFilters(all, filter, chip, fineCategory),

@@ -1,6 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { parseProject, projectDataStat } from "../lib/parse";
+import {
+  listAlternatives,
+  parseAlternative,
+  parseProject,
+  projectDataStat,
+} from "../lib/parse";
 import {
   deleteParseCacheEntry,
   persistParseCacheEntry,
@@ -17,6 +22,8 @@ import {
 vi.mock("../lib/parse", () => ({
   parseProject: vi.fn(),
   projectDataStat: vi.fn(),
+  listAlternatives: vi.fn(),
+  parseAlternative: vi.fn(),
 }));
 
 vi.mock("../lib/persistence", () => ({
@@ -31,6 +38,8 @@ vi.mock("../lib/persistence", () => ({
 
 const mockedParse = vi.mocked(parseProject);
 const mockedStat = vi.mocked(projectDataStat);
+const mockedListAlternatives = vi.mocked(listAlternatives);
+const mockedParseAlternative = vi.mocked(parseAlternative);
 const mockedPersist = vi.mocked(persistParseCacheEntry);
 const mockedDelete = vi.mocked(deleteParseCacheEntry);
 
@@ -41,6 +50,8 @@ describe("useLibrarySummariesStore", () => {
     mockedStat.mockReset();
     mockedPersist.mockClear();
     mockedDelete.mockClear();
+    mockedListAlternatives.mockReset();
+    mockedParseAlternative.mockReset();
     // Default: stat returns a stable value so cache writes don't blow
     // up. Tests that care about the stat path override this.
     mockedStat.mockResolvedValue({ mtime_unix: 1000, size_bytes: 100 });
@@ -311,5 +322,102 @@ describe("useLibrarySummariesStore", () => {
 
     expect(mockedParse).toHaveBeenCalledTimes(1);
     expect(result).toBe(summary);
+  });
+
+  // ── lpx-explorer-bpp: variant-merged summaries ─────────────────────
+
+  it("getOrParseAllVariants merges fingerprints from every variant", async () => {
+    setScanPaused(false);
+    const v0 = makeSummary({
+      fingerprints: [
+        { type_code: "aufx", subtype: "Comp", manufacturer: "appl", offset: 1 },
+      ],
+    });
+    const v1 = makeSummary({
+      fingerprints: [
+        { type_code: "aufx", subtype: "Verb", manufacturer: "appl", offset: 1 },
+      ],
+    });
+    mockedParse.mockResolvedValueOnce(v0);
+    mockedListAlternatives.mockResolvedValueOnce([
+      { index: 0, display_name: "v0", is_active: true },
+      { index: 1, display_name: "v1", is_active: false },
+    ]);
+    mockedParseAlternative.mockResolvedValueOnce(v1);
+
+    const merged = await useLibrarySummariesStore
+      .getState()
+      .getOrParseAllVariants("/multi.logicx");
+
+    expect(merged?.fingerprints).toHaveLength(2);
+    const subtypes = merged!.fingerprints
+      .map((f) => f.subtype)
+      .sort((a, b) => a.localeCompare(b));
+    expect(subtypes).toEqual(["Comp", "Verb"]);
+    expect(useLibrarySummariesStore.getState().mergedSummaries.has("/multi.logicx")).toBe(true);
+  });
+
+  it("getOrParseAllVariants returns the variant-0 summary unchanged for single-variant projects", async () => {
+    setScanPaused(false);
+    const v0 = makeSummary({});
+    mockedParse.mockResolvedValueOnce(v0);
+    mockedListAlternatives.mockResolvedValueOnce([
+      { index: 0, display_name: "x", is_active: true },
+    ]);
+
+    const merged = await useLibrarySummariesStore
+      .getState()
+      .getOrParseAllVariants("/single.logicx");
+
+    // Single-variant: same reference, no extra parseAlternative IPC.
+    expect(merged).toBe(v0);
+    expect(mockedParseAlternative).not.toHaveBeenCalled();
+  });
+
+  it("getOrParseAllVariants caches the merged result (concurrent calls dedupe)", async () => {
+    setScanPaused(false);
+    mockedParse.mockResolvedValue(makeSummary({}));
+    mockedListAlternatives.mockResolvedValue([
+      { index: 0, display_name: "x", is_active: true },
+    ]);
+
+    const a = useLibrarySummariesStore
+      .getState()
+      .getOrParseAllVariants("/x.logicx");
+    const b = useLibrarySummariesStore
+      .getState()
+      .getOrParseAllVariants("/x.logicx");
+    await Promise.all([a, b]);
+
+    expect(mockedListAlternatives).toHaveBeenCalledTimes(1);
+    expect(mockedParse).toHaveBeenCalledTimes(1);
+
+    // A third call after resolution serves the cached merged value.
+    await useLibrarySummariesStore
+      .getState()
+      .getOrParseAllVariants("/x.logicx");
+    expect(mockedListAlternatives).toHaveBeenCalledTimes(1);
+  });
+
+  it("getOrParseAllVariants survives a variant ≥ 1 parse failure (skips the bad variant)", async () => {
+    setScanPaused(false);
+    const v0 = makeSummary({
+      fingerprints: [
+        { type_code: "aufx", subtype: "Comp", manufacturer: "appl", offset: 1 },
+      ],
+    });
+    mockedParse.mockResolvedValueOnce(v0);
+    mockedListAlternatives.mockResolvedValueOnce([
+      { index: 0, display_name: "v0", is_active: true },
+      { index: 1, display_name: "v1", is_active: false },
+    ]);
+    mockedParseAlternative.mockRejectedValueOnce(new Error("variant 1 broken"));
+
+    const merged = await useLibrarySummariesStore
+      .getState()
+      .getOrParseAllVariants("/x.logicx");
+
+    expect(merged).not.toBeNull();
+    expect(merged!.fingerprints).toHaveLength(1);
   });
 });

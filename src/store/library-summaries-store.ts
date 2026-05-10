@@ -1,6 +1,11 @@
 import { create } from "zustand";
 
-import { parseProject, projectDataStat } from "../lib/parse";
+import {
+  listAlternatives,
+  parseAlternative,
+  parseProject,
+  projectDataStat,
+} from "../lib/parse";
 import {
   deleteParseCacheEntry,
   parseCacheKeyToParts,
@@ -105,6 +110,18 @@ export function queuedParseCount(): number {
  */
 export interface LibrarySummariesState {
   readonly summaries: ReadonlyMap<string, ProjectSummary>;
+  /**
+   * Per-path summaries merged across every variant of the project
+   * (lpx-explorer-bpp). Multi-variant projects: fingerprints are the
+   * union of all variants' fingerprints; other fields take variant
+   * 0's values (the rollup only reads fingerprints). Single-variant
+   * projects: identical to `summaries.get(path)`.
+   *
+   * Populated lazily via `getOrParseAllVariants(path)`. The library
+   * scope of <PluginRail /> uses this so a plug-in only loaded in
+   * variant 1 still surfaces in the cross-project rollup.
+   */
+  readonly mergedSummaries: ReadonlyMap<string, ProjectSummary>;
   readonly errors: ReadonlyMap<string, string>;
   /**
    * Reactive mirror of the module-level `scanPaused` (lpx-explorer-fz4).
@@ -120,6 +137,18 @@ export interface LibrarySummariesState {
   readonly userPaused: boolean;
   has: (path: string) => boolean;
   getOrParse: (path: string) => Promise<ProjectSummary | null>;
+  /**
+   * Fetch every variant of the project and update mergedSummaries
+   * (lpx-explorer-bpp). Variant 0 reuses the existing
+   * path-keyed cache via getOrParse. Variants ≥ 1 are parsed fresh
+   * and cached in-memory only — variants change rarely, and the user
+   * almost always loads variant 0 anyway, so disk persistence isn't
+   * worth the IPC weight today.
+   *
+   * Single-variant projects collapse to a single getOrParse call.
+   * Returns the merged summary or null on parse failure.
+   */
+  getOrParseAllVariants: (path: string) => Promise<ProjectSummary | null>;
   /**
    * Pre-fill the in-memory summaries from a persisted parse cache
    * (lpx-explorer-aay). Stat-validation is deferred to the first
@@ -145,6 +174,25 @@ interface InternalState extends LibrarySummariesState {
   _cacheStats: Map<string, { mtime_unix: number; size_bytes: number }>;
   /** Paths whose cache entry has been stat-validated this session. */
   _statValidated: Set<string>;
+  /** Merged-across-all-variants summaries (lpx-explorer-bpp). */
+  _mergedSummariesInner: Map<string, ProjectSummary>;
+  /** In-flight merge promises — collapses concurrent calls. */
+  _mergeInflight: Map<string, Promise<ProjectSummary | null>>;
+}
+
+/**
+ * Synthesise a merged ProjectSummary whose `fingerprints` is the
+ * union across all variants. The library rollup (aggregateLibrary)
+ * only reads fingerprints, so other fields safely take variant 0's
+ * values.
+ */
+function mergeAcrossVariants(
+  variants: ReadonlyArray<ProjectSummary>,
+): ProjectSummary {
+  const base = variants[0];
+  if (variants.length === 1) return base;
+  const fingerprints = variants.flatMap((v) => v.fingerprints);
+  return { ...base, fingerprints };
 }
 
 function messageOf(e: unknown): string {
@@ -164,6 +212,7 @@ export const useLibrarySummariesStore = create<LibrarySummariesState>(
   (set, get) => {
     const state: InternalState = {
       summaries: new Map(),
+      mergedSummaries: new Map(),
       errors: new Map(),
       scanPaused: true,
       userPaused: false,
@@ -172,6 +221,8 @@ export const useLibrarySummariesStore = create<LibrarySummariesState>(
       _inflight: new Map(),
       _cacheStats: new Map(),
       _statValidated: new Set(),
+      _mergedSummariesInner: new Map(),
+      _mergeInflight: new Map(),
       has: (path: string) => {
         const s = get() as InternalState;
         return s._summariesInner.has(path);
@@ -290,6 +341,54 @@ export const useLibrarySummariesStore = create<LibrarySummariesState>(
         s._inflight.set(path, promise);
         return promise;
       },
+      getOrParseAllVariants: async (path: string) => {
+        const s = get() as InternalState;
+        // Cache hit: already merged this session (variants don't
+        // change while the app is running unless the user re-saves
+        // in Logic, which would invalidate the variant-0 cache via
+        // stat — handled by getOrParse below).
+        const cached = s._mergedSummariesInner.get(path);
+        if (cached !== undefined) return cached;
+        const inflight = s._mergeInflight.get(path);
+        if (inflight !== undefined) return inflight;
+
+        const promise = (async () => {
+          // Variant 0 reuses the existing path-keyed cache.
+          const v0 = await get().getOrParse(path);
+          if (v0 === null) return null;
+          let alts: { index: number; is_active: boolean; display_name: string }[];
+          try {
+            alts = await listAlternatives(path);
+          } catch {
+            // listAlternatives failure: fall back to variant 0 only.
+            alts = [{ index: 0, is_active: true, display_name: path }];
+          }
+          const summaries: ProjectSummary[] = [v0];
+          for (const a of alts) {
+            if (a.index === 0) continue;
+            try {
+              const extra = await parseAlternative(path, a.index);
+              summaries.push(extra);
+            } catch (e) {
+              // Variant ≥ 1 parse failure is non-fatal — log and
+              // skip; the merged summary still includes variant 0
+              // and any other variants that did parse.
+              console.warn(
+                `[parse] variant ${a.index} of ${path} failed:`,
+                e,
+              );
+            }
+          }
+          const merged = mergeAcrossVariants(summaries);
+          const cur = get() as InternalState;
+          cur._mergedSummariesInner.set(path, merged);
+          cur._mergeInflight.delete(path);
+          set({ mergedSummaries: new Map(cur._mergedSummariesInner) });
+          return merged;
+        })();
+        s._mergeInflight.set(path, promise);
+        return promise;
+      },
       clear: () => {
         const s = get() as InternalState;
         s._summariesInner.clear();
@@ -297,6 +396,8 @@ export const useLibrarySummariesStore = create<LibrarySummariesState>(
         s._inflight.clear();
         s._cacheStats.clear();
         s._statValidated.clear();
+        s._mergedSummariesInner.clear();
+        s._mergeInflight.clear();
         // Module-level concurrency state must reset too — otherwise a
         // hung test or store reset leaves slots permanently consumed.
         // scanPaused resets to false so test code reaching for clear()
@@ -307,6 +408,7 @@ export const useLibrarySummariesStore = create<LibrarySummariesState>(
         scanPaused = false;
         set({
           summaries: new Map(),
+          mergedSummaries: new Map(),
           errors: new Map(),
           scanPaused: false,
           userPaused: false,
