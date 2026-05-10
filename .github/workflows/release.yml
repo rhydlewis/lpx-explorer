@@ -89,6 +89,25 @@ jobs:
             "$KEYCHAIN_PATH" \
             "$(security default-keychain -d user | tr -d '"')"
 
+          # Auto-detect the SHA-1 from whichever Developer ID cert is in
+          # the imported .p12. Avoids the "wrong renewal cert" class of
+          # error where the APPLE_SIGNING_IDENTITY secret doesn't match
+          # the cert that actually got imported. The detected SHA-1
+          # overrides APPLE_SIGNING_IDENTITY for downstream steps.
+          DETECTED_IDENTITY=$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" \
+            | grep "Developer ID Application" \
+            | head -1 \
+            | awk '{print $2}')
+          if [ -z "$DETECTED_IDENTITY" ]; then
+            echo "❌ No 'Developer ID Application' identity found in the imported keychain"
+            security find-identity -v -p codesigning "$KEYCHAIN_PATH"
+            exit 1
+          fi
+          # Mask before printing so the SHA-1 doesn't leak in logs.
+          echo "::add-mask::$DETECTED_IDENTITY"
+          echo "✓ Detected Developer ID Application identity"
+          echo "APPLE_SIGNING_IDENTITY=$DETECTED_IDENTITY" >> "$GITHUB_ENV"
+
       # ─── Sparkle EdDSA private key ───────────────────────────────────
       # sign_update reads the Ed25519 private key from Keychain under
       # account=ed25519 by default. Inject the key from a secret so the
@@ -109,7 +128,8 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_ID_APP_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          # APPLE_SIGNING_IDENTITY is set via $GITHUB_ENV in the cert
+          # import step (auto-detected from the imported .p12).
           # Used by generate-appcast.sh for the <description> field.
           # The release notes get pulled from the tag annotation by
           # the next step.
