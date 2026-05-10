@@ -1,0 +1,137 @@
+name: Release
+
+# Triggered by pushing a v*.*.* tag. Builds a universal macOS DMG,
+# signs + notarizes via Tauri's bundler, generates the Sparkle
+# appcast.xml, and publishes both as a GitHub Release. Sparkle's
+# SUFeedURL (Info.plist) points at the appcast asset on the latest
+# release, so 'Check for Updates…' just works.
+#
+# Refs: lpx-explorer-ehi, lpx-explorer-z7j
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  release:
+    runs-on: macos-14
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Install npm deps
+        run: npm ci
+
+      - name: Quality gate
+        run: npm run quality
+
+      # ─── macOS signing setup ─────────────────────────────────────────
+      # Decode the p12 into a tmp file, create a temporary keychain,
+      # import the cert there, and set it as the default. Tauri's
+      # bundler picks the cert by SHA-1 (APPLE_SIGNING_IDENTITY) — same
+      # one used locally — so it has to be available in *some* keychain
+      # in the search path. Temporary keychain is cleaned up on runner
+      # teardown.
+      - name: Import Developer ID cert
+        env:
+          CERT_P12_BASE64: ${{ secrets.APPLE_DEV_CERT_P12_BASE64 }}
+          CERT_PASSWORD: ${{ secrets.APPLE_DEV_CERT_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          set -euo pipefail
+          CERT_PATH="$RUNNER_TEMP/cert.p12"
+          KEYCHAIN_PATH="$RUNNER_TEMP/build.keychain-db"
+
+          echo "$CERT_P12_BASE64" | base64 --decode > "$CERT_PATH"
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          # Import cert with all the codesign-friendly flags. -T allows
+          # /usr/bin/codesign to use the key non-interactively.
+          security import "$CERT_PATH" \
+            -P "$CERT_PASSWORD" \
+            -A -t cert -f pkcs12 \
+            -k "$KEYCHAIN_PATH" \
+            -T /usr/bin/codesign \
+            -T /usr/bin/security
+
+          security set-key-partition-list \
+            -S apple-tool:,apple:,codesign: \
+            -s -k "$KEYCHAIN_PASSWORD" \
+            "$KEYCHAIN_PATH"
+
+          # Add to search path so codesign can find the cert.
+          security list-keychains -d user -s \
+            "$KEYCHAIN_PATH" \
+            "$(security default-keychain -d user | tr -d '"')"
+
+      # ─── Sparkle EdDSA private key ───────────────────────────────────
+      # sign_update reads the Ed25519 private key from Keychain under
+      # account=ed25519 by default. Inject the key from a secret so the
+      # CI runner can sign update payloads.
+      - name: Import Sparkle Ed25519 key
+        env:
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          security add-generic-password \
+            -a "ed25519" -s "https://sparkle-project.org" \
+            -w "$SPARKLE_PRIVATE_KEY" -U \
+            "$RUNNER_TEMP/build.keychain-db"
+
+      # ─── Build, sign, notarize, generate appcast ─────────────────────
+      - name: Build release
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_ID_APP_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          # Used by generate-appcast.sh for the <description> field.
+          # The release notes get pulled from the tag annotation by
+          # the next step.
+          RELEASE_NOTES: ${{ github.event.head_commit.message }}
+        run: npm run release
+
+      # ─── Publish ─────────────────────────────────────────────────────
+      - name: Locate artifacts
+        id: artifacts
+        run: |
+          DMG="$(ls src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg | head -1)"
+          APPCAST="src-tauri/target/universal-apple-darwin/release/bundle/dmg/appcast.xml"
+          echo "dmg=$DMG" >> "$GITHUB_OUTPUT"
+          echo "appcast=$APPCAST" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh release create "$TAG" \
+            "${{ steps.artifacts.outputs.dmg }}" \
+            "${{ steps.artifacts.outputs.appcast }}" \
+            --title "LPX Explorer $TAG" \
+            --generate-notes

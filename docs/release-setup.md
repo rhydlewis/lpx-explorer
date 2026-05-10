@@ -59,15 +59,55 @@ security find-generic-password -a "lpx-explorer" -s "SIGNING_IDENTITY" 2>/dev/nu
 (The `-w` flag is intentionally omitted from the verification calls so the
 secret doesn't print.)
 
-## Auto-updater (Sparkle) — coming next
+## Auto-updater (Sparkle)
 
-`tauri-plugin-sparkle-updater` v0.2.4 adds an EdDSA keypair separate from the
-Apple Developer ID. The private key is stored in Keychain too (under
-`account=lpx-explorer-sparkle`). The public key gets committed to
-`src-tauri/Info.plist` (`SUPublicEDKey`).
+`tauri-plugin-sparkle-updater` v0.2.4 is wired in (lpx-explorer-tat). The
+EdDSA keypair is **shared with flowcus-v2** — both apps validate against the
+same `SUPublicEDKey` because the private half lives in this user's login
+Keychain under the standard Sparkle entry (account=`ed25519`,
+service=`https://sparkle-project.org`). If the key ever needs rotating, do
+both apps in lockstep so existing installs of either can verify the next
+release.
 
-Setup happens in lpx-explorer-tat (snx 6/8) — see notes there once the bead
-lands.
+The public key in `src-tauri/Info.plist`:
+
+    SUPublicEDKey = K3ez3NH5DW5mbJbJcMWK5yvK5JYv7gjMowuMZsJwzf0=
+
+## CI release pipeline (lpx-explorer-ehi + z7j)
+
+`.github/workflows/release.yml` triggers on `v*.*.*` tag push and runs on a
+GitHub-hosted `macos-14` runner. Required GitHub Actions secrets:
+
+| Secret                       | What                                                   |
+|------------------------------|--------------------------------------------------------|
+| `APPLE_DEV_CERT_P12_BASE64`  | `base64 < cert.p12` of the Developer ID Application cert exported from Keychain Access (export both cert + private key). |
+| `APPLE_DEV_CERT_PASSWORD`    | Password set when exporting the .p12.                  |
+| `KEYCHAIN_PASSWORD`          | Any random string — used only for the temp keychain on the runner. |
+| `APPLE_ID`                   | Apple ID email associated with the Developer Program.   |
+| `APPLE_TEAM_ID`              | `87A97X8DAG`.                                          |
+| `APPLE_ID_APP_PASSWORD`      | App-specific password (same value as the local Keychain `APPLE_PASSWORD` entry). |
+| `APPLE_SIGNING_IDENTITY`     | SHA-1 of the Developer ID Application cert (same value as the local Keychain `SIGNING_IDENTITY` entry). |
+| `SPARKLE_PRIVATE_KEY`        | Output of `security find-generic-password -a ed25519 -s 'https://sparkle-project.org' -w` from the local Keychain (Sparkle's standard storage location). |
+
+To export the Developer ID cert:
+
+    # In Keychain Access → My Certificates → right-click the
+    # "Developer ID Application: ..." entry → Export → save as .p12
+    # with a password, then:
+    base64 < ~/Downloads/cert.p12 | pbcopy
+
+The workflow:
+
+1. Imports the cert into a temporary keychain on the runner.
+2. Imports the Sparkle EdDSA key into the same temp keychain (so
+   `sign_update` can find it via the standard Sparkle account/service).
+3. Runs `npm run release` — which reads `APPLE_*` from env (CI mode), pre-
+   signs Sparkle.framework, runs `tauri build` (which signs + notarizes
+   inline), generates the EdDSA signature, and templates `appcast.xml`.
+4. Creates a GitHub Release with both `.dmg` and `appcast.xml` as assets.
+
+Sparkle's `SUFeedURL` resolves `releases/latest/download/appcast.xml`, so
+the next release becomes the canonical update source automatically.
 
 ## How the script uses these
 
