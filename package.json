@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
+    "release": "bash scripts/build-release.sh",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint .",
