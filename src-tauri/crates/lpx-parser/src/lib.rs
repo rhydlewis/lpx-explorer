@@ -7,6 +7,7 @@
 //! The format is undocumented; offsets here mirror the empirically-derived
 //! Python implementation at `lpx-toolkit/lpx_inspect.py`.
 
+mod alternatives;
 mod apple_drummer;
 mod apple_stock;
 mod auval;
@@ -15,6 +16,7 @@ mod regions;
 mod tracks;
 mod tracks_registry;
 
+pub use alternatives::{parse_alternatives_manifest, Alternative, AlternativesError};
 pub use auval::{parse_auval_line, AuvalEntry};
 pub use metadata::{parse_metadata_plist, MetadataError, ProjectMetadata};
 pub use regions::{
