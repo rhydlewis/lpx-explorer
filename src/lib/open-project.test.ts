@@ -7,6 +7,13 @@ import { openProject } from "./open-project";
 
 vi.mock("./parse", () => ({
   parseProject: vi.fn().mockResolvedValue({ fingerprints: [] }),
+  // 4qf: project-store now drives loads through list_alternatives +
+  // parse_alternative. Mock both to keep openProject tests focused
+  // on Recents bookkeeping.
+  listAlternatives: vi.fn().mockResolvedValue([
+    { index: 0, display_name: "song", is_active: true },
+  ]),
+  parseAlternative: vi.fn().mockResolvedValue({ fingerprints: [] }),
 }));
 
 describe("openProject", () => {

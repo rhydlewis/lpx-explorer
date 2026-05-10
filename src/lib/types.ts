@@ -104,6 +104,19 @@ export interface AuRegistry {
   scanned_at_unix: number;
 }
 
+/**
+ * One project alternative as listed in `<bundle>/Resources/
+ * ProjectInformation.plist` — Logic stores a `VariantNames`
+ * dictionary keyed by zero-padded index, with `ActiveVariant`
+ * pointing at whichever was last opened. Mirrors the Rust
+ * `lpx_parser::Alternative` struct (lpx-explorer-unl).
+ */
+export interface Alternative {
+  readonly index: number;
+  readonly display_name: string;
+  readonly is_active: boolean;
+}
+
 // ─── Library / UI types ──────────────────────────────────────────────
 
 export interface RecentEntry {

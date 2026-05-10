@@ -1,5 +1,6 @@
 import type {
   AURef,
+  Alternative,
   AuRegistry,
   AuvalEntry,
   BundleStats,
@@ -8,6 +9,7 @@ import type {
   Track,
   TrackRegistryEntry,
 } from "../lib/types";
+import type { ProjectStatus } from "../store/project-store";
 
 const DEFAULT_METADATA: ProjectMetadata = {
   song_key: "?",
@@ -70,4 +72,33 @@ export function makeAuRegistry(fingerprints: ReadonlyArray<string> = []): AuRegi
     };
   });
   return { entries, scanned_at_unix: 0 };
+}
+
+/**
+ * Build a 'loaded' ProjectStatus with the alternatives + variant
+ * fields populated to sensible defaults (lpx-explorer-4qf). Pre-4qf
+ * tests built the status inline with just `kind / path / summary` —
+ * this helper keeps them concise after the type widened.
+ */
+export function makeLoadedStatus(overrides: {
+  readonly path: string;
+  readonly summary: ProjectSummary;
+  readonly alternatives?: ReadonlyArray<Alternative>;
+  readonly activeVariantIndex?: number;
+}): ProjectStatus {
+  const path = overrides.path;
+  const lastSlash = path.lastIndexOf("/");
+  const basename = (lastSlash >= 0 ? path.slice(lastSlash + 1) : path).replace(
+    /\.logicx$/i,
+    "",
+  );
+  return {
+    kind: "loaded",
+    path,
+    summary: overrides.summary,
+    alternatives: overrides.alternatives ?? [
+      { index: 0, display_name: basename, is_active: true },
+    ],
+    activeVariantIndex: overrides.activeVariantIndex ?? 0,
+  };
 }

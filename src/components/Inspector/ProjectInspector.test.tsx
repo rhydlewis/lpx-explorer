@@ -10,6 +10,8 @@ const loaded: ProjectStatus = {
   kind: "loaded",
   path: "/Users/rhyd/Music/Logic/song.logicx",
   summary: makeSummary(),
+alternatives: [{ index: 0, display_name: "x", is_active: true }],
+activeVariantIndex: 0,
 };
 
 describe("<ProjectInspector />", () => {
