@@ -33,6 +33,19 @@ export function ProjectHeader({ path }: Props) {
   const [menuPos, setMenuPos] = useState<MenuPos | null>(null);
   const selectedLibraryFolder = useUIStore((s) => s.selectedLibraryFolder);
   const clearProject = useProjectStore((s) => s.clear);
+  // Alternatives switcher (lpx-explorer-g2q). Only the 'loaded' state
+  // carries alternatives + activeVariantIndex; selectors must return
+  // stable references — Zustand's getSnapshot caches by identity, and
+  // a fresh object literal on every call triggers the infinite-loop
+  // warning. Read each field separately and let the inner state
+  // identity do the caching.
+  const alternatives = useProjectStore((s) =>
+    s.current.kind === "loaded" ? s.current.alternatives : null,
+  );
+  const activeVariantIndex = useProjectStore((s) =>
+    s.current.kind === "loaded" ? s.current.activeVariantIndex : 0,
+  );
+  const setActiveVariant = useProjectStore((s) => s.setActiveVariant);
 
   // Dismiss-on-outside-click + Escape. Listeners attach only while the
   // menu is open so we don't run a global keydown handler the rest of
@@ -68,9 +81,31 @@ export function ProjectHeader({ path }: Props) {
           </span>
         </button>
       )}
-      <h2 className={styles.name} title={trimmed}>
-        {projectNameOf(path)}
-      </h2>
+      <div className={styles.nameRow}>
+        <h2 className={styles.name} title={trimmed}>
+          {projectNameOf(path)}
+        </h2>
+        {alternatives !== null && alternatives.length > 1 && (
+          <label className={styles.variantSwitcher}>
+            <span className={styles.variantSwitcherLabel}>Alternative</span>
+            <select
+              className={styles.variantSelect}
+              value={activeVariantIndex}
+              onChange={(e) =>
+                void setActiveVariant(Number.parseInt(e.target.value, 10))
+              }
+            >
+              {alternatives.map((a) => (
+                <option key={a.index} value={a.index}>
+                  {a.is_active
+                    ? `${a.display_name} (active)`
+                    : a.display_name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+      </div>
       <div className={styles.pathRow}>
         <p
           className={styles.path}

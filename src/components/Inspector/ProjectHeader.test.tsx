@@ -157,4 +157,79 @@ describe("<ProjectHeader />", () => {
       expect(useProjectStore.getState().current.kind).toBe("idle");
     });
   });
+
+  // ── lpx-explorer-g2q: alternative-switcher dropdown ────────────────
+
+  describe("alternatives switcher", () => {
+    afterEach(() => {
+      useProjectStore.getState().clear();
+    });
+
+    it("does NOT render the switcher for a single-variant project (the 99% case)", () => {
+      useProjectStore.setState({
+        current: {
+          kind: "loaded",
+          path: "/x.logicx",
+          summary: { fingerprints: [], metadata: {} as never, stats: {} as never, tracks: [], tracks_registry: [] },
+          alternatives: [{ index: 0, display_name: "x", is_active: true }],
+          activeVariantIndex: 0,
+        },
+      });
+      render(<ProjectHeader path="/x.logicx" />);
+
+      expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
+    });
+
+    it("renders a select with one option per alternative, with '(active)' on the manifest-active one", () => {
+      useProjectStore.setState({
+        current: {
+          kind: "loaded",
+          path: "/multi.logicx",
+          summary: { fingerprints: [], metadata: {} as never, stats: {} as never, tracks: [], tracks_registry: [] },
+          alternatives: [
+            { index: 0, display_name: "new idea", is_active: false },
+            { index: 1, display_name: "new idea - alt 1", is_active: true },
+          ],
+          activeVariantIndex: 1,
+        },
+      });
+      render(<ProjectHeader path="/multi.logicx" />);
+
+      const select = screen.getByRole("combobox") as HTMLSelectElement;
+      expect(select.value).toBe("1");
+      const options = Array.from(
+        select.querySelectorAll<HTMLOptionElement>("option"),
+      );
+      expect(options.map((o) => o.textContent)).toEqual([
+        "new idea",
+        "new idea - alt 1 (active)",
+      ]);
+    });
+
+    it("changing the select calls setActiveVariant with the chosen index", () => {
+      const setActiveVariant = vi
+        .fn<(index: number) => Promise<void>>()
+        .mockResolvedValue(undefined);
+      useProjectStore.setState({
+        current: {
+          kind: "loaded",
+          path: "/multi.logicx",
+          summary: { fingerprints: [], metadata: {} as never, stats: {} as never, tracks: [], tracks_registry: [] },
+          alternatives: [
+            { index: 0, display_name: "v0", is_active: true },
+            { index: 1, display_name: "v1", is_active: false },
+          ],
+          activeVariantIndex: 0,
+        },
+        setActiveVariant,
+      });
+
+      render(<ProjectHeader path="/multi.logicx" />);
+      fireEvent.change(screen.getByRole("combobox"), {
+        target: { value: "1" },
+      });
+
+      expect(setActiveVariant).toHaveBeenCalledWith(1);
+    });
+  });
 });
