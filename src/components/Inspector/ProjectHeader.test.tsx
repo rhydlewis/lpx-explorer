@@ -120,7 +120,7 @@ describe("<ProjectHeader />", () => {
           kind: "loaded",
           path: "/x.logicx",
           summary: { fingerprints: [], metadata: {} as never, stats: {} as never, tracks: [], tracks_registry: [] },
-          alternatives: [{ index: 0, display_name: "x", is_active: true }],
+          alternatives: [{ index: 0, display_name: "x", is_active: true, window_image_path: null }],
           activeVariantIndex: 0,
         },
       });
@@ -171,7 +171,7 @@ describe("<ProjectHeader />", () => {
           kind: "loaded",
           path: "/x.logicx",
           summary: { fingerprints: [], metadata: {} as never, stats: {} as never, tracks: [], tracks_registry: [] },
-          alternatives: [{ index: 0, display_name: "x", is_active: true }],
+          alternatives: [{ index: 0, display_name: "x", is_active: true, window_image_path: null }],
           activeVariantIndex: 0,
         },
       });
@@ -187,8 +187,8 @@ describe("<ProjectHeader />", () => {
           path: "/multi.logicx",
           summary: { fingerprints: [], metadata: {} as never, stats: {} as never, tracks: [], tracks_registry: [] },
           alternatives: [
-            { index: 0, display_name: "new idea", is_active: false },
-            { index: 1, display_name: "new idea - alt 1", is_active: true },
+            { index: 0, display_name: "new idea", is_active: false, window_image_path: null },
+            { index: 1, display_name: "new idea - alt 1", is_active: true, window_image_path: null },
           ],
           activeVariantIndex: 1,
         },
@@ -216,8 +216,8 @@ describe("<ProjectHeader />", () => {
           path: "/multi.logicx",
           summary: { fingerprints: [], metadata: {} as never, stats: {} as never, tracks: [], tracks_registry: [] },
           alternatives: [
-            { index: 0, display_name: "v0", is_active: true },
-            { index: 1, display_name: "v1", is_active: false },
+            { index: 0, display_name: "v0", is_active: true, window_image_path: null },
+            { index: 1, display_name: "v1", is_active: false, window_image_path: null },
           ],
           activeVariantIndex: 0,
         },

@@ -109,12 +109,19 @@ export interface AuRegistry {
  * ProjectInformation.plist` — Logic stores a `VariantNames`
  * dictionary keyed by zero-padded index, with `ActiveVariant`
  * pointing at whichever was last opened. Mirrors the Rust
- * `lpx_parser::Alternative` struct (lpx-explorer-unl).
+ * `commands::AlternativeEntry` struct (lpx-explorer-unl + ax6) —
+ * which wraps `lpx_parser::Alternative` with the filesystem-derived
+ * `window_image_path` (Logic writes a screenshot of the main window
+ * to each alternative on save).
  */
 export interface Alternative {
   readonly index: number;
   readonly display_name: string;
   readonly is_active: boolean;
+  /** Path to `<bundle>/Alternatives/<NNN>/WindowImage.jpg` if Logic wrote
+   *  one, else null. Pass through `convertFileSrc` before using as an
+   *  `<img>` src. Read-only contract: never write to this path. */
+  readonly window_image_path: string | null;
 }
 
 // ─── Library / UI types ──────────────────────────────────────────────

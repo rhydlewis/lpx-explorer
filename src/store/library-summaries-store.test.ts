@@ -340,8 +340,8 @@ describe("useLibrarySummariesStore", () => {
     });
     mockedParse.mockResolvedValueOnce(v0);
     mockedListAlternatives.mockResolvedValueOnce([
-      { index: 0, display_name: "v0", is_active: true },
-      { index: 1, display_name: "v1", is_active: false },
+      { index: 0, display_name: "v0", is_active: true, window_image_path: null },
+      { index: 1, display_name: "v1", is_active: false, window_image_path: null },
     ]);
     mockedParseAlternative.mockResolvedValueOnce(v1);
 
@@ -362,7 +362,7 @@ describe("useLibrarySummariesStore", () => {
     const v0 = makeSummary({});
     mockedParse.mockResolvedValueOnce(v0);
     mockedListAlternatives.mockResolvedValueOnce([
-      { index: 0, display_name: "x", is_active: true },
+      { index: 0, display_name: "x", is_active: true, window_image_path: null },
     ]);
 
     const merged = await useLibrarySummariesStore
@@ -378,7 +378,7 @@ describe("useLibrarySummariesStore", () => {
     setScanPaused(false);
     mockedParse.mockResolvedValue(makeSummary({}));
     mockedListAlternatives.mockResolvedValue([
-      { index: 0, display_name: "x", is_active: true },
+      { index: 0, display_name: "x", is_active: true, window_image_path: null },
     ]);
 
     const a = useLibrarySummariesStore
@@ -408,8 +408,8 @@ describe("useLibrarySummariesStore", () => {
     });
     mockedParse.mockResolvedValueOnce(v0);
     mockedListAlternatives.mockResolvedValueOnce([
-      { index: 0, display_name: "v0", is_active: true },
-      { index: 1, display_name: "v1", is_active: false },
+      { index: 0, display_name: "v0", is_active: true, window_image_path: null },
+      { index: 1, display_name: "v1", is_active: false, window_image_path: null },
     ]);
     mockedParseAlternative.mockRejectedValueOnce(new Error("variant 1 broken"));
 

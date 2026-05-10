@@ -11,6 +11,19 @@ use lpx_parser::{AURef, Alternative, ProjectMetadata, Track, TrackRegistryEntry}
 use serde::Serialize;
 use thiserror::Error;
 
+/// Tauri command return shape for `list_alternatives`. Combines the
+/// bytes-only `lpx_parser::Alternative` with filesystem-derived data
+/// (the path to `WindowImage.jpg` if Logic wrote one). Denormalized
+/// rather than wrapping so frontend JSON stays flat and Rust call sites
+/// keep `entry.display_name` style access.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct AlternativeEntry {
+    pub index: u32,
+    pub display_name: String,
+    pub is_active: bool,
+    pub window_image_path: Option<String>,
+}
+
 use crate::bundle::{bundle_stats, BundleStats};
 
 #[derive(Debug, Serialize)]
@@ -187,29 +200,61 @@ fn bundle_basename(bundle: &Path) -> String {
 /// (no manifest AND no `Alternatives/000/ProjectData`) — caller can
 /// surface that as 'unparseable bundle'.
 #[tauri::command]
-pub fn list_alternatives(path: String) -> Vec<Alternative> {
+pub fn list_alternatives(path: String) -> Vec<AlternativeEntry> {
     let bundle = PathBuf::from(&path);
     let bundle_name = bundle_basename(&bundle);
     let manifest_path = bundle.join("Resources").join("ProjectInformation.plist");
 
-    if let Ok(bytes) = fs::read(&manifest_path) {
-        if let Ok(alts) = lpx_parser::parse_alternatives_manifest(&bytes, &bundle_name) {
-            if !alts.is_empty() {
-                return alts;
-            }
+    let parsed: Vec<Alternative> = if let Ok(bytes) = fs::read(&manifest_path) {
+        match lpx_parser::parse_alternatives_manifest(&bytes, &bundle_name) {
+            Ok(alts) if !alts.is_empty() => alts,
+            _ => Vec::new(),
         }
-    }
+    } else {
+        Vec::new()
+    };
 
-    // No (or invalid) manifest: synthesize a single entry from
-    // Alternatives/000/. If even that's missing, return empty.
-    if locate_alternative(&bundle).is_some() {
-        return vec![Alternative {
+    let parsed = if parsed.is_empty() && locate_alternative(&bundle).is_some() {
+        // No (or invalid) manifest: synthesize a single entry from
+        // Alternatives/000/. If even that's missing, return empty.
+        vec![Alternative {
             index: 0,
             display_name: bundle_name,
             is_active: true,
-        }];
+        }]
+    } else {
+        parsed
+    };
+
+    parsed
+        .into_iter()
+        .map(|alt| {
+            let window_image_path = window_image_for(&bundle, alt.index);
+            AlternativeEntry {
+                index: alt.index,
+                display_name: alt.display_name,
+                is_active: alt.is_active,
+                window_image_path,
+            }
+        })
+        .collect()
+}
+
+/// Returns the path to `<bundle>/Alternatives/<index:03>/WindowImage.jpg`
+/// as a string when the file exists. Logic writes this screenshot on save
+/// (recent versions only — projects last saved in older Logic versions
+/// won't have it). Returns None for missing files; callers render a
+/// placeholder rather than an error.
+fn window_image_for(bundle: &Path, index: u32) -> Option<String> {
+    let path = bundle
+        .join("Alternatives")
+        .join(format!("{index:03}"))
+        .join("WindowImage.jpg");
+    if path.is_file() {
+        Some(path.to_string_lossy().into_owned())
+    } else {
+        None
     }
-    Vec::new()
 }
 
 /// Parse a specific alternative inside a `.logicx` bundle
@@ -297,6 +342,40 @@ mod tests {
             "<?xml version=\"1.0\"?>\n\
              <plist version=\"1.0\"><dict>{body}</dict></plist>"
         )
+    }
+
+    #[test]
+    fn list_alternatives_includes_window_image_path_when_present() {
+        // Logic writes a screenshot of the main window to each alternative
+        // on save: <bundle>/Alternatives/<NNN>/WindowImage.jpg. Surface it
+        // in the entry so the frontend can render the recognition hero.
+        let tmp = tempdir().unwrap();
+        let bundle = tmp.path().join("song.logicx");
+        write_alternative(&bundle, 0, b"\x00\x00");
+        let image_path = bundle.join("Alternatives/000/WindowImage.jpg");
+        fs::write(&image_path, b"fake-jpeg-bytes").unwrap();
+
+        let alts = list_alternatives(bundle.to_string_lossy().into_owned());
+
+        assert_eq!(alts.len(), 1);
+        assert_eq!(
+            alts[0].window_image_path.as_deref(),
+            Some(image_path.to_string_lossy().as_ref()),
+        );
+    }
+
+    #[test]
+    fn list_alternatives_window_image_path_is_none_when_file_missing() {
+        // Older Logic versions / projects never re-opened in recent Logic
+        // don't have WindowImage.jpg at all. None signals 'render placeholder'.
+        let tmp = tempdir().unwrap();
+        let bundle = tmp.path().join("old.logicx");
+        write_alternative(&bundle, 0, b"\x00\x00");
+
+        let alts = list_alternatives(bundle.to_string_lossy().into_owned());
+
+        assert_eq!(alts.len(), 1);
+        assert!(alts[0].window_image_path.is_none());
     }
 
     #[test]

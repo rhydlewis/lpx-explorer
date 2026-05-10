@@ -19,7 +19,7 @@ function alt(
   display_name: string,
   is_active = false,
 ): Alternative {
-  return { index, display_name, is_active };
+  return { index, display_name, is_active, window_image_path: null };
 }
 
 describe("useProjectStore", () => {

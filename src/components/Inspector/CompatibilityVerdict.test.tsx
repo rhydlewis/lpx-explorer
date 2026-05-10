@@ -54,7 +54,7 @@ describe("<CompatibilityVerdict />", () => {
             { type_code: "aufx", subtype: "Cmpr", manufacturer: "appl", offset: 2 },
           ],
         }),
-      alternatives: [{ index: 0, display_name: "x", is_active: true }],
+      alternatives: [{ index: 0, display_name: "x", is_active: true, window_image_path: null }],
       activeVariantIndex: 0,
       },
     });
@@ -86,7 +86,7 @@ describe("<CompatibilityVerdict />", () => {
             { type_code: "aufx", subtype: "Also", manufacturer: "Gone", offset: 3 },
           ],
         }),
-      alternatives: [{ index: 0, display_name: "x", is_active: true }],
+      alternatives: [{ index: 0, display_name: "x", is_active: true, window_image_path: null }],
       activeVariantIndex: 0,
       },
     });
@@ -125,7 +125,7 @@ describe("<CompatibilityVerdict />", () => {
             },
           ],
         }),
-      alternatives: [{ index: 0, display_name: "x", is_active: true }],
+      alternatives: [{ index: 0, display_name: "x", is_active: true, window_image_path: null }],
       activeVariantIndex: 0,
       },
     });
@@ -149,7 +149,7 @@ describe("<CompatibilityVerdict />", () => {
             { type_code: "aumu", subtype: "EZk2", manufacturer: "Toon", offset: 1 },
           ],
         }),
-      alternatives: [{ index: 0, display_name: "x", is_active: true }],
+      alternatives: [{ index: 0, display_name: "x", is_active: true, window_image_path: null }],
       activeVariantIndex: 0,
       },
     });
@@ -169,7 +169,7 @@ describe("<CompatibilityVerdict />", () => {
         kind: "loaded",
         path: "/x.logicx",
         summary: makeSummary({ fingerprints: [] }),
-      alternatives: [{ index: 0, display_name: "x", is_active: true }],
+      alternatives: [{ index: 0, display_name: "x", is_active: true, window_image_path: null }],
       activeVariantIndex: 0,
       },
     });
@@ -254,7 +254,7 @@ describe("<CompatibilityVerdict />", () => {
             { type_code: "aumu", subtype: "Miss", manufacturer: "Mfgr", offset: 1 },
           ],
         }),
-      alternatives: [{ index: 0, display_name: "x", is_active: true }],
+      alternatives: [{ index: 0, display_name: "x", is_active: true, window_image_path: null }],
       activeVariantIndex: 0,
       },
     });
@@ -283,7 +283,7 @@ describe("<CompatibilityVerdict />", () => {
             { type_code: "aufx", subtype: "Miss", manufacturer: "Mfgr", offset: 2 },
           ],
         }),
-      alternatives: [{ index: 0, display_name: "x", is_active: true }],
+      alternatives: [{ index: 0, display_name: "x", is_active: true, window_image_path: null }],
       activeVariantIndex: 0,
       },
     });
@@ -319,7 +319,7 @@ describe("<CompatibilityVerdict />", () => {
             { type_code: "aumu", subtype: "EZk2", manufacturer: "Toon", offset: 1 },
           ],
         }),
-      alternatives: [{ index: 0, display_name: "x", is_active: true }],
+      alternatives: [{ index: 0, display_name: "x", is_active: true, window_image_path: null }],
       activeVariantIndex: 0,
       },
     });
@@ -348,7 +348,7 @@ describe("<CompatibilityVerdict />", () => {
             { type_code: "aumu", subtype: "EZk2", manufacturer: "Toon", offset: 1 },
           ],
         }),
-      alternatives: [{ index: 0, display_name: "x", is_active: true }],
+      alternatives: [{ index: 0, display_name: "x", is_active: true, window_image_path: null }],
       activeVariantIndex: 0,
       },
     });
