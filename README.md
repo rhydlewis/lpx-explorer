@@ -1,10 +1,13 @@
 # lpx-explorer
 
-Read-only inspector for Logic Pro `.logicx` project bundles. macOS desktop app — Tauri 2 + React 19 + TypeScript + Rust.
+Read-only macOS app to inspect Logic Pro `.logicx` project bundles. See & search plugin, track and metadata from a macOS desktop app (Tauri 2 + React 19 + TypeScript + Rust).
 
 The headline question: **"Will this project open cleanly on this Mac?"** LPX Explorer answers it by parsing the undocumented binary `ProjectData` file inside a `.logicx` bundle and cross-referencing the Audio Unit plug-ins it references against the AUs installed on your machine — without launching Logic and without touching a byte of the bundle.
 
 ![](./screenshot.png)
+
+> [!WARNING]
+> **Use at your own risk.** `LPX Explorer` parses the undocumented `.logicx` binary format that Apple may change at any time. It is strictly read-only — there is a SHA-256 invariant test that fails the build if any byte of a project is ever modified — but you are still pointing it at irreplaceable creative work. Always keep backups. The author accepts no liability for project corruption, data loss, or anything else that might go wrong.
 
 ## What it does
 
