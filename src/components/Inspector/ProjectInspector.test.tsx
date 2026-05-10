@@ -10,7 +10,7 @@ const loaded: ProjectStatus = {
   kind: "loaded",
   path: "/Users/rhyd/Music/Logic/song.logicx",
   summary: makeSummary(),
-alternatives: [{ index: 0, display_name: "x", is_active: true, window_image_path: null }],
+alternatives: [{ index: 0, display_name: "x", is_active: true, window_image_path: null, last_saved_unix: 0 }],
 activeVariantIndex: 0,
 };
 
@@ -49,8 +49,8 @@ describe("<ProjectInspector />", () => {
     const multi: ProjectStatus = {
       ...loaded,
       alternatives: [
-        { index: 0, display_name: "a", is_active: true, window_image_path: null },
-        { index: 1, display_name: "b", is_active: false, window_image_path: null },
+        { index: 0, display_name: "a", is_active: true, window_image_path: null, last_saved_unix: 0 },
+        { index: 1, display_name: "b", is_active: false, window_image_path: null, last_saved_unix: 0 },
       ],
     };
     render(<ProjectInspector status={multi} />);

@@ -122,6 +122,9 @@ export interface Alternative {
    *  one, else null. Pass through `convertFileSrc` before using as an
    *  `<img>` src. Read-only contract: never write to this path. */
   readonly window_image_path: string | null;
+  /** Mtime of `<bundle>/Alternatives/<NNN>/ProjectData` in unix seconds.
+   *  0 means unknown — render a fallback caption rather than "53 years ago". */
+  readonly last_saved_unix: number;
 }
 
 // ─── Library / UI types ──────────────────────────────────────────────

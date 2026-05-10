@@ -79,6 +79,14 @@
   text-overflow: ellipsis;
 }
 
+.thumbTimestamp {
+  font-size: var(--fs-caption);
+  color: var(--c-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .thumb[data-active="true"] .thumbLabel {
   color: var(--c-text);
   font-weight: 500;

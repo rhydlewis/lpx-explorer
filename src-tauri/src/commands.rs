@@ -22,6 +22,10 @@ pub struct AlternativeEntry {
     pub display_name: String,
     pub is_active: bool,
     pub window_image_path: Option<String>,
+    /// Mtime of `<bundle>/Alternatives/<NNN>/ProjectData` in unix
+    /// seconds. 0 when the file is missing or mtime is unreadable —
+    /// callers treat 0 as "unknown" and render a fallback caption.
+    pub last_saved_unix: i64,
 }
 
 use crate::bundle::{bundle_stats, BundleStats};
@@ -230,14 +234,31 @@ pub fn list_alternatives(path: String) -> Vec<AlternativeEntry> {
         .into_iter()
         .map(|alt| {
             let window_image_path = window_image_for(&bundle, alt.index);
+            let last_saved_unix = last_saved_for(&bundle, alt.index);
             AlternativeEntry {
                 index: alt.index,
                 display_name: alt.display_name,
                 is_active: alt.is_active,
                 window_image_path,
+                last_saved_unix,
             }
         })
         .collect()
+}
+
+/// Mtime of `<bundle>/Alternatives/<index:03>/ProjectData` in unix
+/// seconds, or 0 when the file is missing or mtime is unreadable.
+fn last_saved_for(bundle: &Path, index: u32) -> i64 {
+    let path = bundle
+        .join("Alternatives")
+        .join(format!("{index:03}"))
+        .join("ProjectData");
+    fs::metadata(&path)
+        .ok()
+        .and_then(|m| m.modified().ok())
+        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+        .map(|d| d.as_secs() as i64)
+        .unwrap_or(0)
 }
 
 /// Returns the path to `<bundle>/Alternatives/<index:03>/WindowImage.jpg`
@@ -342,6 +363,29 @@ mod tests {
             "<?xml version=\"1.0\"?>\n\
              <plist version=\"1.0\"><dict>{body}</dict></plist>"
         )
+    }
+
+    #[test]
+    fn list_alternatives_includes_last_saved_unix_from_project_data_mtime() {
+        // Each alternative's last-saved time = mtime of its ProjectData
+        // file. The frontend renders this as a relative-time caption
+        // under each AlternativeStrip thumbnail so users can tell which
+        // alternative they last touched.
+        let tmp = tempdir().unwrap();
+        let bundle = tmp.path().join("song.logicx");
+        write_alternative(&bundle, 0, b"\x00\x00");
+
+        let alts = list_alternatives(bundle.to_string_lossy().into_owned());
+
+        assert_eq!(alts.len(), 1);
+        let mtime = fs::metadata(bundle.join("Alternatives/000/ProjectData"))
+            .unwrap()
+            .modified()
+            .unwrap()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs() as i64;
+        assert_eq!(alts[0].last_saved_unix, mtime);
     }
 
     #[test]

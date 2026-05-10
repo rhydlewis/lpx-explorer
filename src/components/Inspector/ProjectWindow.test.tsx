@@ -11,7 +11,7 @@ function alt(
   is_active: boolean,
   window_image_path: string | null,
 ): Alternative {
-  return { index, display_name, is_active, window_image_path };
+  return { index, display_name, is_active, window_image_path, last_saved_unix: 0 };
 }
 
 describe("<ProjectWindow />", () => {

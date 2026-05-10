@@ -12,6 +12,7 @@ const twoAlts: ReadonlyArray<Alternative> = [
     is_active: false,
     window_image_path:
       "/Users/r/Music/Logic/new idea.logicx/Alternatives/000/WindowImage.jpg",
+    last_saved_unix: 0,
   },
   {
     index: 1,
@@ -19,6 +20,7 @@ const twoAlts: ReadonlyArray<Alternative> = [
     is_active: true,
     window_image_path:
       "/Users/r/Music/Logic/new idea.logicx/Alternatives/001/WindowImage.jpg",
+    last_saved_unix: 0,
   },
 ];
 
@@ -108,5 +110,44 @@ describe("<AlternativeStrip />", () => {
 
     fireEvent.keyDown(last, { key: "ArrowLeft" });
     expect(onSelect).toHaveBeenLastCalledWith(0);
+  });
+
+  it("renders a relative-time caption under each thumbnail when last_saved_unix is known", () => {
+    // Helps users tell apart alternatives by recency — useful when the
+    // display names are similar ('intro v1' / 'intro v2'). 10-day delta
+    // → formatRelative lands in 'last week'.
+    const tenDays = 10 * 86400;
+    const base = 1715000000;
+    const withTimes: ReadonlyArray<Alternative> = [
+      { ...twoAlts[0], last_saved_unix: base },
+      { ...twoAlts[1], last_saved_unix: base },
+    ];
+
+    render(
+      <AlternativeStrip
+        alternatives={withTimes}
+        activeVariantIndex={1}
+        onSelectAlternative={() => {}}
+        now={new Date((base + tenDays) * 1000)}
+      />,
+    );
+
+    // Both thumbs share the same saved-time, so the caption appears twice.
+    const captions = screen.getAllByText(/last week/i);
+    expect(captions).toHaveLength(2);
+  });
+
+  it("omits the caption when last_saved_unix is 0 (unknown)", () => {
+    // 0 = mtime unreadable / file missing. Don't render "53 years ago".
+    render(
+      <AlternativeStrip
+        alternatives={twoAlts}
+        activeVariantIndex={1}
+        onSelectAlternative={() => {}}
+      />,
+    );
+
+    // No timestamp text rendered; only the display names + thumbs.
+    expect(screen.queryByText(/ago|last/i)).not.toBeInTheDocument();
   });
 });

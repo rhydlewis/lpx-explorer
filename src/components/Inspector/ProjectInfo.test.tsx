@@ -255,7 +255,7 @@ describe("<ProjectInfo />", () => {
         metadata: { song_key: "C", song_gender: "Major" },
       });
       useProjectStore.setState({
-        current: { kind: "loaded", path: "/lib/song-a.logicx", summary: s, alternatives: [{ index: 0, display_name: "song-a", is_active: true, window_image_path: null }], activeVariantIndex: 0 },
+        current: { kind: "loaded", path: "/lib/song-a.logicx", summary: s, alternatives: [{ index: 0, display_name: "song-a", is_active: true, window_image_path: null, last_saved_unix: 0 }], activeVariantIndex: 0 },
       });
       useLibraryStore.setState({
         folders: [
@@ -289,7 +289,7 @@ describe("<ProjectInfo />", () => {
     it("clicking the BPM cell sets a bpm-axis filter", () => {
       const s = makeSummary({ metadata: { bpm: 92 } });
       useProjectStore.setState({
-        current: { kind: "loaded", path: "/lib/song-a.logicx", summary: s, alternatives: [{ index: 0, display_name: "song-a", is_active: true, window_image_path: null }], activeVariantIndex: 0 },
+        current: { kind: "loaded", path: "/lib/song-a.logicx", summary: s, alternatives: [{ index: 0, display_name: "song-a", is_active: true, window_image_path: null, last_saved_unix: 0 }], activeVariantIndex: 0 },
       });
       useLibraryStore.setState({
         folders: [
@@ -322,7 +322,7 @@ describe("<ProjectInfo />", () => {
         metadata: { song_key: "C", song_gender: "Major", bpm: 92 },
       });
       useProjectStore.setState({
-        current: { kind: "loaded", path: "/lib/song-a.logicx", summary: s, alternatives: [{ index: 0, display_name: "song-a", is_active: true, window_image_path: null }], activeVariantIndex: 0 },
+        current: { kind: "loaded", path: "/lib/song-a.logicx", summary: s, alternatives: [{ index: 0, display_name: "song-a", is_active: true, window_image_path: null, last_saved_unix: 0 }], activeVariantIndex: 0 },
       });
       useLibraryStore.setState({
         folders: [

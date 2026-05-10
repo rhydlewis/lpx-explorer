@@ -38,6 +38,7 @@ export function ProjectWindow({
           alternatives={alternatives}
           activeVariantIndex={activeVariantIndex}
           onSelectAlternative={onSelectAlternative}
+          now={now}
         />
         {windowImagePath !== null ? (
           <figure className={styles.figure}>

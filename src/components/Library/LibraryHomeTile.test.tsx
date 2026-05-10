@@ -8,7 +8,7 @@ vi.mock("../../lib/parse", () => ({
   parseProject: vi.fn(),
   projectDataStat: vi.fn().mockResolvedValue(null),
   listAlternatives: vi.fn().mockResolvedValue([
-    { index: 0, display_name: "x", is_active: true, window_image_path: null },
+    { index: 0, display_name: "x", is_active: true, window_image_path: null, last_saved_unix: 0 },
   ]),
   parseAlternative: vi.fn(),
 }));
@@ -151,9 +151,9 @@ describe("<LibraryHomeTile />", () => {
   it("renders an 'N alts' badge when the project has > 1 alternative", async () => {
     const { listAlternatives } = await import("../../lib/parse");
     vi.mocked(listAlternatives).mockResolvedValueOnce([
-      { index: 0, display_name: "v0", is_active: true, window_image_path: null },
-      { index: 1, display_name: "v1", is_active: false, window_image_path: null },
-      { index: 2, display_name: "v2", is_active: false, window_image_path: null },
+      { index: 0, display_name: "v0", is_active: true, window_image_path: null, last_saved_unix: 0 },
+      { index: 1, display_name: "v1", is_active: false, window_image_path: null, last_saved_unix: 0 },
+      { index: 2, display_name: "v2", is_active: false, window_image_path: null, last_saved_unix: 0 },
     ]);
     mockedParse.mockResolvedValueOnce(makeSummary());
 

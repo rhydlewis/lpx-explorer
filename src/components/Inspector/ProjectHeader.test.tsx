@@ -120,7 +120,7 @@ describe("<ProjectHeader />", () => {
           kind: "loaded",
           path: "/x.logicx",
           summary: { fingerprints: [], metadata: {} as never, stats: {} as never, tracks: [], tracks_registry: [] },
-          alternatives: [{ index: 0, display_name: "x", is_active: true, window_image_path: null }],
+          alternatives: [{ index: 0, display_name: "x", is_active: true, window_image_path: null, last_saved_unix: 0 }],
           activeVariantIndex: 0,
         },
       });

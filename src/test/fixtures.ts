@@ -97,7 +97,7 @@ export function makeLoadedStatus(overrides: {
     path,
     summary: overrides.summary,
     alternatives: overrides.alternatives ?? [
-      { index: 0, display_name: basename, is_active: true, window_image_path: null },
+      { index: 0, display_name: basename, is_active: true, window_image_path: null, last_saved_unix: 0 },
     ],
     activeVariantIndex: overrides.activeVariantIndex ?? 0,
   };

@@ -2,6 +2,7 @@ import { useRef } from "react";
 import { convertFileSrc } from "@tauri-apps/api/core";
 
 import type { Alternative } from "../../lib/types";
+import { formatRelative } from "../../lib/time-utils";
 
 import styles from "./AlternativeStrip.module.css";
 
@@ -9,12 +10,15 @@ interface Props {
   readonly alternatives: ReadonlyArray<Alternative>;
   readonly activeVariantIndex: number;
   readonly onSelectAlternative: (index: number) => void;
+  /** Reference instant for the per-thumb relative-time caption. Tests pin it. */
+  readonly now?: Date;
 }
 
 export function AlternativeStrip({
   alternatives,
   activeVariantIndex,
   onSelectAlternative,
+  now = new Date(),
 }: Props) {
   const buttonRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
@@ -61,6 +65,11 @@ export function AlternativeStrip({
               </span>
             )}
             <span className={styles.thumbLabel}>{alt.display_name}</span>
+            {alt.last_saved_unix > 0 && (
+              <span className={styles.thumbTimestamp}>
+                {formatRelative(alt.last_saved_unix, now)}
+              </span>
+            )}
           </button>
         );
       })}
