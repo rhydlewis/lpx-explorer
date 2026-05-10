@@ -10,6 +10,12 @@ import styles from "./ProjectHeader.module.css";
 
 interface Props {
   readonly path: string;
+  /**
+   * Inline content rendered alongside the path + Reveal button on the
+   * same row — used to slot the compatibility verdict in so the
+   * verdict reads next to the path instead of consuming its own row.
+   */
+  readonly children?: React.ReactNode;
 }
 
 interface MenuPos {
@@ -28,7 +34,7 @@ function trimmedPath(path: string): string {
   return path.endsWith("/") ? path.slice(0, -1) : path;
 }
 
-export function ProjectHeader({ path }: Props) {
+export function ProjectHeader({ path, children }: Props) {
   const trimmed = trimmedPath(path);
   const [menuPos, setMenuPos] = useState<MenuPos | null>(null);
   const selectedLibraryFolder = useUIStore((s) => s.selectedLibraryFolder);
@@ -91,6 +97,7 @@ export function ProjectHeader({ path }: Props) {
         >
           Reveal in Finder
         </button>
+        {children}
       </div>
       {menuPos !== null && (
         <div

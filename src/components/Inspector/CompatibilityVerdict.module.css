@@ -1,44 +1,16 @@
 /*
- * The verdict band sits directly under the project header. It is the
- * JTBD payload of the whole app — *will this project open cleanly on
- * this Mac?* — and so it gets a hero treatment distinct from the
- * regular `.section` rows below it. Per the 2026-05-06 PM/Whimsy
- * review: the action is the loudest element on the band; the verdict
- * word is intentionally quieter than the CTA.
+ * Inline verdict — rendered next to the path + Reveal button inside
+ * ProjectHeader's pathRow (lpx-explorer-0oq follow-up). Originally a
+ * hero band; demoted to inline to save a vertical row. The colored
+ * pill (.badge) still carries the verdict status — that's enough
+ * visual weight for the JTBD signal.
  */
 
 .band {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: var(--s-3);
-  padding: var(--s-4) var(--s-4);
-  margin: var(--s-3) 0 var(--s-4) 0;
-  border-radius: var(--radius-md);
-  border-left: 3px solid var(--c-status-neutral);
-  background-color: var(--c-surface-2);
-  min-height: 52px;
-}
-
-.band[data-status="clean"] {
-  border-left-color: var(--c-status-clean);
-  background-color: var(--c-band-clean);
-}
-
-.band[data-status="warnings"] {
-  border-left-color: var(--c-status-warn);
-  background-color: var(--c-band-warn);
-}
-
-.band[data-status="will-not-open"] {
-  border-left-color: var(--c-status-fail);
-  background-color: var(--c-band-fail);
-}
-
-.band[data-status="scanning"],
-.band[data-status="error"],
-.band[data-status="unknown"] {
-  border-left-color: var(--c-status-neutral);
-  background-color: var(--c-surface-2);
+  gap: var(--s-2);
+  min-width: 0;
 }
 
 .row {

@@ -64,10 +64,18 @@
   min-width: 0;
 }
 
+/*
+ * Path + Reveal button + inline compatibility verdict all sit on the
+ * same row. flex-wrap so on narrow windows the verdict falls onto a
+ * second line instead of pushing the Reveal button off-screen.
+ * The path slot has a minimum width so it doesn't collapse to nothing
+ * when the verdict text is long.
+ */
 .pathRow {
   display: flex;
   align-items: center;
   gap: var(--s-3);
+  flex-wrap: wrap;
 }
 
 .path {

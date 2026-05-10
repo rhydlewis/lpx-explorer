@@ -39,8 +39,9 @@ export function ProjectInspector({ status }: Props) {
 
   return (
     <>
-      <ProjectHeader path={status.path} />
-      <CompatibilityVerdict />
+      <ProjectHeader path={status.path}>
+        <CompatibilityVerdict />
+      </ProjectHeader>
       <ProjectWindow
         alternatives={status.alternatives}
         activeVariantIndex={status.activeVariantIndex}
