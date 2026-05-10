@@ -113,7 +113,8 @@
   border-color: var(--c-text-muted);
 }
 
-.chip[data-active="true"] {
+.chip[data-active="true"],
+.chip[data-active="true"]:hover {
   background: var(--c-accent);
   border-color: var(--c-accent);
   color: var(--c-bg);
@@ -296,8 +297,10 @@
   color: var(--c-text);
 }
 
-.scopeButton[data-active="true"] {
+.scopeButton[data-active="true"],
+.scopeButton[data-active="true"]:hover {
   background: var(--c-surface);
+  border-color: var(--c-divider);
   color: var(--c-text);
 }
 
