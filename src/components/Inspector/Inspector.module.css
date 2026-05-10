@@ -72,3 +72,26 @@
   flex-direction: column;
   gap: 1px;
 }
+
+/*
+ * Two-column wrapper for the lower half of the inspector: metadata on
+ * the left, tracks on the right. Tracks gets more room since the track
+ * list is the densest piece of content; metadata column has a min so
+ * key/value pairs don't squeeze on wide screens.
+ *
+ * Stacks at narrow widths — the same breakpoint as the alternative
+ * strip / project-window grid (lpx-explorer-0oq).
+ */
+.metaTracksGrid {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) 2fr;
+  gap: var(--s-5);
+  align-items: start;
+}
+
+@media (max-width: 720px) {
+  .metaTracksGrid {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+}

@@ -2,6 +2,7 @@ import { useProjectStore, type ProjectStatus } from "../../store/project-store";
 import { ErrorCard } from "../ErrorCard";
 
 import { CompatibilityVerdict } from "./CompatibilityVerdict";
+import sectionStyles from "./Inspector.module.css";
 import { InspectorSkeleton } from "./InspectorSkeleton";
 import { ProjectHeader } from "./ProjectHeader";
 import { ProjectInfo } from "./ProjectInfo";
@@ -46,11 +47,13 @@ export function ProjectInspector({ status }: Props) {
         onSelectAlternative={(index) => void setActiveVariant(index)}
         lastSavedUnix={status.summary.stats.modified_at_unix}
       />
-      <ProjectInfo
-        metadata={status.summary.metadata}
-        stats={status.summary.stats}
-      />
-      <TrackList tracks={status.summary.tracks} />
+      <div className={sectionStyles.metaTracksGrid}>
+        <ProjectInfo
+          metadata={status.summary.metadata}
+          stats={status.summary.stats}
+        />
+        <TrackList tracks={status.summary.tracks} />
+      </div>
     </>
   );
 }

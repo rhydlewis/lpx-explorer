@@ -1,25 +1,17 @@
 /*
- * 4-column grid: icon-label | value | icon-label | value. Each
- * <dt>/<dd> pair occupies two cells; auto-flow places successive pairs
- * left-to-right then wraps. With 10–11 metadata items the layout sits
- * around 5–6 visual rows instead of the previous 10–11 (lpx-explorer-319).
- *
- * On narrow viewports the section reflows back to a 2-column grid so
- * label/value pairs don't squeeze.
+ * Single-column grid: icon-label | value. ProjectInfo now lives in the
+ * left column of the inspector's two-column lower half (lpx-explorer-
+ * 0oq + txq), so the wider 4-column layout would either squeeze
+ * values or force a too-wide left column on narrow Logic-typical
+ * window widths. One pair per row reads cleanly at any width.
  */
 .grid {
   display: grid;
-  grid-template-columns: auto 1fr auto 1fr;
-  column-gap: var(--s-4);
+  grid-template-columns: auto 1fr;
+  column-gap: var(--s-3);
   row-gap: var(--s-2);
   margin: 0;
   font-size: var(--fs-meta);
-}
-
-@media (max-width: 720px) {
-  .grid {
-    grid-template-columns: auto 1fr;
-  }
 }
 
 .grid dt {
