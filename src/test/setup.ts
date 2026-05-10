@@ -10,6 +10,10 @@ afterEach(() => {
 // Individual tests override this via `vi.mocked(invoke).mockImplementation(...)`.
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: vi.fn(),
+  // ProjectWindow uses this to turn a filesystem path into an
+  // `asset://` URL the WebView can load. Deterministic stub lets tests
+  // assert against the resulting `<img src>`.
+  convertFileSrc: (path: string) => `asset://${path}`,
   Channel: class {
     onmessage: ((event: unknown) => void) | null = null;
   },

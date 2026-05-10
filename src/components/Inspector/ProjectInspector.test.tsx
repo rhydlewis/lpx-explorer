@@ -15,15 +15,17 @@ activeVariantIndex: 0,
 };
 
 describe("<ProjectInspector />", () => {
-  it("renders the four main-column regions when a project is loaded", () => {
+  it("renders the five main-column regions when a project is loaded", () => {
     // Plug-ins moved to the right rail (PluginRail). 'Track Registry' and
     // 'Plug-in Chains' merged into a single 'tracks' region in
     // lpx-explorer-bul — the registry-vs-chains split was an
-    // implementation seam, not a user concept.
+    // implementation seam, not a user concept. 'project window' added in
+    // lpx-explorer-jyw as the recognition hero.
     render(<ProjectInspector status={loaded} />);
 
     expect(screen.getByRole("region", { name: "project" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "compatibility" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "project window" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "project info" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "tracks" })).toBeInTheDocument();
     expect(
@@ -32,6 +34,24 @@ describe("<ProjectInspector />", () => {
     expect(
       screen.queryByRole("region", { name: "plug-ins" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("renders the project-window hero between compatibility and project info", () => {
+    // PM placement: the WindowImage is the recognition hero, so it sits
+    // immediately under the compatibility band and above the metadata
+    // grid. Order check guards against accidental relocation.
+    const { container } = render(<ProjectInspector status={loaded} />);
+
+    const regions = Array.from(
+      container.querySelectorAll("section[aria-label]"),
+    ).map((el) => el.getAttribute("aria-label"));
+
+    const compatIdx = regions.indexOf("compatibility");
+    const windowIdx = regions.indexOf("project window");
+    const infoIdx = regions.indexOf("project info");
+    expect(compatIdx).toBeGreaterThanOrEqual(0);
+    expect(windowIdx).toBe(compatIdx + 1);
+    expect(windowIdx).toBeLessThan(infoIdx);
   });
 
   it("renders the compatibility band immediately after the project header, before project info", () => {

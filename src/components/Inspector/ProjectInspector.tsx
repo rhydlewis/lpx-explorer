@@ -5,6 +5,7 @@ import { CompatibilityVerdict } from "./CompatibilityVerdict";
 import { InspectorSkeleton } from "./InspectorSkeleton";
 import { ProjectHeader } from "./ProjectHeader";
 import { ProjectInfo } from "./ProjectInfo";
+import { ProjectWindow } from "./ProjectWindow";
 import { TrackList } from "./TrackList";
 
 interface Props {
@@ -33,10 +34,18 @@ export function ProjectInspector({ status }: Props) {
     );
   }
 
+  const activeAlternative = status.alternatives.find(
+    (a) => a.index === status.activeVariantIndex,
+  );
+
   return (
     <>
       <ProjectHeader path={status.path} />
       <CompatibilityVerdict />
+      <ProjectWindow
+        windowImagePath={activeAlternative?.window_image_path ?? null}
+        lastSavedUnix={status.summary.stats.modified_at_unix}
+      />
       <ProjectInfo
         metadata={status.summary.metadata}
         stats={status.summary.stats}

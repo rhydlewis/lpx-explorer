@@ -1,0 +1,41 @@
+.figure {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+/*
+ * Recognition hero — wide enough to read tracks/regions at a glance,
+ * capped tall so the rest of the inspector stays above the fold on
+ * typical laptop displays. object-fit: contain keeps the screenshot's
+ * aspect ratio without cropping (Logic's window aspect varies wildly
+ * with arrangement size and the user's monitor).
+ */
+.image {
+  display: block;
+  width: 100%;
+  max-height: 320px;
+  min-height: 240px;
+  object-fit: contain;
+  background-color: var(--c-surface-2);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--c-divider);
+}
+
+.caption {
+  font-size: var(--fs-caption);
+  color: var(--c-text-muted);
+}
+
+.placeholder {
+  font-size: var(--fs-meta);
+  font-style: italic;
+  color: var(--c-text-muted);
+  margin: 0;
+  padding: var(--s-4);
+  background-color: var(--c-surface-2);
+  border-radius: var(--radius-sm);
+  border: 1px dashed var(--c-divider);
+  text-align: center;
+}
