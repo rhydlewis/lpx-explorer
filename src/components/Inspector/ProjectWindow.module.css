@@ -1,3 +1,24 @@
+/*
+ * 2-column layout: strip (left) | hero (right). Strip column has a
+ * fixed width; hero takes the rest. align-items: start so a short
+ * strip doesn't stretch when the hero is taller, and vice versa.
+ *
+ * Narrow viewports stack to vertical (strip on top) so the hero
+ * keeps its width on mobile-ish widths.
+ */
+.layout {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  gap: var(--s-3);
+  align-items: start;
+}
+
+@media (max-width: 720px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+}
+
 .figure {
   margin: 0;
   display: flex;

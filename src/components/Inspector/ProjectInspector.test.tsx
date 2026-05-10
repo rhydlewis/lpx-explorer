@@ -36,14 +36,14 @@ describe("<ProjectInspector />", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("renders the alternative strip only when the project has >1 alternative", () => {
-    // Single-alt projects: strip is noise. Multi-alt projects: the strip
-    // IS the selector. Visibility is decided at the inspector level so
-    // the strip component itself stays focused on rendering.
+  it("renders the alternative strip for every loaded project, regardless of alt count", () => {
+    // The strip lives inside the ProjectWindow section as the only
+    // alternative selector. Always present — single-alt projects show a
+    // one-row strip so the switcher's location stays predictable.
     const single = render(<ProjectInspector status={loaded} />);
     expect(
-      single.queryByRole("group", { name: "alternatives" }),
-    ).not.toBeInTheDocument();
+      single.getByRole("group", { name: "alternatives" }),
+    ).toBeInTheDocument();
     single.unmount();
 
     const multi: ProjectStatus = {

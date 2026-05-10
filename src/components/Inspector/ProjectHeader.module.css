@@ -64,53 +64,6 @@
   min-width: 0;
 }
 
-/*
- * Project-alternative switcher (lpx-explorer-g2q). Hidden entirely
- * when the bundle has ≤ 1 variant — the 99% case in real libraries.
- * Sits right of the project name; the chrome rhythm matches other
- * inspector chrome (caption font + muted colour).
- */
-.variantSwitcher {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--s-2);
-  font-size: var(--fs-caption);
-  color: var(--c-text-secondary);
-  flex-shrink: 0;
-}
-
-.variantSwitcherLabel {
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  font-size: var(--fs-eyebrow);
-  color: var(--c-text-muted);
-}
-
-.variantSelect {
-  appearance: none;
-  background: var(--c-surface-2);
-  border: 1px solid var(--c-divider);
-  border-radius: var(--radius-sm);
-  padding: 2px var(--s-2);
-  padding-right: var(--s-5);
-  font-family: inherit;
-  font-size: var(--fs-caption);
-  color: var(--c-text);
-  cursor: pointer;
-  /* Native dropdown arrow rendered via background image so the select
-   * sizes consistently across platforms. SVG inlined to keep the
-   * tokens system intact (no asset file needed). */
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'><path d='M3 5l3 3 3-3' stroke='%237f7f7f' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>");
-  background-repeat: no-repeat;
-  background-position: right var(--s-2) center;
-  background-size: 12px 12px;
-}
-
-.variantSelect:focus-visible {
-  outline: 2px solid var(--c-accent);
-  outline-offset: 2px;
-}
-
 .pathRow {
   display: flex;
   align-items: center;
