@@ -36,6 +36,29 @@ describe("<ProjectInspector />", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("renders the alternative strip only when the project has >1 alternative", () => {
+    // Single-alt projects: strip is noise. Multi-alt projects: the strip
+    // IS the selector. Visibility is decided at the inspector level so
+    // the strip component itself stays focused on rendering.
+    const single = render(<ProjectInspector status={loaded} />);
+    expect(
+      single.queryByRole("group", { name: "alternatives" }),
+    ).not.toBeInTheDocument();
+    single.unmount();
+
+    const multi: ProjectStatus = {
+      ...loaded,
+      alternatives: [
+        { index: 0, display_name: "a", is_active: true, window_image_path: null },
+        { index: 1, display_name: "b", is_active: false, window_image_path: null },
+      ],
+    };
+    render(<ProjectInspector status={multi} />);
+    expect(
+      screen.getByRole("group", { name: "alternatives" }),
+    ).toBeInTheDocument();
+  });
+
   it("renders the project-window hero between compatibility and project info", () => {
     // PM placement: the WindowImage is the recognition hero, so it sits
     // immediately under the compatibility band and above the metadata

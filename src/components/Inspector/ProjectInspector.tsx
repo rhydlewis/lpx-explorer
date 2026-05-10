@@ -1,6 +1,7 @@
 import { useProjectStore, type ProjectStatus } from "../../store/project-store";
 import { ErrorCard } from "../ErrorCard";
 
+import { AlternativeStrip } from "./AlternativeStrip";
 import { CompatibilityVerdict } from "./CompatibilityVerdict";
 import { InspectorSkeleton } from "./InspectorSkeleton";
 import { ProjectHeader } from "./ProjectHeader";
@@ -37,6 +38,7 @@ export function ProjectInspector({ status }: Props) {
   const activeAlternative = status.alternatives.find(
     (a) => a.index === status.activeVariantIndex,
   );
+  const setActiveVariant = useProjectStore.getState().setActiveVariant;
 
   return (
     <>
@@ -46,6 +48,13 @@ export function ProjectInspector({ status }: Props) {
         windowImagePath={activeAlternative?.window_image_path ?? null}
         lastSavedUnix={status.summary.stats.modified_at_unix}
       />
+      {status.alternatives.length > 1 && (
+        <AlternativeStrip
+          alternatives={status.alternatives}
+          activeVariantIndex={status.activeVariantIndex}
+          onSelectAlternative={(index) => void setActiveVariant(index)}
+        />
+      )}
       <ProjectInfo
         metadata={status.summary.metadata}
         stats={status.summary.stats}
