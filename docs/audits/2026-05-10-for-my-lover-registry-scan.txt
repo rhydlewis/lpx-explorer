@@ -1,0 +1,298 @@
+== /Users/rhyd/Documents/20 Music/21 Rhyd Lewis/21.20 Releases/21.21 Singles/21.21.01 For My Lover/for my lover.logicx/Alternatives/000/ProjectData (7178158 bytes) ==
+
+== Tracks (331 total) ==
+  active by kind: {"Audio": 34, "Aux": 11, "Bus": 256, "Input": 1, "Instrument": 6, "Master": 1, "Output": 1}
+
+  user-visible (audio + instrument + folder + summing-stack):
+    [0] Audio 1              kind=Audio parent=None user_name=None
+    [1] Audio 2              kind=Audio parent=None user_name=None
+    [2] Audio 3              kind=Audio parent=None user_name=None
+    [3] Audio 4              kind=Audio parent=None user_name=None
+    [4] Audio 5              kind=Audio parent=None user_name=None
+    [5] Audio 6              kind=Audio parent=None user_name=None
+    [6] Audio 7              kind=Audio parent=None user_name=None
+    [7] Audio 8              kind=Audio parent=None user_name=None
+    [8] Audio 9              kind=Audio parent=None user_name=None
+    [9] Audio 10             kind=Audio parent=None user_name=None
+    [10] Audio 11             kind=Audio parent=None user_name=None
+    [11] Audio 12             kind=Audio parent=None user_name=None
+    [12] Audio 13             kind=Audio parent=None user_name=None
+    [13] Audio 14             kind=Audio parent=None user_name=None
+    [14] Audio 15             kind=Audio parent=None user_name=None
+    [15] Audio 16             kind=Audio parent=None user_name=None
+    [16] Audio 17             kind=Audio parent=None user_name=None
+    [17] Audio 18             kind=Audio parent=None user_name=None
+    [18] Audio 19             kind=Audio parent=None user_name=None
+    [19] Audio 20             kind=Audio parent=None user_name=None
+    [20] Audio 21             kind=Audio parent=None user_name=None
+    [21] Audio 22             kind=Audio parent=None user_name=None
+    [22] Audio 23             kind=Audio parent=None user_name=None
+    [23] Audio 24             kind=Audio parent=None user_name=None
+    [24] Audio 25             kind=Audio parent=None user_name=None
+    [25] Audio 26             kind=Audio parent=None user_name=None
+    [26] Audio 27             kind=Audio parent=None user_name=None
+    [27] Audio 28             kind=Audio parent=None user_name=None
+    [28] Audio 29             kind=Audio parent=None user_name=None
+    [29] Audio 30             kind=Audio parent=None user_name=None
+    [30] Audio 31             kind=Audio parent=None user_name=None
+    [31] Audio 32             kind=Audio parent=None user_name=None
+    [32] Audio 33             kind=Audio parent=None user_name=None
+    [33] Audio 34             kind=Audio parent=None user_name=None
+    [52] Inst 1               kind=Instrument parent=None user_name=None
+    [53] Inst 2               kind=Instrument parent=None user_name=None
+    [54] Inst 3               kind=Instrument parent=None user_name=None
+    [56] Inst 5               kind=Instrument parent=None user_name=None
+    [57] Inst 6               kind=Instrument parent=None user_name=None
+    [63] Inst 12              kind=Instrument parent=None user_name=None
+
+== Registry entries (5 total) ==
+  kind=SummingStack strip_id=0   track_id=3861  name="Vocals"
+  kind=Folder strip_id=0   track_id=1711  name="Main Vocal"
+  kind=Folder strip_id=0   track_id=1775  name="Main Vocal 2"
+  kind=Folder strip_id=0   track_id=1839  name="Audio 29"
+  kind=SummingStack strip_id=0   track_id=4053  name="Instrumental Ld Gtr"
+
+== Region clusters (0) ==
+
+== Structural scan (ALL signatures, including unknown) ==
+  off=0x00403a sig=0x0000 ? name="For My Lover (Cm)"
+  off=0x0043d2 sig=0x0000 ? name="Classic Drive#04"
+  off=0x004768 sig=0x0000 ? name="Classic Drive"
+  off=0x004f9e sig=0x0000 ? name="Midrange Solo"
+  off=0x005332 sig=0x0000 ? name="Midrange Solo"
+  off=0x0056ca sig=0x0000 ? name="Ringing Tremolo#01"
+  off=0x005e6c sig=0x0000 ? name="Ringing Tremolo#02.4"
+  off=0x006712 sig=0x0000 ? name="Ringing Tremolo#07.4"
+  off=0x006ab0 sig=0x0000 ? name="Ringing Tremolo#08"
+  off=0x006e48 sig=0x0000 ? name="Classic Drive#10"
+  off=0x0071de sig=0x0000 ? name="Classic Drive"
+  off=0x007572 sig=0x0000 ? name="Classic Drive: Take 2 "
+  off=0x00790e sig=0x0000 ? name="Classic Drive"
+  off=0x008132 sig=0x0000 ? name="Classic Drive"
+  off=0x0085c4 sig=0x0000 ? name="Classic Drive#22"
+  off=0x00895a sig=0x0000 ? name="Natural Strum"
+  off=0x008df0 sig=0x0000 ? name="Natural Flat Pick#04"
+  off=0x00918a sig=0x0000 ? name="Classic Drive"
+  off=0x00a02e sig=0x0000 ? name="Classic Drive"
+  off=0x00a12a sig=0x0000 ? name="Classic Drive"
+  off=0x00a4be sig=0x0000 ? name="Classic Drive"
+  off=0x00aa52 sig=0x0000 ? name="Classic Drive#27"
+  off=0x00aeee sig=0x0000 ? name="Compressed Vocal#02"
+  off=0x00cef4 sig=0x0000 ? name="Backing#03"
+  off=0x00cfec sig=0x0000 ? name="Backing#03.1"
+  off=0x00d856 sig=0x0000 ? name="Comp A"
+  off=0x00e24e sig=0x0000 ? name="Tuned Vocal"
+  off=0x00fbf8 sig=0x0000 ? name="Tuned Vocal_ Take 2 .4"
+  off=0x00ff8c sig=0x0000 ? name="Backing#06.1"
+  off=0x010316 sig=0x0000 ? name="Backing#03.1"
+  off=0x0106a8 sig=0x0000 ? name="Lead GTR C"
+  off=0x010a38 sig=0x0000 ? name="Classic Drive"
+  off=0x010dcc sig=0x0000 ? name="Classic Drive"
+  off=0x011c68 sig=0x0000 ? name="Classic Drive"
+  off=0x01268c sig=0x0000 ? name="Classic Drive"
+  off=0x012a20 sig=0x0000 ? name="Classic Drive"
+  off=0x012db4 sig=0x0000 ? name="Classic Drive"
+  off=0x013b60 sig=0x0000 ? name="Midrange Solo"
+  off=0x016586 sig=0x0000 ? name="Rhythm Gtr L"
+  off=0x016680 sig=0x0000 ? name="Rhythm Gtr L"
+  off=0x01677a sig=0x0000 ? name="Rhythm Gtr L"
+  off=0x016f0e sig=0x0000 ? name="Rhythm Gtr L"
+  off=0x0193e4 sig=0x0000 ? name="Mystery Chorus"
+  off=0x01ae76 sig=0x0000 ? name="Mystery Chorus#11"
+  off=0x01af76 sig=0x0000 ? name="Mystery Chorus#11.1"
+  off=0x01b7a6 sig=0x0000 ? name="Mystery Chorus#13"
+  off=0x01b8a6 sig=0x0000 ? name="Rhythm Gtr R"
+  off=0x01bc3a sig=0x0000 ? name="Mystery Chorus#15"
+  off=0x01bd3a sig=0x0000 ? name="Mystery Chorus#15.1"
+  off=0x01be3c sig=0x0000 ? name="Mystery Chorus#15.2"
+  off=0x01c1e2 sig=0x0000 ? name="Lead GTR C"
+  off=0x01c2da sig=0x0000 ? name="Classic Drive - Comp C.1"
+  off=0x01c3e0 sig=0x0000 ? name="Classic Drive - Comp C.2"
+  off=0x01c77e sig=0x0000 ? name="Natural Strum"
+  off=0x01c87a sig=0x0000 ? name="Acoustic Gtr"
+  off=0x01cc00 sig=0x0000 ? name="Backing#01"
+  off=0x01ccf8 sig=0x0000 ? name="Backing#01.1"
+  off=0x01d084 sig=0x0000 ? name="Lead GTR C"
+  off=0x01d40e sig=0x0000 ? name="Lead GTR C"
+  off=0x01d506 sig=0x0000 ? name="Lead GTR C.1"
+  off=0x01df02 sig=0x0000 ? name="Lead GTR C"
+  off=0x01dffa sig=0x0000 ? name="Lead GTR C"
+  off=0x01e0f2 sig=0x0000 ? name="Lead GTR C"
+  off=0x01e1ea sig=0x0000 ? name="Lead GTR C"
+  off=0x01e2e2 sig=0x0000 ? name="Lead GTR C.1"
+  off=0x01e66e sig=0x0000 ? name="Lead GTR C"
+  off=0x01e9f8 sig=0x0000 ? name="Lead GTR C"
+  off=0x01f1fc sig=0x0000 ? name="Tuned Vocal"
+  off=0x01fe20 sig=0x0000 ? name="Tuned Vocal: Comp A"
+  off=0x02083c sig=0x0000 ? name="Tuned Vocal#15"
+  off=0x025f8c sig=0x0000 ? name="Backing Vox (UUU)"
+  off=0x02608c sig=0x0000 ? name="Backing Vox (UUU)"
+  off=0x02618c sig=0x0000 ? name="Backing Vox (UUU)"
+  off=0x02628c sig=0x0000 ? name="Backing Vox (UUU)"
+  off=0x02638c sig=0x0000 ? name="Backing Vox (UUU)"
+  off=0x02648c sig=0x0000 ? name="Backing Vox (UUU)"
+  off=0x02658c sig=0x0000 ? name="Backing Vox (UUU)"
+  off=0x02668c sig=0x0000 ? name="Backing Vox (UUU)"
+  off=0x02678c sig=0x0000 ? name="Lead Vox.20"
+  off=0x02ba62 sig=0x0000 ? name="Rhythm Gtr R"
+  off=0x02bdf2 sig=0x0000 ? name="Rhythm Gtr R"
+  off=0x02c182 sig=0x0000 ? name="Rhythm Gtr R"
+  off=0x02ce82 sig=0x0000 ? name="Rhythm Gtr R"
+  off=0x02fb06 sig=0x0000 ? name="Lead Vox"
+  off=0x03088a sig=0x0000 ? name="Lead Vox"
+  off=0x031bcc sig=0x0000 ? name="Backing Vox (UUU) L: Take 2 .15"
+  off=0x033308 sig=0x0000 ? name="Lead Vox"
+  off=0x03368c sig=0x0000 ? name="Lead Vox"
+  off=0x033e8a sig=0x0000 ? name="Lead Vox"
+  off=0x03420e sig=0x0000 ? name="Lead Vox"
+  off=0x034f46 sig=0x0000 ? name="Lead Vox"
+  off=0x035c82 sig=0x0000 ? name="Main Vocal"
+  off=0x03600c sig=0x0000 ? name="Lead GTR C#14"
+  off=0x036b08 sig=0x0000 ? name="Lead Vox"
+  off=0x036e8c sig=0x0000 ? name="Lead Vox"
+  off=0x037b2e sig=0x0000 ? name="Main Vocal 2"
+  off=0x037c28 sig=0x0000 ? name="Lead Vox"
+  off=0x0382e8 sig=0x0000 ? name="Main Vocal"
+  off=0x038d2c sig=0x0000 ? name="Rhythm Gtr L"
+  off=0x039742 sig=0x0000 ? name="Rhythm Gtr L: Comp A"
+  off=0x03a562 sig=0x0000 ? name="Rhythm Gtr L"
+  off=0x03aae6 sig=0x0000 ? name="Rhythm Gtr L"
+  off=0x03c508 sig=0x0000 ? name="Lead GTR C"
+  off=0x03cb76 sig=0x0000 ? name="Lead GTR C.1"
+  off=0x03d588 sig=0x0000 ? name="Lead GTR C"
+  off=0x03de9e sig=0x0000 ? name="Lead GTR C#26"
+  off=0x03e22c sig=0x0000 ? name="Lead GTR C: Take 2 "
+  off=0x03ea4c sig=0x0000 ? name="Lead GTR C#36"
+  off=0x03edda sig=0x0000 ? name="Lead GTR C#40"
+  off=0x03f168 sig=0x0000 ? name="Lead GTR C"
+  off=0x03fa7c sig=0x0000 ? name="Lead GTR C"
+  off=0x03fb74 sig=0x0000 ? name="Comp A"
+  off=0x03fefa sig=0x0000 ? name="Lead GTR C"
+  off=0x03fff2 sig=0x0000 ? name="Lead GTR C: Comp A"
+  off=0x0400ce sig=0x0000 ? name=" Auto"
+  off=0x040156 sig=0x0000 ? name=" Piano"
+  off=0x040206 sig=0x0000 ? name="Piano 1/3"
+  off=0x0402ba sig=0x0000 ? name="Piano 1+2/3"
+  off=0x040398 sig=0x0000 ? name="Piano 1/3+4"
+  off=0x040476 sig=0x0000 ? name="Piano 1+2/3+4"
+  off=0x04057e sig=0x0000 ? name="Organ 1/1/5"
+  off=0x04065c sig=0x0000 ? name="Organ 1/3/5"
+  off=0x04073a sig=0x0000 ? name="Organ 1+2/3/5"
+  off=0x040842 sig=0x0000 ? name="Organ 1/3+4/5"
+  off=0x04094a sig=0x0000 ? name="Organ 1+2/3+4/5"
+  off=0x040a7c sig=0x0000 ? name=" Bass"
+  off=0x040b04 sig=0x0000 ? name=" Treble+8"
+  off=0x040c22 sig=0x0000 ? name="Trumpet in A"
+  off=0x040cb0 sig=0x0000 ? name="Horn in F"
+  off=0x040dca sig=0x0000 ? name="Piccolo"
+  off=0x040e54 sig=0x0000 ? name="Baritone Sax"
+  off=0x040ee2 sig=0x0000 ? name="Tenor Sax"
+  off=0x040f6e sig=0x0000 ? name="Alto Sax"
+  off=0x040ff8 sig=0x0000 ? name="Soprano Sax"
+  off=0x041086 sig=0x0000 ? name="Viola"
+  off=0x04110e sig=0x0000 ? name="Violoncello"
+  off=0x04119c sig=0x0000 ? name="Contrabass"
+  off=0x041228 sig=0x0000 ? name=" Treble-8"
+  off=0x0412b4 sig=0x0000 ? name=" Treble"
+  off=0x04133e sig=0x0000 ? name="Drums"
+  off=0x04137c sig=0x0000 ? name="<"
+  off=0x0413a4 sig=0x0000 ? name="<"
+  off=0x0413f4 sig=0x0000 ? name="<"
+  off=0x041466 sig=0x0000 ? name="Guitar"
+  off=0x0414ee sig=0x0000 ? name="Guitar Mix"
+  off=0x0415a2 sig=0x0000 ? name=" Lead Sheet"
+  off=0x041630 sig=0x0000 ? name="Guitar Mix 2"
+  off=0x0416e0 sig=0x0000 ? name="All Objects"
+  off=0x04170e sig=0x0000 ? name="Global Objects"
+  off=0x04173e sig=0x0000 ? name="Click & Ports"
+  off=0x04176e sig=0x0000 ? name="MIDI Instr."
+  off=0x04179c sig=0x0000 ? name="Mixer"
+  off=0x042200 sig=0x0000 ? name="Kick"
+  off=0x0fb0b2 sig=0x0000 ? name="z"
+  off=0x12766f sig=0x0000 ? name="6"
+  off=0x129ef7 sig=0x0000 ? name="6"
+  off=0x12b85b sig=0x0000 ? name="6"
+  off=0x12d1bf sig=0x0000 ? name="6"
+  off=0x3e95cb sig=0x0010 ? name="No Output"
+  off=0x3e9917 sig=0x4411 ? name="Sequencer Input"
+  off=0x3e99f5 sig=0x4311 ? name="Physical Input"
+  off=0x3e9ae9 sig=0x4111 ? name="Input View"
+  off=0x3e9dcf sig=0x3c11 ? name="Input Notes"
+  off=0x3ea91c sig=0x9a11 ? name="For My Lover (Cm)"
+  off=0x3eaf45 sig=0x4711 ? name="Lead GTR C"
+  off=0x3eb31b sig=0x5510 ? name="Trem-O-Voice"
+  off=0x3eb50a sig=0x9c11 ? name="Small Hall/1.6s Short Vocal Hall"
+  off=0x3eb70d sig=0x9c11 ? name="Ambience/0.2s Long Ambience"
+  off=0x3ebaf3 sig=0x9a11 ? name="Lead Vox"
+  off=0x3ebcde sig=0xc710 ? name="Backing Vox L"
+  off=0x3ebecf sig=0x4310 ? name="Classic Drive"
+  off=0x3ec0c0 sig=0x9c11 ? name="Small Room/0.6s Drum Booth Four"
+  off=0x3ec2c3 sig=0x5510 ? name="Ringing Tremolo"
+  off=0x3ec4b6 sig=0x9c11 ? name="Large Room/2.6s Hansa Studio"
+  off=0x3ec6b5 sig=0x9611 ? name="GM Device"
+  off=0x3ecfcb sig=0x9c11 ? name="B Vox"
+  off=0x3ed1b4 sig=0x4c10 ? name="Acoustic Gtr"
+  off=0x3ed3a3 sig=0x4310 ? name="Classic Drive"
+  off=0x3ed594 sig=0xbe10 ? name="Tuned Vocal"
+  off=0x3ed783 sig=0x9c11 ? name="Large Plate/2.6s Vocal Plate"
+  off=0x3ed982 sig=0x9c11 ? name="Small Plate/1.3s Nice Plate"
+  off=0x3edb81 sig=0x9a11 ? name="Vocal"
+  off=0x3edd6a sig=0x0d10 ? name="Backline"
+  off=0x3edf55 sig=0x9a11 ? name="Lead Vox"
+  off=0x3ee140 sig=0x9c11 ? name="Large Hall/6.6s Botta Church"
+  off=0x3ee33f sig=0x2810 ? name="Guitars"
+  off=0x3ee52a sig=0x8d11 ? name="Keys & Synths"
+  off=0x3ee71b sig=0xcb10 ✓ name="Vocals"
+  off=0x3ee904 sig=0xc710 ? name="Backing Vox (UUU)"
+  off=0x3eeaf9 sig=0x9c11 ? name="Main Vocal"
+  off=0x3eece6 sig=0x9a11 ? name="Backing Vox (UUU) R"
+  off=0x3eeedd sig=0x9c11 ? name="Aux 9"
+  off=0x3ef0c6 sig=0x9a11 ? name="Vocal"
+  off=0x3ef2af sig=0x4711 ? name="Lead GTR L"
+  off=0x3ef4f4 sig=0x4711 ? name="Lead GTR R"
+  off=0x3ef739 sig=0x4711 ? name="Lead GTR C"
+  off=0x3f1f16 sig=0x9a11 ? name="Lead Vox"
+  off=0x3f2101 sig=0x9a11 ? name="Lead Vox"
+  off=0x3f22ec sig=0x5510 ? name="Trem-O-Voice"
+  off=0x3f24db sig=0xc710 ? name="Backing Vox R"
+  off=0x3f26cc sig=0x9a11 ? name="Rhythm Gtr L"
+  off=0x3f28bb sig=0x7a11 ? name="Rhythm Gtr R"
+  off=0x3f2aaa sig=0x7a11 ? name="Mystery Chorus"
+  off=0x3f2c9b sig=0x9a11 ? name="Hidden"
+  off=0x3f2e84 sig=0x4710 ? name="Lead Guitars"
+  off=0x3f3073 sig=0x9a11 ? name="Lead Vox"
+  off=0x3f325e sig=0x9a11 ? name="Lead Vox"
+  off=0x3f3449 sig=0xcb10 ✓ name="Main Vocal"
+  off=0x3f3636 sig=0xcb10 ✓ name="Main Vocal 2"
+  off=0x3f3825 sig=0xfa11 ? name="Sub 4"
+  off=0x3f3a0e sig=0xcb10 ✓ name="Audio 29"
+  off=0x3f3bf9 sig=0x4711 ? name="Lead GTR R"
+  off=0x3f3e3e sig=0x4711 ? name="Lead GTR C"
+  off=0x3f4083 sig=0x4711 ? name="Lead GTR C"
+  off=0x3f42c8 sig=0x2312 ✓ name="Instrumental Ld Gtr"
+  off=0x3f44bf sig=0x4711 ? name="Lead GTR C"
+
+== Signature frequency ==
+  sig=0x0000 count=158  known=NO
+  sig=0x0010 count=1    known=NO
+  sig=0x0d10 count=1    known=NO
+  sig=0x2312 count=1    known=yes
+  sig=0x2810 count=1    known=NO
+  sig=0x3c11 count=1    known=NO
+  sig=0x4111 count=1    known=NO
+  sig=0x4310 count=2    known=NO
+  sig=0x4311 count=1    known=NO
+  sig=0x4411 count=1    known=NO
+  sig=0x4710 count=1    known=NO
+  sig=0x4711 count=8    known=NO
+  sig=0x4c10 count=1    known=NO
+  sig=0x5510 count=3    known=NO
+  sig=0x7a11 count=2    known=NO
+  sig=0x8d11 count=1    known=NO
+  sig=0x9611 count=1    known=NO
+  sig=0x9a11 count=12   known=NO
+  sig=0x9c11 count=10   known=NO
+  sig=0xbe10 count=1    known=NO
+  sig=0xc710 count=3    known=NO
+  sig=0xcb10 count=4    known=yes
+  sig=0xfa11 count=1    known=NO
