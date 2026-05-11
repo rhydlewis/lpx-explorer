@@ -25,7 +25,8 @@ pub use regions::{
     cluster_regions, find_region_records, is_auto_track_name, RegionCluster, RegionRecord,
 };
 pub use tracks::{
-    assign_aus, assign_registry_names, assign_user_names, find_tracks, Track, TrackKind,
+    assign_aus, assign_registry_names, assign_user_names, find_tracks,
+    synthesize_folder_tracks, Track, TrackKind,
 };
 pub use tracks_registry::{find_track_registry_records, TrackRegistryEntry};
 

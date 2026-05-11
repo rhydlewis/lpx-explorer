@@ -85,6 +85,7 @@ pub fn parse_project(path: String) -> Result<ProjectSummary, ParseError> {
 
     let tracks_registry = lpx_parser::find_track_registry_records(&project_data_bytes);
     lpx_parser::assign_registry_names(&mut tracks, &tracks_registry);
+    lpx_parser::synthesize_folder_tracks(&mut tracks, &tracks_registry);
 
     crate::tlog!(
         "[parse_project] done elapsed={:?} fps={} tracks={} path={path:?}",
@@ -326,6 +327,7 @@ pub fn parse_alternative(
 
     let tracks_registry = lpx_parser::find_track_registry_records(&project_data_bytes);
     lpx_parser::assign_registry_names(&mut tracks, &tracks_registry);
+    lpx_parser::synthesize_folder_tracks(&mut tracks, &tracks_registry);
 
     crate::tlog!(
         "[parse_alternative] done elapsed={:?} variant={variant_index} fps={} tracks={} path={path:?}",

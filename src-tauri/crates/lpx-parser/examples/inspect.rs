@@ -20,6 +20,7 @@ fn main() {
     lpx_parser::assign_aus(&mut tracks, &aurefs);
     lpx_parser::assign_user_names(&mut tracks, &clusters);
     lpx_parser::assign_registry_names(&mut tracks, &registry);
+    lpx_parser::synthesize_folder_tracks(&mut tracks, &registry);
 
     println!(
         "\n== Tracks ({} total) ==",

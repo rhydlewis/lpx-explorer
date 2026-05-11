@@ -85,6 +85,52 @@ pub fn assign_user_names(tracks: &mut [Track], clusters: &[RegionCluster]) {
     }
 }
 
+/// Append synthetic `Track` records for Folder and SummingStack entries
+/// in the registry, so the inspector can render them alongside the
+/// channel-strip tracks. These don't appear in `find_tracks` output
+/// because they have no channel-strip record — Logic represents them
+/// purely in the registry list (ibp).
+///
+/// Each synthetic track:
+///   - `name` = registry name (already the user-given form, e.g. "Backline")
+///   - `user_name` = `Some(name)` (registry names are always user-facing)
+///   - `kind` = `Folder` or `SummingStack`
+///   - `offset` = the registry record's byte offset (preserves sort order
+///     when callers re-sort tracks by offset).
+///   - `is_active` = `true` (Folders/Stacks are always user-visible)
+///   - all AU slots empty; sub_number/parent_offset = None
+///
+/// Caller must invoke this BEFORE `assign_aus` if AUs should attach to
+/// the synthetic tracks (today they don't — Folders/Stacks aren't AU
+/// containers). Idempotent: re-running won't duplicate entries.
+pub fn synthesize_folder_tracks(
+    tracks: &mut Vec<Track>,
+    registry: &[TrackRegistryEntry],
+) {
+    let existing: std::collections::HashSet<usize> = tracks.iter().map(|t| t.offset).collect();
+    for entry in registry {
+        if !matches!(entry.kind, TrackKind::Folder | TrackKind::SummingStack) {
+            continue;
+        }
+        if existing.contains(&entry.offset) {
+            continue;
+        }
+        tracks.push(Track {
+            name: entry.name.clone(),
+            user_name: Some(entry.name.clone()),
+            kind: entry.kind,
+            offset: entry.offset,
+            is_active: true,
+            instrument: None,
+            midi_fx: Vec::new(),
+            audio_fx: Vec::new(),
+            sub_number: None,
+            parent_offset: None,
+        });
+    }
+    tracks.sort_by_key(|t| t.offset);
+}
+
 /// Fill `user_name` from the track-registry list for tracks that don't
 /// already have a name from a region cluster.
 ///
@@ -1080,6 +1126,95 @@ mod tests {
         let mut tracks = vec![active_track("Inst 1", TrackKind::Instrument, 100)];
         assign_registry_names(&mut tracks, &[]);
         assert!(tracks[0].user_name.is_none());
+    }
+
+    // ─── synthesize_folder_tracks (ibp) ──────────────────────────────────
+
+    fn folder_registry_entry(offset: usize, name: &str, kind: TrackKind) -> TrackRegistryEntry {
+        TrackRegistryEntry {
+            offset,
+            name: name.into(),
+            kind,
+            track_id: 0,
+            strip_id: 0,
+        }
+    }
+
+    #[test]
+    fn synthesizes_folder_and_summing_stack_tracks_from_registry() {
+        // for-my-lover canonical case: Backline + Keys & Synths SummingStacks
+        // live only in the registry. We add them to the tracks list so the
+        // inspector can render them alongside the channel-strip tracks.
+        let mut tracks = vec![
+            active_track("Inst 1", TrackKind::Instrument, 100),
+        ];
+        let registry = vec![
+            folder_registry_entry(1000, "Backline", TrackKind::SummingStack),
+            folder_registry_entry(2000, "Keys & Synths", TrackKind::SummingStack),
+            folder_registry_entry(3000, "Main Vocal", TrackKind::Folder),
+        ];
+
+        synthesize_folder_tracks(&mut tracks, &registry);
+
+        // Original strip + 3 synthesised = 4 tracks total, sorted by offset.
+        assert_eq!(tracks.len(), 4);
+        assert_eq!(tracks[0].kind, TrackKind::Instrument);  // Inst 1 @100
+        assert_eq!(tracks[1].kind, TrackKind::SummingStack); // Backline @1000
+        assert_eq!(tracks[1].name, "Backline");
+        assert_eq!(tracks[1].user_name.as_deref(), Some("Backline"));
+        assert_eq!(tracks[1].is_active, true);
+        assert_eq!(tracks[2].name, "Keys & Synths");
+        assert_eq!(tracks[3].name, "Main Vocal");
+        assert_eq!(tracks[3].kind, TrackKind::Folder);
+    }
+
+    #[test]
+    fn synthesize_skips_non_folder_kinds() {
+        // Only Folder / SummingStack should be synthesised. Audio /
+        // Instrument registry entries already have strip records; adding
+        // them again would double-count.
+        let mut tracks: Vec<Track> = Vec::new();
+        let registry = vec![
+            audio_registry_entry(1000, 3, "Lead Vox"),
+            instrument_registry_entry(2000, 53, "Piano"),
+            folder_registry_entry(3000, "Backline", TrackKind::SummingStack),
+        ];
+
+        synthesize_folder_tracks(&mut tracks, &registry);
+
+        assert_eq!(tracks.len(), 1);
+        assert_eq!(tracks[0].name, "Backline");
+    }
+
+    #[test]
+    fn synthesize_is_idempotent_on_offset_collision() {
+        // If a Track at the same offset already exists (e.g. caller ran
+        // synthesise twice), don't duplicate. Offset is the canonical key.
+        let mut tracks = vec![Track {
+            name: "Backline".into(),
+            user_name: Some("Backline".into()),
+            kind: TrackKind::SummingStack,
+            offset: 1000,
+            is_active: true,
+            instrument: None,
+            midi_fx: Vec::new(),
+            audio_fx: Vec::new(),
+            sub_number: None,
+            parent_offset: None,
+        }];
+        let registry = vec![folder_registry_entry(1000, "Backline", TrackKind::SummingStack)];
+
+        synthesize_folder_tracks(&mut tracks, &registry);
+
+        assert_eq!(tracks.len(), 1);
+    }
+
+    #[test]
+    fn synthesize_empty_registry_is_a_no_op() {
+        let mut tracks = vec![active_track("Audio 1", TrackKind::Audio, 100)];
+        synthesize_folder_tracks(&mut tracks, &[]);
+        assert_eq!(tracks.len(), 1);
+        assert_eq!(tracks[0].kind, TrackKind::Audio);
     }
 
     #[test]

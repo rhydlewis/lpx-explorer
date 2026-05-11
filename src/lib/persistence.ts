@@ -198,7 +198,7 @@ export async function persistThemePreference(
  * misses and re-parsed against the new code. Same disk file, no
  * cleanup required — orphans are inert.
  */
-const CURRENT_PARSER_VERSION = 5;
+const CURRENT_PARSER_VERSION = 6;
 
 /** Per-variant cache key: `${path}#variant=${index}`. Pre-bxb caches
  * stored entries under bare path; they're treated as variant 0 on
