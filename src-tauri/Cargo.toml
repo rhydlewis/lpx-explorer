@@ -29,6 +29,12 @@ serde_json = "1"
 thiserror = "1"
 lpx-parser = { path = "crates/lpx-parser" }
 tauri-plugin-store = "2.4.3"
+# Used by src/lib/goatcounter.ts to fire a one-time anonymous install
+# (or upgrade) ping to GoatCounter on app boot. The Rust webview's
+# `fetch` would be subject to mixed-content / CORS rules — the HTTP
+# plugin bypasses that and is scoped via capabilities/default.json to
+# only the GoatCounter endpoint.
+tauri-plugin-http = "2.5.9"
 # Used by the `tlog!` diagnostic logger to stamp wall-clock time on every
 # line. Already in Cargo.lock as a transitive dep; explicitly depending
 # costs nothing in build time / binary size.

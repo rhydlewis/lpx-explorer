@@ -7,6 +7,12 @@
     "core:default",
     "opener:default",
     "dialog:default",
-    "store:default"
+    "store:default",
+    {
+      "identifier": "http:default",
+      "allow": [
+        { "url": "https://lpx-explorer.goatcounter.com/*" }
+      ]
+    }
   ]
 }

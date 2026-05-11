@@ -6,6 +6,7 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 
 import { runLibraryHydration } from "./lib/library-hydration";
+import { trackInstall } from "./lib/goatcounter";
 import {
   hydrateParseCacheAsync,
   installScanIdleGate,
@@ -179,6 +180,14 @@ function App() {
   }, []);
 
   useEffect(() => runLibraryHydration(), []);
+
+  // Anonymous install ping (lpx-explorer-wyu). Fires once per app
+  // version; no-op in DEV. Wrapped in `.catch` defensively even though
+  // trackInstall swallows its own errors — keeps the useEffect's
+  // promise chain explicit.
+  useEffect(() => {
+    trackInstall().catch(() => {});
+  }, []);
 
   useEffect(() => {
     const isDir = (path: string): Promise<boolean> =>
