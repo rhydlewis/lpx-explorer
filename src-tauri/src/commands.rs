@@ -522,4 +522,136 @@ mod tests {
 
         assert!(matches!(err, ParseError::ProjectDataMissing(_)));
     }
+
+    // ─── Read-only invariant (command-layer e2e) ───────────────────────
+    //
+    // Snapshots SHA-256 + mtime of every file in a synthesized .logicx
+    // bundle before and after parse_project. Catches command-layer file
+    // handling regressions that the parser-level readonly_invariant test
+    // (in crates/lpx-parser/tests/) cannot — anything between fs::read
+    // and the parser would slip past a bytes-only-API test.
+
+    use sha2::{Digest, Sha256};
+    use std::time::SystemTime;
+
+    fn xml_plist_bytes(body: &str) -> Vec<u8> {
+        xml_plist(body).into_bytes()
+    }
+
+    /// Walk every file under `root` and return (path, sha256, mtime)
+    /// triples sorted by path. Sort makes the before/after vectors
+    /// directly comparable.
+    fn snapshot_bundle(root: &Path) -> Vec<(PathBuf, String, SystemTime)> {
+        let mut out = Vec::new();
+        let mut stack = vec![root.to_path_buf()];
+        while let Some(dir) = stack.pop() {
+            for entry in fs::read_dir(&dir).expect("read_dir").flatten() {
+                let path = entry.path();
+                let ft = entry.file_type().expect("file_type");
+                if ft.is_dir() {
+                    stack.push(path);
+                } else if ft.is_file() {
+                    let bytes = fs::read(&path).expect("read");
+                    let mut hasher = Sha256::new();
+                    hasher.update(&bytes);
+                    let sha = format!("{:x}", hasher.finalize());
+                    let mtime = fs::metadata(&path).unwrap().modified().unwrap();
+                    out.push((path, sha, mtime));
+                }
+            }
+        }
+        out.sort_by(|a, b| a.0.cmp(&b.0));
+        out
+    }
+
+    #[test]
+    fn parse_project_does_not_mutate_any_file_in_the_bundle() {
+        let tmp = tempdir().unwrap();
+        let bundle = tmp.path().join("My Project.logicx");
+
+        // ProjectData with bytes shaped to hit every parser branch
+        // exercised by parse_project: find_aus, find_tracks,
+        // find_region_records, find_track_registry_records.
+        let mut project_data: Vec<u8> = vec![0u8; 8];
+        // Track record: 0x20 + "Audio 1" + NUL pad + audio descriptor.
+        project_data.push(0x20);
+        project_data.extend_from_slice(b"Audio 1");
+        while project_data.len() < 8 + 16 {
+            project_data.push(0x00);
+        }
+        project_data.extend_from_slice(&[0xAB, 0x00, 0x00, 0xC5, 0x00, 0x00, 0x00, 0x00]);
+        // AU descriptor: nooT umua + 4-byte subtype.
+        project_data.extend_from_slice(b"PADDING_");
+        project_data.extend_from_slice(b"nooT");
+        project_data.extend_from_slice(b"umua");
+        project_data.extend_from_slice(b"2kZE");
+        // Region marker + length-prefixed name.
+        project_data.extend_from_slice(&[
+            0x61, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        ]);
+        let region_name = b"Acoustic GTR";
+        project_data.extend_from_slice(&(region_name.len() as u16).to_le_bytes());
+        project_data.extend_from_slice(region_name);
+
+        write_alternative(&bundle, 0, &project_data);
+        fs::write(
+            bundle.join("Alternatives/000/MetaData.plist"),
+            xml_plist_bytes(
+                "<key>SongKey</key><string>C</string>\
+                 <key>BeatsPerMinute</key><real>120.0</real>\
+                 <key>NumberOfTracks</key><integer>1</integer>",
+            ),
+        )
+        .unwrap();
+        // Sibling files that aren't read by parse_project but live
+        // inside the bundle — a regression that touched anything in the
+        // tree (e.g. a stray write to WindowImage during stat) needs to
+        // fail this test.
+        fs::write(
+            bundle.join("Alternatives/000/WindowImage.jpg"),
+            b"fake-jpeg-bytes",
+        )
+        .unwrap();
+        write_manifest(
+            &bundle,
+            &xml_plist(
+                r#"<key>VariantNames</key><dict>
+                     <key>0</key><string>main</string>
+                   </dict>"#,
+            ),
+        );
+
+        let before = snapshot_bundle(&bundle);
+        assert!(!before.is_empty(), "fixture bundle must contain files");
+
+        let summary = parse_project(bundle.to_string_lossy().into_owned())
+            .expect("parse_project must succeed against a valid synthetic bundle");
+        // Sanity: the parser actually ran against the planted bytes.
+        assert_eq!(summary.fingerprints.len(), 1);
+        assert_eq!(summary.tracks.len(), 1);
+
+        let after = snapshot_bundle(&bundle);
+
+        assert_eq!(
+            before.len(),
+            after.len(),
+            "parse_project changed the file count in the bundle"
+        );
+        for ((p1, s1, m1), (p2, s2, m2)) in before.iter().zip(after.iter()) {
+            assert_eq!(p1, p2, "file set changed");
+            assert_eq!(
+                s1,
+                s2,
+                "parse_project altered SHA-256 of {} — read-only contract violated",
+                p1.display()
+            );
+            assert_eq!(
+                m1,
+                m2,
+                "parse_project altered mtime of {} — read-only contract violated",
+                p1.display()
+            );
+        }
+    }
 }
