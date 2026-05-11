@@ -4,6 +4,12 @@ All notable changes to LPX Explorer are documented here. The CI release pipeline
 
 Format: standard Markdown — `-` bullets and free-form paragraphs. Headings within a section (`###`) are not currently extracted.
 
+## v0.0.5
+
+- More instrument tracks now show their edited names
+- Some renamed tracks now display their channel-strip default where possible e.g. "Piano (Inst 1)" so you can still see which strip the rename belongs to
+- Folder and Summing Stack tracks now appear in the Tracks list (albeit separated from their child tracks)
+
 ## v0.0.4
 
 - Added saved window images of the Logic UI for a project into single project view
