@@ -31,8 +31,13 @@ if [ ! -f "$DMG_PATH" ]; then
 fi
 
 DMG_FILENAME="$(basename "$DMG_PATH")"
+# GitHub Releases renames assets on upload — spaces become dots. The
+# Tauri bundler names the DMG from `productName` ("LPX Explorer") so
+# the local file has a space, but the URL has to point at the
+# renamed asset. Mirror that transform here.
+URL_FILENAME="${DMG_FILENAME// /.}"
 PUB_DATE="$(date -u +'%a, %d %b %Y %H:%M:%S +0000')"
-DOWNLOAD_URL="https://github.com/rhydlewis/lpx-explorer/releases/download/v${VERSION}/${DMG_FILENAME}"
+DOWNLOAD_URL="https://github.com/rhydlewis/lpx-explorer/releases/download/v${VERSION}/${URL_FILENAME}"
 
 echo "🔐 Signing $DMG_FILENAME with EdDSA key..."
 # sign_update prints e.g.
