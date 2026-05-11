@@ -1,0 +1,46 @@
+name: CI
+
+# Gates the read-only invariant (and the rest of the Rust workspace
+# tests) on every PR and every push to main. Without this, a regression
+# in the parser's bytes-only contract would only surface at release time.
+#
+# The top-level `lpx-explorer` crate links Sparkle.framework, so test
+# binaries need DYLD_FRAMEWORK_PATH pointed at src-tauri/ to load the
+# framework at runtime. The parser crate itself doesn't link Sparkle.
+#
+# Refs: lpx-explorer-8o9
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rust-tests:
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+          key: ${{ runner.os }}-cargo-ci-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-ci-
+
+      - name: cargo test (workspace)
+        env:
+          DYLD_FRAMEWORK_PATH: ${{ github.workspace }}/src-tauri
+        run: cargo test --manifest-path src-tauri/Cargo.toml --workspace --locked
