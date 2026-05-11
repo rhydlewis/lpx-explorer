@@ -68,7 +68,29 @@ describe("<TrackRow />", () => {
     );
 
     expect(screen.getByText("Pocket Strings")).toBeInTheDocument();
-    expect(screen.queryByText("Inst 1")).not.toBeInTheDocument();
+  });
+
+  it("appends the channel-strip label as a muted suffix when user_name differs", () => {
+    // 'Piano (Inst 1)' — the strip-default name keeps users oriented
+    // when the track was renamed away from Logic's default.
+    render(
+      <TrackRow
+        track={track({ name: "Inst 1", user_name: "Piano" })}
+        depth={0}
+      />,
+    );
+
+    expect(screen.getByText("Piano")).toBeInTheDocument();
+    expect(screen.getByText("(Inst 1)")).toBeInTheDocument();
+  });
+
+  it("omits the strip-label suffix when the displayed name equals the strip default", () => {
+    // No rename, no instrument: displayNameOf returns 'Inst 1' so the
+    // suffix would read '(Inst 1)' — redundant. Suppress it.
+    render(<TrackRow track={track({ name: "Inst 1", user_name: null })} depth={0} />);
+
+    expect(screen.getByText("Inst 1")).toBeInTheDocument();
+    expect(screen.queryByText("(Inst 1)")).not.toBeInTheDocument();
   });
 
   it("encodes the kind in a data attribute for icon CSS", () => {

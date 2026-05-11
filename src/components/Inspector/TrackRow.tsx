@@ -70,6 +70,10 @@ export function TrackRow({ track, depth }: Props) {
   }, [registryStatus]);
   const inserts = collectInserts(track);
   const name = displayNameOf(track, byFingerprint);
+  // Surface the channel-strip default (e.g. "Inst 1", "Audio 3") only
+  // when displayNameOf chose something else — otherwise the suffix would
+  // read "Inst 1 (Inst 1)".
+  const stripLabel = name === track.name ? null : track.name;
   const detailsRef = useRef<HTMLDetailsElement | null>(null);
 
   // Sync this row's <details> to the project-level expand/collapse signal
@@ -95,6 +99,9 @@ export function TrackRow({ track, depth }: Props) {
         </span>
         <span className={styles.name} title={name}>
           {name}
+          {stripLabel !== null && (
+            <span className={styles.stripLabel}> ({stripLabel})</span>
+          )}
         </span>
         <StatusDot status={track.is_active ? "clean" : "neutral"} />
       </div>

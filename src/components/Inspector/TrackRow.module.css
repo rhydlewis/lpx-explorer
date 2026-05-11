@@ -40,6 +40,12 @@
   color: var(--c-text-muted);
 }
 
+.stripLabel {
+  color: var(--c-text-muted);
+  font-size: var(--fs-meta);
+  margin-left: var(--s-1);
+}
+
 .disclosure {
   margin-left: var(--s-5);
 }
