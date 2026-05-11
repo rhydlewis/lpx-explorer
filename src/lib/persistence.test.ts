@@ -309,7 +309,7 @@ describe("parse cache versioning (lpx-explorer-ttb)", () => {
 
     // bxb: keys now include `#variant=N`; default variant is 0.
     const stored = storeData.get("/x.logicx#variant=0") as Record<string, unknown>;
-    expect(stored.parser_version).toBe(4);
+    expect(stored.parser_version).toBe(5);
     expect(stored.mtime_unix).toBe(100);
     expect(stored.size_bytes).toBe(50);
   });
@@ -370,7 +370,7 @@ describe("parse cache versioning (lpx-explorer-ttb)", () => {
     // current parser_version so it isn't filtered out by the version
     // check. After load, the composite key should appear in the map.
     storeData.set("/legacy.logicx", {
-      parser_version: 4,
+      parser_version: 5,
       mtime_unix: 50,
       size_bytes: 30,
       summary: makeSummary({}),

@@ -41,6 +41,12 @@ const TRACK_SIGNATURE_KIND: &[([u8; 2], TrackKind)] = &[
     // canonical case; pairing goes through pair_instruments_by_storage_index
     // (cv9), not the old ordinal join.
     ([0x03, 0x10], TrackKind::Instrument),
+    // 7o8: instrument signatures whose header carries a non-zero byte 6
+    // followed by zeros at bytes 7-9 (relaxed admission below). Bass and
+    // Drums in for-my-lover.logicx are the canonical cases — user-confirmed
+    // renames on Inst 3 and Inst 5 respectively.
+    ([0x4d, 0x10], TrackKind::Instrument),   // Bass-style instrument tracks
+    ([0x5f, 0x11], TrackKind::Instrument),   // Drums-style instrument tracks
     ([0x23, 0x12], TrackKind::Audio),        // audio tracks (Andy & Red)
     ([0xdc, 0x11], TrackKind::Audio),        // audio tracks (some)
     ([0xdf, 0x11], TrackKind::Audio),        // audio tracks (Slide GTR / Intro Lead GTR)
@@ -55,6 +61,8 @@ const TRACK_SIGNATURE_KIND: &[([u8; 2], TrackKind)] = &[
     ([0xe4, 0x10], TrackKind::Folder),       // sub / bells & synth keys
     ([0xeb, 0x11], TrackKind::Folder),       // sub / strings & pads
     ([0xe7, 0x11], TrackKind::Folder),       // atmosphere / pad-cluster
+    ([0x0d, 0x10], TrackKind::Folder),       // sub / vocals & guitars (Backline — 7o8)
+    ([0x8d, 0x11], TrackKind::Folder),       // sub / keys & synths (Keys & Synths — 7o8)
 ];
 
 /// Names that show up under track signatures but are Logic-internal
@@ -116,10 +124,15 @@ pub fn find_track_registry_records(raw: &[u8]) -> Vec<TrackRegistryEntry> {
                 continue;
             }
         };
-        // Standard layout: bytes 6-9 are all-zero. Variant: the 0x03 0x10
-        // stand-alone-instrument signature carries `ff ff 00 00` here, so
-        // we admit either pattern. Anything else is structural noise.
-        let bytes_6_9_ok = raw[i + 6] | raw[i + 7] | raw[i + 8] | raw[i + 9] == 0
+        // Three accepted layouts for bytes 6-9:
+        //   (1) all-zero — standard track-registry record
+        //   (2) ff ff 00 00 — the 0x03 0x10 stand-alone-instrument variant
+        //                    (Piano in for-my-lover)
+        //   (3) XX 00 00 00 — bytes 7-9 zero, byte 6 carries a category
+        //                     flag (Bass=0x6c, Drums=0x68 in for-my-lover)
+        // The signature whitelist below is the safety filter for the
+        // permissive (3) branch — unrecognised sigs still drop.
+        let bytes_6_9_ok = (raw[i + 7] == 0 && raw[i + 8] == 0 && raw[i + 9] == 0)
             || (raw[i + 6] == 0xff
                 && raw[i + 7] == 0xff
                 && raw[i + 8] == 0
@@ -344,6 +357,8 @@ mod tests {
             ([0xe4, 0x10], TrackKind::Folder, "Fe4"),
             ([0xeb, 0x11], TrackKind::Folder, "Feb"),
             ([0xe7, 0x11], TrackKind::Folder, "Fe7hi"),
+            ([0x0d, 0x10], TrackKind::Folder, "F0d"),      // 7o8 (Backline)
+            ([0x8d, 0x11], TrackKind::Folder, "F8d"),      // 7o8 (Keys & Synths)
         ];
         for (sig, _, name) in cases {
             buf.extend_from_slice(&record(*sig, name, &[0u8; 8], None));
@@ -407,15 +422,37 @@ mod tests {
     }
 
     #[test]
-    fn rejects_non_ff_variant_in_bytes_6_9() {
-        // Anything other than all-zeros or `ff ff 00 00` should be
-        // rejected as structural noise. Drums in for-my-lover used
-        // `68 00 00 00` here — it's not a real track-rename record,
-        // and admitting it would surface bogus names.
-        let trailer = [0x39, 0x00, 0x00, 0xff, 0x00, 0x01, 0x00, 0x00];
+    fn recognises_byte_6_category_variant_for_new_instrument_sigs() {
+        // 7o8: 0x4d 0x10 (Bass) and 0x5f 0x11 (Drums) carry a non-zero
+        // category byte at i+6 (0x6c and 0x68 respectively), with bytes
+        // 7-9 zero. Both are user-confirmed real instrument renames in
+        // for-my-lover.logicx. The relaxed bytes-6-9 admission must let
+        // them through and pair via the same storage-ordinal join as
+        // standard instruments.
+        let trailer = [0x37, 0x00, 0x00, 0xff, 0x00, 0x01, 0x00, 0x00];
         let bytes = record_with_bytes_6_9(
-            [0x03, 0x10], "Drums", &trailer, None,
-            [0x68, 0x00, 0x00, 0x00],
+            [0x4d, 0x10], "Bass", &trailer, None,
+            [0x6c, 0x00, 0x00, 0x00],
+        );
+
+        let found = find_track_registry_records(&bytes);
+
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].name, "Bass");
+        assert_eq!(found[0].kind, TrackKind::Instrument);
+        assert_eq!(found[0].strip_id, 0x37); // 1-based storage ordinal = 55
+    }
+
+    #[test]
+    fn rejects_non_zero_bytes_7_through_9() {
+        // The relaxation only admits patterns where bytes 7-9 are zero
+        // (or the explicit ff-ff-00-00 variant). Anything with garbage
+        // in bytes 7-9 is structural noise and must drop, otherwise the
+        // permissive byte-6 admission would let in arbitrary records.
+        let trailer = [0x00; 8];
+        let bytes = record_with_bytes_6_9(
+            [0x22, 0x12], "Noise", &trailer, None,
+            [0x00, 0xab, 0xcd, 0xef],
         );
 
         let found = find_track_registry_records(&bytes);
