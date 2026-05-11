@@ -127,6 +127,32 @@ the next release becomes the canonical update source automatically.
 If any of the three Keychain entries is missing, the script bails with a
 clear message + the commands above.
 
+## Release notes (CHANGELOG.md)
+
+Sparkle shows the per-release notes in its update dialog. Source of truth is
+`CHANGELOG.md` at the repo root — one section per version, headed by
+`## v<X.Y.Z>`:
+
+    ## v0.0.4
+
+    - Added insights view
+    - Fixed plugin-rail cache bug
+
+Bullets and free-form paragraphs both work. `scripts/extract-release-notes.js`
+pulls the section matching the current tag and converts it to HTML
+(`<ul>/<li>`/`<p>`), which the workflow injects into `RELEASE_NOTES` so
+`generate-appcast.sh` can drop it into the `<description>` CDATA.
+
+**Release checklist:**
+
+1. Edit `CHANGELOG.md` — add a `## v<next-version>` section above the previous one.
+2. `git add CHANGELOG.md && git commit -m "docs: release notes for v<next-version>"`.
+3. `npm run bump` (bumps `package.json` + tags `v<next-version>`).
+4. `git push && git push --tags`.
+
+If CI fails at the "Extract release notes" step, you forgot step 1 — the
+section is missing or empty. Add the entry, amend / re-tag, push again.
+
 ## Reference
 
 - `flowcus-v2/scripts/build-release.sh` — the working pattern this mirrors.

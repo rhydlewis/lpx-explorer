@@ -145,6 +145,22 @@ jobs:
             "$KEYCHAIN_PATH" \
             >/dev/null 2>&1 || true
 
+      # ─── Extract release notes from CHANGELOG.md ─────────────────────
+      # The section matching the current tag (e.g. '## v0.0.4') gets
+      # rendered to HTML and shoved into Sparkle's <description> field
+      # via build-release.sh → generate-appcast.sh. Fails the workflow
+      # if there's no matching section, so we can't ship a release with
+      # empty notes.
+      - name: Extract release notes
+        run: |
+          set -euo pipefail
+          NOTES=$(node scripts/extract-release-notes.js "${GITHUB_REF_NAME}")
+          {
+            echo "RELEASE_NOTES<<EOF_NOTES"
+            echo "$NOTES"
+            echo "EOF_NOTES"
+          } >> "$GITHUB_ENV"
+
       # ─── Build, sign, notarize, generate appcast ─────────────────────
       - name: Build release
         env:
@@ -153,10 +169,7 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           # APPLE_SIGNING_IDENTITY is set via $GITHUB_ENV in the cert
           # import step (auto-detected from the imported .p12).
-          # Used by generate-appcast.sh for the <description> field.
-          # The release notes get pulled from the tag annotation by
-          # the next step.
-          RELEASE_NOTES: ${{ github.event.head_commit.message }}
+          # RELEASE_NOTES is set via $GITHUB_ENV in the previous step.
         run: npm run release
 
       # ─── Publish ─────────────────────────────────────────────────────
