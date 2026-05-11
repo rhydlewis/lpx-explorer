@@ -7,6 +7,8 @@
 //! The format is undocumented; offsets here mirror the empirically-derived
 //! Python implementation at `lpx-toolkit/lpx_inspect.py`.
 
+#![forbid(unsafe_code)]
+
 mod alternatives;
 mod apple_drummer;
 mod apple_stock;
