@@ -95,13 +95,13 @@ pub fn assign_user_names(tracks: &mut [Track], clusters: &[RegionCluster]) {
 /// strip default ("Audio 3" for strip 3) are skipped — they're not
 /// renames, just the Tracks Area echoing the strip's stub label.
 ///
-/// **Instrument tracks**: registry `strip_id` is always 0 for
-/// instrument entries, so it can't act as a join key. We fall back to
-/// ordinal-in-kind pairing (sorted by offset, both sides). Channel-
-/// strip storage order empirically matches registry storage order on
-/// every project verified so far — both are written by Logic in
-/// track-creation order. Misalignments in non-standard projects are
-/// tolerated until a real instrument-kind join key surfaces.
+/// **Instrument tracks**: paired by storage-order ordinal (cv9). Each
+/// instrument registry entry's `strip_id` field decodes to the
+/// 1-based position of its strip in the offset-sorted track list.
+/// e.g. Piano in for-my-lover has `strip_id = 53` and pairs with the
+/// strip at offset-sorted index 52 (channel-strip "Inst 1"). Unlike
+/// audio's strip_id, this is NOT the "Inst N" number — instrument
+/// strips sit after audio/aux/bus/master/output/input in storage.
 ///
 /// Existing `user_name` values (set by [`assign_user_names`] from
 /// region clusters) are never overwritten.
@@ -113,7 +113,7 @@ pub fn assign_registry_names(
         return;
     }
     pair_audio_by_strip_id(tracks, registry);
-    pair_instruments_by_ordinal(tracks, registry);
+    pair_instruments_by_storage_index(tracks, registry);
 }
 
 /// Extract the strip number from a channel-strip default name.
@@ -171,29 +171,36 @@ fn pair_audio_by_strip_id(tracks: &mut [Track], registry: &[TrackRegistryEntry])
     }
 }
 
-fn pair_instruments_by_ordinal(
+/// Pair instrument registry entries with strips by storage-order ordinal.
+///
+/// Each instrument registry entry's `strip_id` is the 1-based position
+/// of its owning strip in the offset-sorted track list (cv9). We look up
+/// the strip at that position; if it's an active instrument with no
+/// user_name yet, we apply the rename. Inactive strips are skipped (the
+/// 256 default instrument channels Logic creates aren't tracks).
+fn pair_instruments_by_storage_index(
     tracks: &mut [Track],
     registry: &[TrackRegistryEntry],
 ) {
-    let mut strip_indices: Vec<usize> = tracks
-        .iter()
-        .enumerate()
-        .filter(|(_, t)| t.kind == TrackKind::Instrument && t.is_active)
-        .map(|(i, _)| i)
-        .collect();
-    strip_indices.sort_by_key(|&i| tracks[i].offset);
+    // Build the offset-sorted position list. Indices into `tracks` whose
+    // position N maps to (storage_ordinal = N+1).
+    let mut sorted_indices: Vec<usize> = (0..tracks.len()).collect();
+    sorted_indices.sort_by_key(|&i| tracks[i].offset);
 
-    let mut registry_entries: Vec<&TrackRegistryEntry> = registry
-        .iter()
-        .filter(|e| e.kind == TrackKind::Instrument)
-        .collect();
-    registry_entries.sort_by_key(|e| e.offset);
-
-    for (i, entry) in strip_indices.iter().zip(registry_entries.iter()) {
-        let track = &mut tracks[*i];
-        if track.user_name.is_none() {
-            track.user_name = Some(entry.name.clone());
+    for entry in registry.iter().filter(|e| e.kind == TrackKind::Instrument) {
+        if entry.strip_id == 0 {
+            continue;
         }
+        let pos = (entry.strip_id - 1) as usize;
+        let Some(&track_idx) = sorted_indices.get(pos) else { continue };
+        let track = &mut tracks[track_idx];
+        if track.kind != TrackKind::Instrument || !track.is_active {
+            continue;
+        }
+        if track.user_name.is_some() {
+            continue;
+        }
+        track.user_name = Some(entry.name.clone());
     }
 }
 
@@ -783,21 +790,21 @@ mod tests {
 
     // ─── assign_registry_names ─────────────────────────────────────────
 
-    fn registry_entry(offset: usize, name: &str, kind: TrackKind) -> TrackRegistryEntry {
-        TrackRegistryEntry {
-            offset,
-            name: name.into(),
-            kind,
-            track_id: 0,
-            strip_id: 0,
-        }
-    }
-
     fn audio_registry_entry(offset: usize, strip_id: u16, name: &str) -> TrackRegistryEntry {
         TrackRegistryEntry {
             offset,
             name: name.into(),
             kind: TrackKind::Audio,
+            track_id: 0,
+            strip_id,
+        }
+    }
+
+    fn instrument_registry_entry(offset: usize, strip_id: u16, name: &str) -> TrackRegistryEntry {
+        TrackRegistryEntry {
+            offset,
+            name: name.into(),
+            kind: TrackKind::Instrument,
             track_id: 0,
             strip_id,
         }
@@ -819,16 +826,18 @@ mod tests {
     }
 
     #[test]
-    fn pairs_registry_entries_with_channel_strips_in_offset_order() {
+    fn pairs_instrument_registry_entries_by_storage_ordinal() {
+        // strip_id is the 1-based position in the offset-sorted strip list.
+        // Three instrument strips at positions 0, 1, 2 → strip_ids 1, 2, 3.
         let mut tracks = vec![
             active_track("Inst 1", TrackKind::Instrument, 100),
             active_track("Inst 2", TrackKind::Instrument, 300),
             active_track("Inst 3", TrackKind::Instrument, 500),
         ];
         let registry = vec![
-            registry_entry(1000, "Piano", TrackKind::Instrument),
-            registry_entry(1100, "Drums", TrackKind::Instrument),
-            registry_entry(1200, "Bass", TrackKind::Instrument),
+            instrument_registry_entry(1000, 1, "Piano"),
+            instrument_registry_entry(1100, 2, "Drums"),
+            instrument_registry_entry(1200, 3, "Bass"),
         ];
 
         assign_registry_names(&mut tracks, &registry);
@@ -845,7 +854,8 @@ mod tests {
             active_track("Inst 1", TrackKind::Instrument, 200),
         ];
         let registry = vec![
-            registry_entry(1000, "Piano", TrackKind::Instrument),
+            // Inst 1 is the 2nd strip in offset order → strip_id 2.
+            instrument_registry_entry(1000, 2, "Piano"),
             audio_registry_entry(1100, 1, "Acoustic GTR"),
         ];
 
@@ -952,12 +962,58 @@ mod tests {
     }
 
     #[test]
+    fn pairs_instrument_at_arbitrary_storage_position() {
+        // cv9 canonical case: Piano sits at position 4 (strip_id=5) in
+        // for-my-lover, NOT position 0. The new pairing must walk past
+        // earlier non-instrument strips and apply the rename to the
+        // correct one regardless of how few registry entries exist.
+        let mut tracks = vec![
+            active_track("Audio 1", TrackKind::Audio, 100),
+            active_track("Audio 2", TrackKind::Audio, 200),
+            active_track("Aux 1", TrackKind::Aux, 300),
+            active_track("Bus 1", TrackKind::Bus, 400),
+            active_track("Inst 1", TrackKind::Instrument, 500),
+            active_track("Inst 2", TrackKind::Instrument, 600),
+        ];
+        // Only ONE instrument registry entry, targeting the FIRST
+        // instrument strip (position 4 in offset-sorted order → strip_id 5).
+        let registry = vec![instrument_registry_entry(1000, 5, "Piano")];
+
+        assign_registry_names(&mut tracks, &registry);
+
+        assert_eq!(tracks[0].user_name, None);
+        assert_eq!(tracks[1].user_name, None);
+        assert_eq!(tracks[2].user_name, None);
+        assert_eq!(tracks[3].user_name, None);
+        assert_eq!(tracks[4].user_name.as_deref(), Some("Piano"));
+        assert_eq!(tracks[5].user_name, None);
+    }
+
+    #[test]
+    fn instrument_strip_id_pointing_to_non_instrument_position_is_dropped() {
+        // Defensive: if strip_id targets a non-instrument strip (e.g. a
+        // corrupted record or a kind we don't recognise yet), the pairing
+        // must NOT silently rename an audio track or skip ahead.
+        let mut tracks = vec![
+            active_track("Audio 1", TrackKind::Audio, 100),
+            active_track("Inst 1", TrackKind::Instrument, 200),
+        ];
+        // strip_id=1 → position 0 = Audio 1. Should be dropped, not applied.
+        let registry = vec![instrument_registry_entry(1000, 1, "Piano")];
+
+        assign_registry_names(&mut tracks, &registry);
+
+        assert_eq!(tracks[0].user_name, None);
+        assert_eq!(tracks[1].user_name, None);
+    }
+
+    #[test]
     fn does_not_overwrite_user_name_set_by_region_clusters() {
         // Region-cluster source-of-truth wins — assign_user_names runs
         // first and the registry pairing must not clobber its results.
         let mut tracks = vec![active_track("Inst 1", TrackKind::Instrument, 100)];
         tracks[0].user_name = Some("Pocket Strings".into());
-        let registry = vec![registry_entry(1000, "Piano", TrackKind::Instrument)];
+        let registry = vec![instrument_registry_entry(1000, 1, "Piano")];
 
         assign_registry_names(&mut tracks, &registry);
 
@@ -966,10 +1022,12 @@ mod tests {
 
     #[test]
     fn drops_extra_registry_entries_when_more_registry_than_strips() {
+        // Only 1 strip exists, but registry has 2 entries. strip_id=1 pairs;
+        // strip_id=2 points past the end and is dropped silently.
         let mut tracks = vec![active_track("Inst 1", TrackKind::Instrument, 100)];
         let registry = vec![
-            registry_entry(1000, "Piano", TrackKind::Instrument),
-            registry_entry(1100, "Bass", TrackKind::Instrument),
+            instrument_registry_entry(1000, 1, "Piano"),
+            instrument_registry_entry(1100, 2, "Bass"),
         ];
 
         assign_registry_names(&mut tracks, &registry);
@@ -983,7 +1041,7 @@ mod tests {
             active_track("Inst 1", TrackKind::Instrument, 100),
             active_track("Inst 2", TrackKind::Instrument, 200),
         ];
-        let registry = vec![registry_entry(1000, "Piano", TrackKind::Instrument)];
+        let registry = vec![instrument_registry_entry(1000, 1, "Piano")];
 
         assign_registry_names(&mut tracks, &registry);
 
@@ -994,7 +1052,10 @@ mod tests {
     #[test]
     fn skips_inactive_strips_when_pairing() {
         // Inactive strips (Logic emits ~256 default channel strips that
-        // aren't user-visible) shouldn't consume a registry entry slot.
+        // aren't user-visible) shouldn't be assigned a registry name even
+        // when their storage-ordinal matches. Piano's strip_id=1 points
+        // at position 0 = inactive Inst 1; pair_instruments_by_storage_index
+        // skips it rather than falling through to the next active strip.
         let mut tracks = vec![
             Track {
                 is_active: false,
@@ -1002,12 +1063,12 @@ mod tests {
             },
             active_track("Inst 2", TrackKind::Instrument, 200),
         ];
-        let registry = vec![registry_entry(1000, "Piano", TrackKind::Instrument)];
+        let registry = vec![instrument_registry_entry(1000, 1, "Piano")];
 
         assign_registry_names(&mut tracks, &registry);
 
         assert!(tracks[0].user_name.is_none());
-        assert_eq!(tracks[1].user_name.as_deref(), Some("Piano"));
+        assert!(tracks[1].user_name.is_none());
     }
 
     #[test]

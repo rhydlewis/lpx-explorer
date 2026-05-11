@@ -35,11 +35,12 @@ const TRACK_SIGNATURE_KIND: &[([u8; 2], TrackKind)] = &[
     ([0xa8, 0x11], TrackKind::Instrument),   // single-instrument tracks (Dome Kick)
     ([0xda, 0x11], TrackKind::Instrument),   // Apple stock-instrument tracks (Bass)
     ([0xe7, 0x10], TrackKind::Instrument),   // Alchemy / sampler instrument tracks
-    // 0x03 0x10 (stand-alone instrument w/ ff-ff parent) intentionally
-    // deferred — the registry record IS real (Piano in for-my-lover.logicx)
-    // but pair_instruments_by_ordinal would attach it to Inst 1 instead
-    // of Inst 5. Surfacing wrong names is worse than letting the auval
-    // fallback show. Filed for proper join-key research.
+    // 0x03 0x10 stand-alone-instrument variant with `ff ff 00 00` in the
+    // bytes that are usually all-zero (i+6..i+10). The bytes-6-9 check
+    // below admits the variant. Piano in for-my-lover.logicx is the
+    // canonical case; pairing goes through pair_instruments_by_storage_index
+    // (cv9), not the old ordinal join.
+    ([0x03, 0x10], TrackKind::Instrument),
     ([0x23, 0x12], TrackKind::Audio),        // audio tracks (Andy & Red)
     ([0xdc, 0x11], TrackKind::Audio),        // audio tracks (some)
     ([0xdf, 0x11], TrackKind::Audio),        // audio tracks (Slide GTR / Intro Lead GTR)
@@ -85,8 +86,11 @@ pub struct TrackRegistryEntry {
     /// precedes each registry record. 0 when the structure isn't
     /// present (record sits within the first 62 bytes of the file).
     pub track_id: u16,
-    /// Channel-strip number for audio tracks (uint16-LE following the
-    /// name). 0 for non-audio kinds and when not recoverable.
+    /// 1-based storage-order ordinal of the matching strip (uint16-LE
+    /// following the name). For audio this also equals the "Audio N"
+    /// channel-strip number since audio is stored at the front. For
+    /// instruments it's the offset-sorted position; not the "Inst N"
+    /// number. 0 for non-Audio/Instrument kinds and when not recoverable.
     pub strip_id: u16,
 }
 
@@ -112,8 +116,15 @@ pub fn find_track_registry_records(raw: &[u8]) -> Vec<TrackRegistryEntry> {
                 continue;
             }
         };
-        // 4 zeros
-        if raw[i + 6] | raw[i + 7] | raw[i + 8] | raw[i + 9] != 0 {
+        // Standard layout: bytes 6-9 are all-zero. Variant: the 0x03 0x10
+        // stand-alone-instrument signature carries `ff ff 00 00` here, so
+        // we admit either pattern. Anything else is structural noise.
+        let bytes_6_9_ok = raw[i + 6] | raw[i + 7] | raw[i + 8] | raw[i + 9] == 0
+            || (raw[i + 6] == 0xff
+                && raw[i + 7] == 0xff
+                && raw[i + 8] == 0
+                && raw[i + 9] == 0);
+        if !bytes_6_9_ok {
             i += 1;
             continue;
         }
@@ -163,10 +174,16 @@ pub fn find_track_registry_records(raw: &[u8]) -> Vec<TrackRegistryEntry> {
         } else {
             0
         };
-        let strip_id: u16 = if entry_kind == TrackKind::Audio {
-            decode_audio_strip_id(trailer)
-        } else {
-            0
+        // For Audio: strip_id == channel-strip number (Audio N) which also
+        // equals (strip_storage_index + 1) since audio is stored at the
+        // front of the project. For Instrument: strip_id == (strip_storage_index + 1),
+        // which is NOT the "Inst N" number — instrument strips come after
+        // audio/aux/bus/master/output/input, so the ordinal is much larger.
+        // The pairing functions (pair_audio_by_strip_id /
+        // pair_instruments_by_storage_index) interpret each correctly.
+        let strip_id: u16 = match entry_kind {
+            TrackKind::Audio | TrackKind::Instrument => decode_audio_strip_id(trailer),
+            _ => 0,
         };
 
         out.push(TrackRegistryEntry {
@@ -206,10 +223,12 @@ fn is_summing_stack_trailer(trailer: &[u8]) -> bool {
     false
 }
 
-/// First non-zero uint16-LE in the bytes after the name. Audio-track
-/// registry records encode their channel-strip number here. Padding can
-/// be 0 or 1 bytes depending on name length (records appear to be
-/// 2-byte-aligned), so we accept either offset.
+/// First non-zero uint16-LE in the bytes after the name. Audio and
+/// instrument registry records both encode a 1-based storage-order
+/// ordinal here (channel-strip "Audio N" for audio; offset-sorted track
+/// position for instruments). Padding can be 0 or 1 bytes depending on
+/// name length (records appear to be 2-byte-aligned), so we accept
+/// either offset.
 fn decode_audio_strip_id(post_name: &[u8]) -> u16 {
     if post_name.len() >= 2 {
         let v = u16::from_le_bytes([post_name[0], post_name[1]]);
@@ -240,6 +259,18 @@ mod tests {
         trailer: &[u8],
         with_link: Option<u16>,
     ) -> Vec<u8> {
+        record_with_bytes_6_9(sig, name, trailer, with_link, [0, 0, 0, 0])
+    }
+
+    /// Variant of `record` that admits a non-zero `bytes_6_9` block — the
+    /// 0x03 0x10 stand-alone-instrument signature uses `ff ff 00 00` here.
+    fn record_with_bytes_6_9(
+        sig: [u8; 2],
+        name: &str,
+        trailer: &[u8],
+        with_link: Option<u16>,
+        bytes_6_9: [u8; 4],
+    ) -> Vec<u8> {
         let mut buf = Vec::new();
         if let Some(track_id) = with_link {
             // Pad before the regex match so the 'track-link' u16 lives at
@@ -252,8 +283,8 @@ mod tests {
         buf.extend_from_slice(&[0, 0, 0, 0]);
         // signature
         buf.extend_from_slice(&sig);
-        // 4 zeros
-        buf.extend_from_slice(&[0, 0, 0, 0]);
+        // bytes 6-9: zeros, or the 0x03 0x10 variant ff ff 00 00.
+        buf.extend_from_slice(&bytes_6_9);
         // 2 control bytes (arbitrary)
         buf.extend_from_slice(&[0xAB, 0xCD]);
         // 2 zeros
@@ -354,6 +385,42 @@ mod tests {
         assert_eq!(found.len(), 1);
         assert_eq!(found[0].name, "Luscious Arp Layers");
         assert_eq!(found[0].kind, TrackKind::Instrument);
+    }
+
+    #[test]
+    fn recognises_03_10_instrument_with_ff_ff_variant_header() {
+        // cv9: Piano in for-my-lover.logicx uses signature 0x03 0x10 with
+        // bytes 6-9 = `ff ff 00 00` instead of the usual all-zeros block.
+        // Both the signature and the variant must be admitted.
+        let trailer = [0x35, 0x00, 0x00, 0xff, 0x00, 0x01, 0x00, 0x00];
+        let bytes = record_with_bytes_6_9(
+            [0x03, 0x10], "Piano", &trailer, None,
+            [0xff, 0xff, 0x00, 0x00],
+        );
+
+        let found = find_track_registry_records(&bytes);
+
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].name, "Piano");
+        assert_eq!(found[0].kind, TrackKind::Instrument);
+        assert_eq!(found[0].strip_id, 0x35); // 1-based storage ordinal = 53
+    }
+
+    #[test]
+    fn rejects_non_ff_variant_in_bytes_6_9() {
+        // Anything other than all-zeros or `ff ff 00 00` should be
+        // rejected as structural noise. Drums in for-my-lover used
+        // `68 00 00 00` here — it's not a real track-rename record,
+        // and admitting it would surface bogus names.
+        let trailer = [0x39, 0x00, 0x00, 0xff, 0x00, 0x01, 0x00, 0x00];
+        let bytes = record_with_bytes_6_9(
+            [0x03, 0x10], "Drums", &trailer, None,
+            [0x68, 0x00, 0x00, 0x00],
+        );
+
+        let found = find_track_registry_records(&bytes);
+
+        assert!(found.is_empty(), "expected no records, got {:?}", found);
     }
 
     #[test]
@@ -481,14 +548,32 @@ mod tests {
     }
 
     #[test]
-    fn strip_id_is_zero_for_non_audio_records() {
-        let trailer = [0x05, 0x00, 0, 0, 0, 0, 0, 0];
+    fn extracts_strip_id_for_instrument_records_too() {
+        // cv9: instrument registry entries carry a 1-based storage ordinal
+        // in the same trailer slot audio uses for the channel-strip number.
+        // pair_instruments_by_storage_index consumes this to join.
+        let trailer = [0x35, 0x00, 0, 0, 0, 0, 0, 0];
         let bytes = record([0x22, 0x12], "Piano", &trailer, None);
 
         let found = find_track_registry_records(&bytes);
 
         assert_eq!(found.len(), 1);
         assert_eq!(found[0].kind, TrackKind::Instrument);
+        assert_eq!(found[0].strip_id, 0x35);
+    }
+
+    #[test]
+    fn strip_id_is_zero_for_kinds_without_a_storage_ordinal() {
+        // SummingStack/Folder registry records use the trailer slot for
+        // their summing-stack pattern, not a storage ordinal. We don't
+        // extract strip_id for those.
+        let trailer = [0x54, 0x01, 0x00, 0x42, 0x00, 0x01, 0x00, 0x00];
+        let bytes = record([0x74, 0x10], "Sub 1", &trailer, None);
+
+        let found = find_track_registry_records(&bytes);
+
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].kind, TrackKind::SummingStack);
         assert_eq!(found[0].strip_id, 0);
     }
 
