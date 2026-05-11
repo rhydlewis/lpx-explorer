@@ -1,22 +1,31 @@
 # lpx-explorer
 
-Read-only macOS app for inspecting Logic Pro `.logicx` project bundles. See and search plug-ins, tracks, and project metadata without launching Logic. Built with Tauri 2 + React 19 + TypeScript + Rust.
+Read-only macOS app for inspecting Logic Pro `.logicx` project bundles. See and search plug-ins, tracks, and project metadata without launching Logic. Built with Tauri, React, TypeScript, Rust and Claude Code.
 
 ## Why this exists
 
-I have hundreds of Logic Pro projects on disk, many years old, with titles like "new idea", "new idea 2", and "3 tracks copy". Opening each one in Logic to remember what's inside takes an age — Logic is slow to launch, slower to load a project, and I can't easily browse across them. Another recurring problem: not every plug-in I've used is still installed, so some projects open with missing instruments and I don't find out until I'm already there.
+I have hundreds of Logic Pro projects (many years old) with titles like "new idea", "new idea 2", and "3 tracks copy". Opening each one in Logic to remember what's inside takes an age: Logic is slow to launch, slow to load a project, and I can't easily find out what's in each one. Additionally, not every plug-in I've used is installed on my mac, so some projects open with missing instruments and I don't find out until I'm already there.
 
-LPX Explorer answers two questions: **what's in this project?** and **will it open cleanly on this Mac?** by parsing the undocumented files (e.g. `ProjectData`) inside a `.logicx` bundle and cross-referencing the Audio Unit plug-ins within against the AUs installed on your machine, without launching Logic and without touching a byte of the bundle.
+LPX Explorer answers two questions: 
+1. **what's in this project?**
+2. **will this project open cleanly on this Mac?** 
+
+It does this by:
+1. parsing the undocumented files (e.g. `ProjectData`) inside a `.logicx` bundle
+2. cross-referencing the Audio Unit plug-ins referenced in a project against the AUs installed on your machine
+
+> [!INFO]
+LPX Explorer does this without launching Logic.
 
 ![Screenshot of the LPX Explorer inspector view: compatibility verdict band, project metadata, track list with insert pills, and plug-in rail with install-status badges.](./screenshot.png)
 
 ## Read-only by construction
 
-`.logicx` projects are irreplaceable user work. LPX Explorer is structurally incapable of writing to one:
+`.logicx` projects are irreplaceable user work if not backed up. I set out to make sure LPX Explorer is structurally incapable of changing files:
 
 - The Rust parser crate has a bytes-only API — `find_aus(&[u8])`, `find_tracks(&[u8])`, etc. It cannot open a file.
 - The Tauri command layer reads bytes once and routes them through the parser.
-- An integration test (`src-tauri/tests/readonly_invariant.rs`) snapshots SHA-256 + mtime around every parse path and asserts no byte changed.
+- An integration test (`src-tauri/crates/lpx-parser/tests/readonly_invariant.rs`) snapshots SHA-256 + mtime around the parser and asserts no byte changed.
 - CI fails if the invariant fails. It is gated, not aspirational.
 
 However...
@@ -28,20 +37,21 @@ However...
 
 ### Pick a project, see the details
 
-- Compatibility verdict band — `clean` / `warnings` / `will-not-open`, with a CTA that jumps to the first missing plug-in.
-- Screenshot of each alternative (if available)
-- Project metadata — key, BPM, time signature, sample rate, dates, bundle size.
-- Track list — kind (audio / instrument / folder / summing-stack), user-renamed names recovered from region records and the track registry, with expandable insert chains rendered as colour-coded pills (instrument / FX / MIDI).
-- Plug-in rail — every AU referenced by the project, grouped by category, with install-status badges resolved against the local Audio Unit registry. Per-row actions for missing plug-ins (search, copy fingerprint) and an opt-in mono fingerprint sub-line for triage.
+- Compatibility verdict `clean` / `warnings` / `will-not-open` with a call to action that jumps to the first missing plug-in.
+- Screenshots of each project alternative (if available) acts as a switcher between alternatives
+- Project metadata: key, BPM, time signature, sample rate, dates, bundle size.
+- Track list: kind (audio / instrument / folder), user-renamed names recovered from region records and the track registry, with expandable insert chains rendered as colour-coded pills (instrument / FX / MIDI).
+- Plug-in rail — every AU referenced by the project, grouped by category, with install-status badges resolved against the local Audio Unit registry. Per-row actions for missing plug-ins (search, copy fingerprint).
 
 ### Pick a folder, see the library
 
-- Recursive scan of each `.logicx` bundle with idle-aware progress and per-project parse cache.
-- Tile grid — name, musical line (key + BPM), counts, size; click to open.
-- Folder rail with search; recent projects and recent folders surface in the native File menu.
-- Plug-in rail flips to library scope — `47 plug-ins · 3 missing across 12 projects` — and each row expands to the contributing project paths.
+- Recursive scan of each `.logicx` bundle with idle-aware progress and per-project parsing cache.
+- Tile grid: name, musical line (key + BPM), counts, size
+- Click to open and see details from the individual project view.
+- Project & folder sidebar with search; recent projects and recent folders surface in the native File menu.
+- Plug-in sidebar flips to library scope — `47 plug-ins · 3 missing across 12 projects`.
 
-Tested against roughly **[150 projects across ~20 GB]** without trouble.
+Tested against a folder of roughly **[150 projects across ~25 GB]** without trouble.
 
 ### System integration
 
@@ -53,8 +63,8 @@ Tested against roughly **[150 projects across ~20 GB]** without trouble.
 
 There are two projects in this family:
 
-- **[`lpx-toolkit`](https://github.com/rhydlewis/lpx-toolkit)** — the original Python CLI. Built first as a proof-of-concept to understand the `.logicx` binary structure, a working command-line tool.
-- **`lpx-explorer`** (this repo) — the macOS desktop app. Rust parser, native UI, idle-aware library scans.
+- **[`lpx-toolkit`](https://github.com/rhydlewis/lpx-toolkit)** — the original Python CLI. Built first as a proof-of-concept to understand the `.logicx` binary structure.
+- **`lpx-explorer`** (this repo) — the macOS desktop app.
 
 The Rust parser crate (`lpx-parser`) is the long-term home for `.logicx` format knowledge. Future PyO3 bindings will let the Python CLI consume it directly so the format knowledge has one home.
 
@@ -64,7 +74,7 @@ LPX Explorer checks Audio Unit (AU) plug-ins only. The registry is populated by 
 
 ## Install
 
-<!-- TODO: update with download link / DMG instructions for the latest notarized release -->
+Download latest `.dmg` file from [https://github.com/rhydlewis/lpx-explorer/releases](https://github.com/rhydlewis/lpx-explorer/releases).
 
 ## Build
 
