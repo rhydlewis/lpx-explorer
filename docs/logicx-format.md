@@ -85,11 +85,11 @@ Verified against representative `.logicx` bundles produced by Logic Pro 11:
 
 * Alternative directories are **zero-padded three-digit indices**
   (`000`, `001`, …). The Tauri command at
-  `../../src-tauri/src/commands.rs:230-234` constructs paths via
+  `../../src-tauri/src/commands.rs:298-300` constructs paths via
   `format!("{variant_index:03}")`.
 * A bundle with no `ProjectInformation.plist` is treated as
   single-variant (synthetic `Alternative { 0, <bundle name>, true }`) —
-  see `../../src-tauri/src/commands.rs:200-211`.
+  see `../../src-tauri/src/commands.rs:222-232`.
 * Bundle filesystem stats (size, ctime, mtime) are recursive sums and
   must be computed at the directory level — macOS does not maintain
   these for packages. See `../../src-tauri/src/bundle.rs:26-45`.
@@ -107,7 +107,7 @@ Five distinct record types are recovered, each by an independent scan.
 
 Anchor: the AU **type** 4CC, stored little-endian, scanned for as one
 of `umua`, `xfua`, `fmua`, `imua` (reversed `aumu`, `aufx`, `aumf`,
-`aumi`). Defined at `src/lib.rs:67-72`.
+`aumi`). Defined at `src/lib.rs:70-75`.
 
 Layout (offsets relative to the type-code anchor `T`):
 
@@ -121,15 +121,15 @@ Layout (offsets relative to the type-code anchor `T`):
 
 * All three 4CCs **must be printable ASCII (0x20–0x7e)** or the candidate
   is discarded — guards against the AU-type bytes appearing by chance in
-  binary noise (`src/lib.rs:144-146`).
+  binary noise (`src/lib.rs:147-149`).
 * The three codes are reversed before display so they match `auval -l`
-  output (`src/lib.rs:75-79`).
+  output (`src/lib.rs:77-82`).
 * Fingerprint format: `"{type}/{subtype}/{manufacturer}"`. Trailing/leading
   spaces in any 4CC are **significant** — Kilohearts manufacturer is `"kHs "`,
   Soundtoys EchoBoy subtype is `"EB  "`. See
-  `src/auval.rs:26-32`.
+  `src/auval.rs:33-37`.
 
-Type semantics (`src/lib.rs:67-72`, `src/tracks.rs:220-228`):
+Type semantics (`src/lib.rs:70-75`, `src/tracks.rs:273-281`):
 
 | 4CC (display) | Stored as | Meaning |
 |---|---|---|
@@ -139,7 +139,7 @@ Type semantics (`src/lib.rs:67-72`, `src/tracks.rs:220-228`):
 | `aumi` | `imua` | MIDI processor (`kAudioUnitType_MIDIProcessor`) |
 
 `aumf` and `aumi` both render as MIDI FX in Logic's UI; the parser's
-`assign_aus` lumps them into `midi_fx` (`src/tracks.rs:226`).
+`assign_aus` lumps them into `midi_fx` (`src/tracks.rs:279`).
 
 #### 3.1.2 Apple stock plug-in slots — `GAME` anchor
 
@@ -216,7 +216,7 @@ hits by byte-offset proximity:
   channel strip (`src/apple_drummer.rs:80-82`).
 
 Known character → display-name mapping
-(`src/apple_drummer.rs:111-115`):
+(`src/apple_drummer.rs:110-116`):
 
 | Type identifier | Display name |
 |---|---|
@@ -234,7 +234,7 @@ Anchor: a 16-byte **name field** that opens with `0x20` (a literal space
 that is part of the format), preceded by a NUL byte. The name field is
 followed by an 8-byte descriptor.
 
-Defined in `src/tracks.rs:300-362`. Layout:
+Defined in `src/tracks.rs:353-415`. Layout:
 
 ```
   N-1   N ───────── name field (16 bytes) ──────── N+16 ── descriptor (8 bytes) ──
@@ -244,14 +244,14 @@ Defined in `src/tracks.rs:300-362`. Layout:
 ```
 
 * Index `N` must satisfy `raw[N-1] == 0x00` and `raw[N] == 0x20`
-  (`src/tracks.rs:307-314`). The leading-NUL guard avoids matching mid-record.
+  (`src/tracks.rs:360-367`). The leading-NUL guard avoids matching mid-record.
 * The ASCII name is `[0x21..=0x7e]` then `[0x20..=0x7e]{0,14}`, terminated
   by NUL or end-of-field. Bytes after the name **must all be NUL**
-  (`src/tracks.rs:269-298`). Whitespace-only names are skipped.
+  (`src/tracks.rs:322-351`). Whitespace-only names are skipped.
 * `descriptor[3] & 0xC0 == 0xC0` is mandatory — guards against random `0x20`
-  bytes (`src/tracks.rs:329-332`).
+  bytes (`src/tracks.rs:382-385`).
 
-Descriptor → track kind (`src/tracks.rs:234-258`):
+Descriptor → track kind (`src/tracks.rs:287-311`):
 
 | `head` (descriptor[0]) | Other bytes | Kind |
 |---|---|---|
@@ -264,7 +264,7 @@ Descriptor → track kind (`src/tracks.rs:234-258`):
 | `0x29` | otherwise | Input |
 | any other | — | Unknown |
 
-Active flag (`src/tracks.rs:262-264`):
+Active flag (`src/tracks.rs:315-317`):
 
 ```
 is_active  =  (descriptor[2] & 0x04) != 0
@@ -281,7 +281,7 @@ Bytes 5–7 are not read at all — see §4.
 
 User-given track names (e.g. `Acoustic GTR`) live in **audio region records**
 in the binary section, not in the channel-strip records. Defined at
-`src/regions.rs:38-76`.
+`src/regions.rs:40-76`.
 
 Anchor: `0x61 0xff` followed by **24 NUL bytes** (`src/regions.rs:19-22`),
 then a length-prefixed ASCII name:
@@ -299,7 +299,7 @@ then a length-prefixed ASCII name:
   (`src/regions.rs:60-62`).
 * The 4 bytes preceding the marker are an opaque "id" field — read by the
   Python implementation as part of the region header but **ignored by the
-  Rust scanner** (the test fixture at `src/regions.rs:344-352` plants
+  Rust scanner** (the test fixture at `src/regions.rs:342-352` plants
   arbitrary printable bytes there).
 
 Regions are then **clustered** by `cluster_regions` (`src/regions.rs:314-336`):
@@ -315,7 +315,8 @@ base name matches Logic's auto-generated channel-strip pattern
 (`Audio N`, `Inst N`, `Bus N`, `Aux N`, `Input N`, `Output N` /
 `Output N-N`, or bare `Master`) are skipped so that an explicit user
 rename later in the file wins
-(`src/regions.rs:208-250`; `src/tracks.rs:65-86`).
+(`src/regions.rs:208-250`; skip call in `assign_user_names` at
+`src/tracks.rs:71-73`).
 
 #### 3.1.6 Track-registry records
 
@@ -324,21 +325,24 @@ from the channel-strip records of §3.1.4**. It carries one entry per
 user-visible track in the Tracks Area — including header summing-stacks
 and folder containers (whose channel-strip children are returned by
 `find_tracks` but who do not themselves appear there). Defined at
-`src/tracks_registry.rs:93-188`.
+`src/tracks_registry.rs:105-218`.
 
 Layout:
 
 ```
-   ┌──────────────┬─────┬──────────────┬─────────┬──────────┬────────┬────────────┐
-   │ 4 × 0x00     │ SIG │ 4 × 0x00     │ CTRL×2  │ 2 × 0x00 │ LEN_LO │ name (LEN) │
-   └──────────────┴─────┴──────────────┴─────────┴──────────┴────┬───┴────────────┘
-        i+0..3    i+4..5    i+6..9      i+10..11   i+12..13     │      i+16..
-                                                                LEN_HI (must be 0x00)
-                                                                at i+15
+   ┌──────────────┬─────┬──────────────┬─────────┬──────────┬───────────┬────────────┐
+   │ 4 × 0x00     │ SIG │ header (4)   │ CTRL×2  │ 2 × 0x00 │ LEN_LO/HI │ name (LEN) │
+   └──────────────┴─────┴──────────────┴─────────┴──────────┴───────────┴────────────┘
+        i+0..3    i+4..5    i+6..9      i+10..11  i+12..13    i+14..15      i+16..
+                              │                                  │
+                              │                                  ├─ LEN_LO at i+14 (1..=200)
+                              │                                  └─ LEN_HI at i+15 (must be 0x00)
+                              │
+                              └─ Three accepted patterns (see below)
 ```
 
 * `SIG` is a 2-byte signature looked up in the whitelist
-  (`src/tracks_registry.rs:33-57`). Different track kinds use different
+  (`src/tracks_registry.rs:33-66`). Different track kinds use different
   signatures:
 
 | Signature | Kind | Notes |
@@ -347,6 +351,9 @@ Layout:
 | `a8 11` | Instrument | single-instrument variant |
 | `da 11` | Instrument | Apple stock-instrument variant |
 | `e7 10` | Instrument | sampler / Alchemy variant |
+| `03 10` | Instrument | stand-alone-instrument variant; uses `ff ff 00 00` header (see §3.1.6 *Accepted header patterns*) |
+| `4d 10` | Instrument | Bass-style variant; uses `XX 00 00 00` header with byte 6 = `0x6c` |
+| `5f 11` | Instrument | Drums-style variant; uses `XX 00 00 00` header with byte 6 = `0x68` |
 | `23 12` | Audio | audio tracks (most common) |
 | `dc 11` | Audio | audio tracks (variant) |
 | `df 11` | Audio | audio tracks (variant) |
@@ -361,8 +368,10 @@ Layout:
 | `e4 10` | Folder | sub-folder variant |
 | `eb 11` | Folder | sub-folder variant |
 | `e7 11` | Folder | sub-folder variant |
+| `0d 10` | Folder | sub-folder variant (Backline) |
+| `8d 11` | Folder | sub-folder variant (Keys & Synths) |
 
-The six folder signatures were observed across different folder records;
+The eight folder signatures were observed across different folder records;
 **what the signature variation actually encodes is unknown** (see §4.2).
 Earlier notes in `lpx-toolkit/CLAUDE.md` annotate each signature with a
 category guess (percussion / dialogue / keys / etc.), but those categories
@@ -373,40 +382,56 @@ or something else — none of these has been verified.
 
 Note the **close collision** between `e7 10` (Instrument) and `e7 11`
 (Folder) — only the high byte distinguishes them
-(`src/tracks_registry.rs:36, 56`).
+(`src/tracks_registry.rs:37, 63`).
+
+##### Accepted header patterns (bytes `i+6..9`)
+
+The 4 bytes at `i+6..9` admit **three distinct patterns**
+(`src/tracks_registry.rs:127-143`). The signature whitelist above is the
+safety filter for the permissive patterns — unrecognised signatures still
+drop.
+
+| Pattern | Used by | Meaning |
+|---|---|---|
+| `00 00 00 00` | most signatures | Standard track-registry record |
+| `ff ff 00 00` | `03 10` | Stand-alone-instrument variant (Piano in `for-my-lover.logicx`) |
+| `XX 00 00 00` | `4d 10`, `5f 11` | Byte 6 carries a category flag; bytes 7-9 must be zero. Observed: `0x6c` (Bass), `0x68` (Drums) |
+
+Bytes 7-9 must always be zero — only byte 6 is permissive in pattern 3.
 
 * `LEN_LO` is the name length in `1..=200`; `LEN_HI` must be `0x00`
-  (`src/tracks_registry.rs:21, 126-130`). Names are printable ASCII.
-* `CTRL×2` (the 2 control bytes at `i+10..11`) are **read but not
-  validated**; the parser treats them as opaque. The lpx-toolkit
-  `CLAUDE.md` notes they encode "a track index/ID-like value, not
-  visibility" — see §4.
+  (`src/tracks_registry.rs:21, 149-153`). Names are printable ASCII.
+* `CTRL×2` (the 2 control bytes at `i+10..11`) are **skipped over,
+  never read**; the parser only checks that the 2 bytes following
+  (`i+12..13`) are zero. The lpx-toolkit `CLAUDE.md` notes the
+  control bytes encode "a track index/ID-like value, not visibility"
+  — see §4.
 * A whitelist of system-internal placeholder names is filtered
-  (`src/tracks_registry.rs:65-77`). `"Untitled"` is **deliberately not**
+  (`src/tracks_registry.rs:74-86`). `"Untitled"` is **deliberately not**
   in the noise list — it is a real user-facing name in Logic's UI and
   the count must match channel-strip records for ordinal pairing
-  (`src/tracks_registry.rs:60-64`, test at line 380-393).
+  (`src/tracks_registry.rs:68-73`, test at lines 483-497).
 
 ##### Summing-stack discriminator
 
 A folder-signature record is upgraded to `SummingStack` when its trailer
-matches `XX 01 00 NN 00 01` (`src/tracks_registry.rs:198-207`):
+matches `XX 01 00 NN 00 01` (`src/tracks_registry.rs:228-237`):
 
 ```
   trailer:   XX  01  00  NN  00  01   …
              └─ varies, ≈ 0x54 + sub_number
-                            └─ Sub number
+                         └─ Sub number (at trailer[3])
 ```
 
 Some records emit a trailing NUL after the name, so the pattern is
 accepted at offset 0 *or* offset 1. Aux Stacks and folder children carry
 `XX 00 00 ff 00 01` — second byte `0x00`, not `0x01` — and stay as
-`Folder` (test at `src/tracks_registry.rs:425-435`).
+`Folder` (test at `src/tracks_registry.rs:529-539`).
 
 ##### Audio strip-id
 
 For audio-kind records the **channel-strip number** is decoded from the
-trailer as the first non-zero `u16` LE (`src/tracks_registry.rs:213-227`):
+trailer as the first non-zero `u16` LE (`src/tracks_registry.rs:245-259`):
 
 ```
   post_name:  ┌───┬───┬───┐
@@ -421,17 +446,17 @@ trailer as the first non-zero `u16` LE (`src/tracks_registry.rs:213-227`):
 The 512-cap rejects bogus IDs from records that share the audio shape
 but encode something else (e.g. arrangement-marker / song-title records
 under signature `9a 11`, whose trailers can decode to strip IDs in the
-hundreds — see `src/tracks_registry.rs:30-32`). The same project-aware
+hundreds — see `src/tracks_registry.rs:26-32`). The same project-aware
 filter runs at name-pairing time:
 `pair_audio_by_strip_id` drops any registry entry whose `strip_id`
 exceeds the project's max audio strip number
-(`src/tracks.rs:127-172`).
+(`src/tracks.rs:173-218`).
 
 ##### Per-track ID
 
-A 32-byte "track-link" structure precedes each registry record. Bytes
+A 64-byte "track-link" structure precedes each registry record. Bytes
 2–3 hold a `u16 LE` per-track ID. The Rust port reads this at
-**offset −62** from the record start (`src/tracks_registry.rs:161-165`):
+**offset −62** from the record start (`src/tracks_registry.rs:185-189`):
 
 ```rust
 let track_id: u16 = if i >= 62 {
@@ -441,11 +466,11 @@ let track_id: u16 = if i >= 62 {
 };
 ```
 
-Note: lpx-toolkit's `CLAUDE.md` line 38 documents this preamble as **64
-bytes** (track_id at structure offset +2 → file offset −64+2 = −62);
-the same file's Rust port doc-comment at `src/tracks_registry.rs:86`
-calls it **"32-byte"**. The arithmetic only consistent with `−62` is
-the 64-byte version. Flagged as documentation drift in §4.
+The preamble is 64 bytes long: the `u16 LE` track-id at structure
+offset +2 lands at file offset −64+2 = −62. (The `TrackRegistryEntry`
+doc-comment at `src/tracks_registry.rs:93-95` still calls this a
+"32-byte" structure — that's stale wording; the arithmetic is only
+consistent with 64 bytes. Flagged in §4.)
 
 ##### Per-track focus byte
 
@@ -523,7 +548,7 @@ Resolution:
   (`src/alternatives.rs:75-79`).
 * `{PROJECT_NAME}` is substituted with the bundle's basename
   minus `.logicx` (`src/alternatives.rs:42, 92-104`;
-  `../../src-tauri/src/commands.rs:171-177`).
+  `../../src-tauri/src/commands.rs:189-195`).
 * Numeric keys are sorted numerically, not lexically — binary-plist dicts
   don't preserve order (`src/alternatives.rs:80, 219-237`).
 * The variant whose index equals `ActiveVariant` gets `is_active = true`
@@ -599,15 +624,15 @@ Each item is grounded in code with a `file:line` citation. **Category
 * **(c) Descriptor bytes 5–7 are unread.** The 8-byte descriptor is
   inspected only at indices 0–4. Bytes 5–7 may carry routing /
   visibility / colour information; nobody has investigated. Cite
-  `src/tracks.rs:234-264`.
+  `src/tracks.rs:287-317`.
 * **(c) Descriptor[4] activity signal — value semantics unknown.**
   Treated as a boolean ("non-zero ⇒ active"). The lpx-toolkit comment at
   `lpx_inspect.py:90-94` says it flips on for "sends, routing, etc.
   customisation" but does not enumerate. Cite
-  `src/tracks.rs:262-264`.
+  `src/tracks.rs:315-317`.
 * **(d) `0x29` head byte: `b2 ∈ {0xF3, 0xF7}` ⇒ Instrument, else Input.**
   Both values are accepted with no documentation of what differentiates
-  them. Cite `src/tracks.rs:249-255`.
+  them. Cite `src/tracks.rs:302-308`.
 * **(c) Hidden-track flag location is unknown.** lpx-toolkit's
   `CLAUDE.md:141-143` is explicit: "The hidden flag is somewhere else …
   Open until ground-truth-driven analysis identifies the right field."
@@ -620,28 +645,32 @@ Each item is grounded in code with a `file:line` citation. **Category
 
 ### 4.2 `ProjectData` — track-registry records
 
-* **(c) Signature `03 10` (stand-alone instrument) is intentionally not
-  whitelisted.** A real registry record exists for it but the current
-  ordinal-pairing logic would mis-attribute its name, so it is omitted
-  "until proper join-key research". Cite
-  `src/tracks_registry.rs:38-42`.
-* **(c) Control bytes at `i+10..11` are opaque.** The parser accepts
-  any value and never re-reads them. lpx-toolkit's `CLAUDE.md:141`
-  notes they encode "a track index/ID-like value, not visibility".
-  Cite `src/tracks_registry.rs:120, 234-258` (no validation in code).
+* **(d) `bytes 6..9` header semantics are partially understood.** Three
+  patterns are accepted (§3.1.6 *Accepted header patterns*):
+  `00 00 00 00`, `ff ff 00 00`, and `XX 00 00 00` where byte 6 is a
+  category flag observed as `0x6c` (Bass) or `0x68` (Drums) under
+  signatures `4d 10` and `5f 11` respectively. **What byte 6 actually
+  encodes is not catalogued** — only those two values have been
+  observed; the parser currently admits any non-zero byte 6 as long as
+  bytes 7-9 are zero. Cite `src/tracks_registry.rs:127-143`.
+* **(c) Control bytes at `i+10..11` are opaque — and never read.**
+  The parser steps over them entirely; it only validates that the
+  following 2 bytes at `i+12..13` are zero. lpx-toolkit's `CLAUDE.md:141`
+  notes the control bytes encode "a track index/ID-like value, not
+  visibility". Cite `src/tracks_registry.rs:144-148`.
 * **(c) Per-track focus byte (preamble[0]) is not extracted.** Documented
   in lpx-toolkit `CLAUDE.md:40` as the Logic-selected-track flag, but
   the Rust parser only reads bytes 2–3 of the preamble. Cite
-  `src/tracks_registry.rs:161-165` (offset −62 is read; offset −64
+  `src/tracks_registry.rs:185-189` (offset −62 is read; offset −64
   is not).
-* **(d) Preamble length: doc says "32-byte" but code reads at −62.**
-  Doc-comment at `src/tracks_registry.rs:86` calls the structure
-  "32-byte"; lpx-toolkit `CLAUDE.md:38` calls it "64-byte". The
-  arithmetic (`−62` for `track_id` at structure-offset 2)
+* **(d) Preamble length: source doc-comment says "32-byte" but code
+  reads at −62.** Doc-comment at `src/tracks_registry.rs:93-95` calls
+  the structure "32-byte"; lpx-toolkit `CLAUDE.md:38` calls it
+  "64-byte". The arithmetic (`−62` for `track_id` at structure-offset 2)
   is consistent only with the 64-byte version. The 32-byte phrasing
   in the Rust source is **doc drift**.
 * **(c) `strip_id` decoding heuristic.** The "first non-zero u16 LE
-  in `(0, 512)`" rule (`src/tracks_registry.rs:213-227`) is empirical:
+  in `(0, 512)`" rule (`src/tracks_registry.rs:245-259`) is empirical:
   the 512 cap is a magic constant chosen because Logic projects do not
   exceed ~256 audio strips in practice, but the precise upper bound is
   not derivable from the format. Records under signature `9a 11`
@@ -649,14 +678,14 @@ Each item is grounded in code with a `file:line` citation. **Category
   markers / song-title records that share the same outer shape) are
   rejected only because the pairing layer applies a project-max-strips
   secondary filter — the registry-record decoder itself would happily
-  emit them. Cite `src/tracks.rs:127-148`.
+  emit them. Cite `src/tracks.rs:173-218`.
 * **(d) Trailer `XX` byte in summing-stack discriminator is read but
   not used.** The "≈ `0x54 + sub_number`" mapping (lpx-toolkit
   `CLAUDE.md:137`) is documented but not parsed; only the
   positional NUL-pattern `_1_0_NN_0_1` is checked. Sub number `NN` at
   trailer[3] is also read but not surfaced. Cite
-  `src/tracks_registry.rs:198-207`.
-* **(d) Folder-signature semantics are unidentified.** Six
+  `src/tracks_registry.rs:228-237`.
+* **(d) Folder-signature semantics are unidentified.** Eight
   signatures all map to `Folder` (§3.1.6 table). What the signature
   variation encodes is unknown. The category guesses in
   `lpx-toolkit/CLAUDE.md:122-129` (percussion, dialogue, keys, …) are
@@ -667,7 +696,7 @@ Each item is grounded in code with a `file:line` citation. **Category
   folder colour, folder icon, child-track kind, creation order, or
   Folder Stack vs Aux Stack vs Track Stack distinction. lpx-toolkit
   `CLAUDE.md:139` flags the broader Folder/Aux Stack/Track Stack
-  question as a follow-up. Cite `src/tracks_registry.rs:51-57`.
+  question as a follow-up. Cite `src/tracks_registry.rs:58-65`.
 * **(c) Bus signatures are deliberately not in the whitelist.**
   `24 12`, `30 11`, `38 11`, `f5 11` "share the outer structure but
   are filtered out — buses live on the channel-strip side".
@@ -687,7 +716,7 @@ Each item is grounded in code with a `file:line` citation. **Category
   not read.** They look like an opaque "id" field. The Rust scanner
   starts its window at the marker and never inspects them — see the
   test fixture which plants `b"ID01"` arbitrarily
-  (`src/regions.rs:344-352`). lpx-toolkit's investigation found these
+  (`src/regions.rs:342-352`). lpx-toolkit's investigation found these
   vary per region within the same track, so they are *not* a track key,
   but no other purpose has been pinned down.
 * **(d) `REGION_NAME_MAX_LEN = 200`** is an empirical cap to filter
@@ -701,7 +730,7 @@ Each item is grounded in code with a `file:line` citation. **Category
   type-code anchor (see `lpx_inspect.py:721`). The Rust port
   intentionally does not — `AURef::display_name` is `None` for
   3rd-party AUs found via the 4CC-triple strategy and the application
-  layer relies on `auval -l` lookup. Cite `src/lib.rs:48-54, 121-127`.
+  layer relies on `auval -l` lookup. Cite `src/lib.rs:48-57, 124-130`.
   Whether this is "format unknown" or "feature deferred" depends on
   perspective, but the byte-layout of the display-name field
   (~11 chars, terminator) is documented only in lpx-toolkit's
@@ -725,7 +754,7 @@ Each item is grounded in code with a `file:line` citation. **Category
 * **(c) Known-character map for Drummer / Bass Player has 2 entries.**
   Any other `Type_*` identifier falls back to the stripped suffix and
   surfaces as the verbatim identifier. Cite
-  `src/apple_drummer.rs:111-115`.
+  `src/apple_drummer.rs:110-116`.
 * **(d) Apple-stock `flag1` accepts only `0x00` and `0x02`.** Any
   other value is rejected as noise. Whether other flag values exist
   in newer Logic versions is not investigated. Cite
@@ -752,7 +781,7 @@ Each item is grounded in code with a `file:line` citation. **Category
   `CLAUDE.md:101`. Not parsed.
 * **(c) Track-header records (`\x70\x03\x01\x00` signature)** are
   parsed by Python's `find_track_header_records` but **not ported to
-  Rust**. lpx-toolkit `CLAUDE.md:113`. Discrepancy: `src/lib.rs:10-17`
+  Rust**. lpx-toolkit `CLAUDE.md:113`. Discrepancy: `src/lib.rs:12-19`
   declares no `tracks_header` module.
 
 ### 4.6 `MetaData.plist` and `ProjectInformation.plist`
@@ -760,7 +789,7 @@ Each item is grounded in code with a `file:line` citation. **Category
 * **(d) `FrameRateIndex` integer enum is not decoded.** The parser
   surfaces the raw index; the mapping (e.g. 1 ⇒ 24fps?) is not
   catalogued anywhere in this repo. Cite
-  `src/metadata.rs:24, 58`.
+  `src/metadata.rs:25, 58`.
 * **(d) `AudioFiles` and `ImpulsResponsesFiles` arrays are counted
   but not introspected.** Their entry shape (paths? bookmarks?
   per-file metadata?) is opaque to the parser. Cite
@@ -779,7 +808,7 @@ Each item is grounded in code with a `file:line` citation. **Category
   the implementation has expanded to include `aumi` (MIDI processor)
   *and* the GAME-anchor stock-plug-in scan *and* the JSON-anchor
   Drummer/Bass Player scan. Documentation drift, not parser bug. See
-  `src/lib.rs:67-72, 130-132`.
+  `src/lib.rs:70-75, 133-134`.
 
 ---
 
@@ -815,10 +844,11 @@ clean-room parser.
    Likely candidates given the read bits' semantics (kind, active):
    stereo/mono mode, freeze status, send count, monitor enable,
    colour. §4.1.
-5. **Investigate signature `03 10`.** A real registry record exists
-   for it; the parser leaves it on the floor to avoid mis-attribution.
-   §4.2; `src/tracks_registry.rs:38-42`. Most likely needs a different
-   join key than `pair_instruments_by_ordinal`.
+5. **Identify what byte 6 of the registry header encodes** under the
+   `XX 00 00 00` variant (signatures `4d 10` / `5f 11`). Only two values
+   are observed — `0x6c` (Bass) and `0x68` (Drums) — but the parser
+   admits any non-zero byte. Likely a category / kind discriminator,
+   but unverified. §4.2; `src/tracks_registry.rs:127-143`.
 6. **Decode the 4 bytes preceding the `0x61 0xff` region marker.**
    They vary per region within a track, so they're either a region
    ID or a pointer. If a region ID, they likely cross-reference into
@@ -831,6 +861,7 @@ clean-room parser.
    admits the divergence and documents the gap.
 9. **Investigate `DisplayState.plist`.** Likely contains the hidden-
    track flag (1) and the track-row order (§4.1). §4.6.
-10. **Reconcile the 32/64-byte preamble doc drift** in
-    `src/tracks_registry.rs:86`. §4.7. Trivial, but corrosive to
+10. **Reconcile the 32/64-byte preamble doc drift** in the
+    `TrackRegistryEntry.track_id` doc-comment at
+    `src/tracks_registry.rs:93-95`. §4.7. Trivial, but corrosive to
     trust if left.
