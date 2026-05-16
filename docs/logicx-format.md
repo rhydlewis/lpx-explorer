@@ -112,7 +112,7 @@ of `umua`, `xfua`, `fmua`, `imua` (reversed `aumu`, `aufx`, `aumf`,
 Layout (offsets relative to the type-code anchor `T`):
 
 ```
-  T-4 ─┬─────┐  T ─┬─────┐  T+4 ─┬─────┐
+  T-4 ─┬─────┐  T ─┬─────┐ T+4 ─┬─────┐
        │ MFR │     │ TYP │      │ SUB │
        └─────┘     └─────┘      └─────┘
        4 bytes     4 bytes      4 bytes
@@ -150,13 +150,13 @@ the literal ASCII `GAME` 4CC marker. Defined in `src/apple_stock.rs`.
 Layout (offsets relative to the `G` of `GAME`):
 
 ```
-  -14   -13    -12         …            0    +4
-   │     │     ╔══════════════════════╗  │     │
-   │     │     ║  12-byte ASCII name  ║  │     │
-   │     │     ║  null-padded         ║  │     │
+  -14   -13       -12      …                 0    +4
+   │     │         ╔══════════════════════╗  │     │
+   │     │         ║  12-byte ASCII name  ║  │     │
+   │     │         ║  null-padded         ║  │     │
    │ flag1 │ flag2 ╚══════════════════════╝  GAME ╔═══╗
-   └──┬──┘ └──┬──┘                              ║...║
-      │       │                                 ╚═══╝
+   └──┬──┘ └──┬──┘                                ║...║
+      │       │                                   ╚═══╝
       │       └──── flag2: 0x02 (FX/instrument) or 0x01 (Klopfgeist).
       │             Other values reject the candidate.
       │             (src/apple_stock.rs:49-50, 106)
