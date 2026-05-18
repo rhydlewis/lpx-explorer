@@ -119,3 +119,36 @@
   color: var(--c-text-muted);
   margin: 0;
 }
+
+/*
+ * "Now playing" dock — full-width block below the inventory. PM call
+ * (lpx-explorer-34y screenshot review): the native <audio> element is
+ * display:inline by default and was rendering on the same baseline as
+ * the expand toggle. block + width:100% gives the player its own row;
+ * margin-top separates it from whatever's above (toggle or row list).
+ */
+.nowPlaying {
+  display: block;
+  margin-top: var(--s-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+}
+
+.nowPlayingLabel {
+  font-size: var(--fs-caption);
+  color: var(--c-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nowPlayingLabel strong {
+  font-weight: 600;
+  color: var(--c-text-secondary);
+}
+
+.audioPlayer {
+  display: block;
+  width: 100%;
+}

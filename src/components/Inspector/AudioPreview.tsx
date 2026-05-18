@@ -163,16 +163,25 @@ export function AudioPreview({ path }: Props) {
       )}
 
       {playingPath !== null && (
-        <audio
-          // `key` forces remount on src change so the browser doesn't
-          // queue the old src's data while the new one loads — keeps
-          // the single-player invariant honest.
-          key={playingPath}
-          src={convertFileSrc(playingPath)}
-          autoPlay
-          controls
-          onEnded={() => setPlayingPath(null)}
-        />
+        <div className={styles.nowPlaying}>
+          <span className={styles.nowPlayingLabel}>
+            Now playing:{" "}
+            <strong>
+              {files.find((f) => f.path === playingPath)?.file_name ?? ""}
+            </strong>
+          </span>
+          <audio
+            // `key` forces remount on src change so the browser doesn't
+            // queue the old src's data while the new one loads — keeps
+            // the single-player invariant honest.
+            key={playingPath}
+            className={styles.audioPlayer}
+            src={convertFileSrc(playingPath)}
+            autoPlay
+            controls
+            onEnded={() => setPlayingPath(null)}
+          />
+        </div>
       )}
     </section>
   );
