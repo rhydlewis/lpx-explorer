@@ -26,6 +26,26 @@ function formatBytes(n: number): string {
   return `${(n / (1024 * 1024 * 1024)).toFixed(2)} GB`;
 }
 
+/**
+ * mm:ss for short clips, h:mm:ss when ≥ 1 hour. AIFF/WAV durations
+ * Logic produces in real projects span single-digit seconds (regions)
+ * to multi-minute bounces — both cases must read cleanly.
+ */
+function formatDuration(seconds: number | null | undefined): string | null {
+  if (seconds === null || seconds === undefined || !Number.isFinite(seconds)) {
+    return null;
+  }
+  const total = Math.max(0, Math.round(seconds));
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  const ss = s.toString().padStart(2, "0");
+  if (h > 0) {
+    return `${h}:${m.toString().padStart(2, "0")}:${ss}`;
+  }
+  return `${m}:${ss}`;
+}
+
 const CAF_NOT_SUPPORTED_TITLE =
   "Format not supported in preview — CAF can't play in WebView";
 
@@ -160,6 +180,11 @@ export function AudioPreview({ path }: Props) {
                 <span className={styles.rowCategory}>
                   {CATEGORY_LABEL[file.category]}
                 </span>
+                {formatDuration(file.duration_seconds) !== null && (
+                  <span className={styles.rowDuration}>
+                    {formatDuration(file.duration_seconds)}
+                  </span>
+                )}
                 <span className={styles.rowSize}>
                   {formatBytes(file.size_bytes)}
                 </span>

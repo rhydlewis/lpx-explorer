@@ -12,6 +12,8 @@ use std::path::Path;
 
 use serde::Serialize;
 
+use crate::audio_duration::read_duration;
+
 /// Logic's three audio storage buckets. Drives the smart-pick fallback
 /// chain (Bounce → AudioRegion → FreezeFile) and the UI label that tells
 /// the user *what* they're listening to.
@@ -27,7 +29,11 @@ pub enum AudioCategory {
 }
 
 /// One audio file found inside a `.logicx` bundle.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+//
+// `Eq` deliberately omitted — `duration_seconds: Option<f64>` violates
+// total equality. `PartialEq` is enough for the test asserts; we never
+// hash or BTree-key these.
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct AudioFile {
     /// Absolute path to the file. Pass through `convertFileSrc` for
     /// `<audio src>` use — the `**/*.logicx/**` asset-protocol scope
@@ -43,6 +49,12 @@ pub struct AudioFile {
     /// file natively (AIFF/AIF/WAV/MP3/M4A/AAC). `false` for CAF, which
     /// macOS WebKit can't decode — the UI shows the file but disables ▶.
     pub previewable: bool,
+    /// Playback duration in seconds, or `None` when the format isn't
+    /// supported by the header parser yet (M4A/AAC tracked in
+    /// lpx-explorer-ab4) or the header is malformed. UI renders
+    /// nothing in that case rather than 0:00.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub duration_seconds: Option<f64>,
 }
 
 /// File extensions HTML5 `<audio>` can play on macOS WebKit. Lowercased,
@@ -115,13 +127,23 @@ fn walk_bucket(root: &Path, category: AudioCategory, out: &mut Vec<AudioFile>) {
                 .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
                 .map(|d| d.as_secs() as i64)
                 .unwrap_or(0);
+            let previewable = is_previewable(&path);
+            // Only attempt duration on previewable formats — saves
+            // a file open per CAF / unknown entry, and CAF isn't
+            // handled by our parser anyway.
+            let duration_seconds = if previewable {
+                read_duration(&path)
+            } else {
+                None
+            };
             out.push(AudioFile {
                 path: path.to_string_lossy().into_owned(),
                 file_name,
                 category,
                 size_bytes: meta.len(),
                 mtime_unix,
-                previewable: is_previewable(&path),
+                previewable,
+                duration_seconds,
             });
         }
     }
@@ -373,6 +395,75 @@ mod tests {
 
         assert_eq!(hero.category, AudioCategory::AudioRegion);
         assert_eq!(hero.file_name, "full_take.wav");
+    }
+
+    #[test]
+    fn collect_audio_populates_duration_for_recognised_wav_files() {
+        // Real WAV bytes (1.0s mono 16-bit at 44100Hz) — exercises
+        // the inventory→duration handoff without re-testing the
+        // header-parser internals (covered in audio_duration::tests).
+        // 44100 frames * 2 bytes/frame = 88200 bytes of data payload.
+        let mut wav = Vec::new();
+        wav.extend_from_slice(b"RIFF");
+        wav.extend_from_slice(&(36 + 88200u32).to_le_bytes());
+        wav.extend_from_slice(b"WAVE");
+        wav.extend_from_slice(b"fmt ");
+        wav.extend_from_slice(&16u32.to_le_bytes());
+        wav.extend_from_slice(&1u16.to_le_bytes());
+        wav.extend_from_slice(&1u16.to_le_bytes());
+        wav.extend_from_slice(&44100u32.to_le_bytes());
+        wav.extend_from_slice(&88200u32.to_le_bytes());
+        wav.extend_from_slice(&2u16.to_le_bytes());
+        wav.extend_from_slice(&16u16.to_le_bytes());
+        wav.extend_from_slice(b"data");
+        wav.extend_from_slice(&88200u32.to_le_bytes());
+        wav.resize(wav.len() + 88200, 0);
+
+        let tmp = tempdir().unwrap();
+        let bundle = tmp.path().join("song.logicx");
+        write_file(&bundle.join("Audio Files/take.wav"), &wav);
+        // A second file with no parseable header — confirms the
+        // walker doesn't fail the whole inventory when one file's
+        // header is junk.
+        write_file(&bundle.join("Audio Files/bogus.wav"), b"not a wav");
+
+        let files = collect_audio(&bundle);
+
+        let take = files.iter().find(|f| f.file_name == "take.wav").unwrap();
+        let bogus = files
+            .iter()
+            .find(|f| f.file_name == "bogus.wav")
+            .unwrap();
+        assert!(
+            take.duration_seconds.is_some(),
+            "expected duration on valid WAV"
+        );
+        assert!(
+            (take.duration_seconds.unwrap() - 1.0).abs() < 1e-6,
+            "expected ~1.0s, got {:?}",
+            take.duration_seconds
+        );
+        assert!(
+            bogus.duration_seconds.is_none(),
+            "malformed WAV must yield None, got {:?}",
+            bogus.duration_seconds
+        );
+    }
+
+    #[test]
+    fn collect_audio_skips_duration_for_non_previewable_caf_files() {
+        // CAF parsing isn't implemented — and we don't want to spend
+        // a file open per CAF just to return None. The walker should
+        // skip the duration call entirely for non-previewable files.
+        let tmp = tempdir().unwrap();
+        let bundle = tmp.path().join("song.logicx");
+        write_file(&bundle.join("Freeze Files/track.caf"), b"caff-bytes");
+
+        let files = collect_audio(&bundle);
+
+        let caf = files.iter().find(|f| f.file_name == "track.caf").unwrap();
+        assert!(!caf.previewable);
+        assert!(caf.duration_seconds.is_none());
     }
 
     #[test]

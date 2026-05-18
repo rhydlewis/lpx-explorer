@@ -1,3 +1,4 @@
+mod audio_duration;
 mod audio_inventory;
 mod auval;
 mod bundle;

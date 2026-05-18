@@ -114,6 +114,15 @@
   font-variant-numeric: tabular-nums;
 }
 
+.rowDuration {
+  font-family: var(--font-mono);
+  font-size: var(--fs-caption);
+  color: var(--c-text-muted);
+  font-variant-numeric: tabular-nums;
+  min-width: 3.5em;
+  text-align: right;
+}
+
 .placeholder {
   font-style: italic;
   color: var(--c-text-muted);

@@ -153,6 +153,61 @@ describe("<AudioPreview />", () => {
     );
   });
 
+  it("renders duration as mm:ss in inventory rows when the Rust side parsed a header", async () => {
+    // Two files: one with a parsed duration, one without. The first
+    // gets a mm:ss column; the second renders without it (we don't
+    // show 0:00 for unknown — that lies about a known-good zero).
+    mockInvoke.mockResolvedValueOnce([
+      audio({
+        file_name: "intro.wav",
+        path: "/x.logicx/Audio Files/intro.wav",
+        category: "audio-region",
+        duration_seconds: 75.4, // 1:15
+      }),
+      audio({
+        file_name: "mystery.wav",
+        path: "/x.logicx/Audio Files/mystery.wav",
+        category: "audio-region",
+        duration_seconds: null,
+      }),
+    ] satisfies AudioFile[]);
+
+    render(<AudioPreview path="/x.logicx" />);
+
+    const expandBtn = await screen.findByRole("button", {
+      name: /all audio files/i,
+    });
+    fireEvent.click(expandBtn);
+
+    // Duration appears for parsed file; .toBeInTheDocument confirms it
+    // rendered in the row, not just somewhere off-screen.
+    expect(await screen.findByText("1:15")).toBeInTheDocument();
+    // For unknown duration we render nothing — the cell should be absent.
+    expect(screen.queryByText(/0:00/)).not.toBeInTheDocument();
+  });
+
+  it("renders h:mm:ss duration for files longer than an hour", async () => {
+    // Real-world: long-form podcasts / live recordings get bounced
+    // to multi-hour AIFF files. mm:ss would mis-render 3700s as
+    // 61:40 — h:mm:ss reads correctly as 1:01:40.
+    mockInvoke.mockResolvedValueOnce([
+      audio({
+        file_name: "podcast.wav",
+        path: "/x.logicx/Bounces/podcast.wav",
+        duration_seconds: 3700,
+      }),
+    ] satisfies AudioFile[]);
+
+    render(<AudioPreview path="/x.logicx" />);
+
+    const expandBtn = await screen.findByRole("button", {
+      name: /all audio files/i,
+    });
+    fireEvent.click(expandBtn);
+
+    expect(await screen.findByText("1:01:40")).toBeInTheDocument();
+  });
+
   it("re-fetches the inventory when the project path changes", async () => {
     // Switching between projects in the same session must re-query
     // — otherwise the second project would show the first's audio.

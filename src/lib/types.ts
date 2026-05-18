@@ -154,6 +154,13 @@ export interface AudioFile {
    * the file but disables the ▶ button.
    */
   readonly previewable: boolean;
+  /**
+   * Playback duration in seconds. Parsed from the file header on the
+   * Rust side; only WAV and AIFF are decoded in v1 (lpx-explorer-co5).
+   * `null` for unrecognised / malformed headers and for formats split
+   * to lpx-explorer-ab4 (M4A/AAC).
+   */
+  readonly duration_seconds?: number | null;
 }
 
 // ─── Library / UI types ──────────────────────────────────────────────
