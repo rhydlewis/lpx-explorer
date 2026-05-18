@@ -1,0 +1,86 @@
+.player {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  width: 100%;
+}
+
+.transport {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+}
+
+.playPause {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--c-divider);
+  background-color: var(--c-surface-2);
+  color: var(--c-text-primary);
+  font-size: 13px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.playPause:hover:not(:disabled) {
+  background-color: var(--c-surface-3, var(--c-surface-2));
+}
+
+.playPause:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.time {
+  font-family: var(--font-mono);
+  font-size: var(--fs-caption);
+  font-variant-numeric: tabular-nums;
+  color: var(--c-text-secondary);
+  white-space: nowrap;
+}
+
+/*
+ * Wavesurfer's canvas mounts directly into this container. height/width
+ * are read by wavesurfer at create time; if we ever switch to a
+ * responsive waveform we'd need a ResizeObserver — YAGNI for v1.
+ */
+.waveform {
+  width: 100%;
+  height: 60px;
+  background-color: var(--c-surface-2);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  /* Wavesurfer renders on a transparent canvas; the surface colour
+   * comes through. cursor:pointer signals click-to-seek. */
+}
+
+.loading {
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--fs-caption);
+  color: var(--c-text-muted);
+  background-color: var(--c-surface-2);
+  border-radius: var(--radius-sm);
+}
+
+.error {
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 var(--s-3);
+  font-size: var(--fs-caption);
+  font-style: italic;
+  color: var(--c-text-muted);
+  background-color: var(--c-surface-2);
+  border-radius: var(--radius-sm);
+  border: 1px dashed var(--c-divider);
+  text-align: center;
+}

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { convertFileSrc } from "@tauri-apps/api/core";
 
 import { listAudioFiles, pickHeroAudio } from "../../lib/parse";
@@ -6,6 +6,7 @@ import type { AudioFile, AudioCategory } from "../../lib/types";
 
 import sectionStyles from "./Inspector.module.css";
 import styles from "./AudioPreview.module.css";
+import { WaveformPlayer } from "./WaveformPlayer";
 
 interface Props {
   /** Absolute path to the `.logicx` bundle. */
@@ -54,6 +55,12 @@ export function AudioPreview({ path }: Props) {
       cancelled = true;
     };
   }, [path]);
+
+  // Stable ref — WaveformPlayer's create-effect depends on `onEnded`,
+  // so a new function identity each render would tear down + recreate
+  // the wavesurfer instance mid-playback. Must live above any early
+  // return to satisfy the Rules of Hooks.
+  const handlePlaybackEnded = useCallback(() => setPlayingPath(null), []);
 
   if (files === null) {
     return null;
@@ -170,16 +177,15 @@ export function AudioPreview({ path }: Props) {
               {files.find((f) => f.path === playingPath)?.file_name ?? ""}
             </strong>
           </span>
-          <audio
-            // `key` forces remount on src change so the browser doesn't
-            // queue the old src's data while the new one loads — keeps
-            // the single-player invariant honest.
+          <WaveformPlayer
+            // `key` forces remount on src change so wavesurfer's
+            // decoded buffer for the previous track is released and a
+            // fresh instance loads the new one — keeps the
+            // single-player invariant honest.
             key={playingPath}
-            className={styles.audioPlayer}
             src={convertFileSrc(playingPath)}
             autoPlay
-            controls
-            onEnded={() => setPlayingPath(null)}
+            onEnded={handlePlaybackEnded}
           />
         </div>
       )}

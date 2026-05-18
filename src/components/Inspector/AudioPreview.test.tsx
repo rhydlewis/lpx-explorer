@@ -61,11 +61,11 @@ describe("<AudioPreview />", () => {
     expect(screen.getByText(/final_mix\.wav/i)).toBeInTheDocument();
   });
 
-  it("clicking the hero play button sets the audio element's src to the picked file", async () => {
-    // Single-player invariant is enforced by mounting one <audio>
-    // element whose src reflects the currently-playing path. Tests
-    // assert against the src attribute since jsdom doesn't have a real
-    // playback engine.
+  it("clicking the hero play button mounts the waveform player with the picked file's src", async () => {
+    // Single-player invariant is enforced by mounting one
+    // WaveformPlayer whose data-now-playing-src reflects the
+    // currently-playing path. Tests assert against the data attribute
+    // since jsdom can't decode audio.
     mockInvoke.mockResolvedValueOnce([
       audio({
         path: "/x.logicx/Bounces/mix.wav",
@@ -78,15 +78,18 @@ describe("<AudioPreview />", () => {
     const heroBtn = await screen.findByRole("button", { name: /play/i });
     fireEvent.click(heroBtn);
 
-    const audioEl = container.querySelector("audio");
-    expect(audioEl).not.toBeNull();
-    expect(audioEl).toHaveAttribute("src", "asset:///x.logicx/Bounces/mix.wav");
+    const player = container.querySelector("[data-now-playing-src]");
+    expect(player).not.toBeNull();
+    expect(player).toHaveAttribute(
+      "data-now-playing-src",
+      "asset:///x.logicx/Bounces/mix.wav",
+    );
   });
 
-  it("clicking a different row in the expanded inventory switches the audio src (single-player invariant)", async () => {
+  it("clicking a different row in the expanded inventory switches the player's src (single-player invariant)", async () => {
     // PM acceptance: 'starting one ▶ stops any prior playback'. We
-    // verify this indirectly: the src moves to whichever row was
-    // last clicked. Only one <audio> element exists at a time.
+    // verify this indirectly: data-now-playing-src moves to whichever
+    // row was last clicked. Exactly one WaveformPlayer exists at a time.
     mockInvoke.mockResolvedValueOnce([
       audio({
         path: "/x.logicx/Bounces/mix.wav",
@@ -111,14 +114,14 @@ describe("<AudioPreview />", () => {
     });
     fireEvent.click(vocalRow);
 
-    const audioEl = container.querySelector("audio");
-    expect(audioEl).toHaveAttribute(
-      "src",
+    const players = container.querySelectorAll("[data-now-playing-src]");
+    // Critical: exactly one player mounted. A second one would mean
+    // the prior playback is still running.
+    expect(players).toHaveLength(1);
+    expect(players[0]).toHaveAttribute(
+      "data-now-playing-src",
       "asset:///x.logicx/Audio Files/vocal.wav",
     );
-    // Critical: still exactly one audio element. A second one would
-    // mean the prior playback is still running.
-    expect(container.querySelectorAll("audio")).toHaveLength(1);
   });
 
   it("disables play buttons for non-previewable CAF files and explains why via title", async () => {
