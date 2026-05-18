@@ -127,10 +127,15 @@ fn walk_bucket(root: &Path, category: AudioCategory, out: &mut Vec<AudioFile>) {
     }
 }
 
-/// Walk all three audio buckets at the bundle root *and* under every
-/// `Alternatives/<NNN>/`. Flattens per-alternative duplicates into the
-/// single returned list — callers don't get told which alternative a
-/// file came from in v1.
+/// Walk all three audio buckets under every known parent inside the
+/// bundle. Three parent layouts coexist in the wild:
+///   1. Bundle root: `<bundle>/Audio Files/` — older project format.
+///   2. `Media/` subdirectory: `<bundle>/Media/Audio Files/` — what
+///      modern Logic writes when a project is saved as a package.
+///   3. Per-alternative: `<bundle>/Alternatives/<NNN>/Audio Files/`.
+/// Flattens per-alternative + per-parent duplicates into the single
+/// returned list — callers don't get told which parent a file came
+/// from in v1.
 pub fn collect_audio(bundle: &Path) -> Vec<AudioFile> {
     let mut files = Vec::new();
     let buckets: [(&str, AudioCategory); 3] = [
@@ -138,19 +143,22 @@ pub fn collect_audio(bundle: &Path) -> Vec<AudioFile> {
         ("Audio Files", AudioCategory::AudioRegion),
         ("Freeze Files", AudioCategory::FreezeFile),
     ];
-    for (name, category) in buckets {
-        walk_bucket(&bundle.join(name), category, &mut files);
-    }
-    let alternatives = bundle.join("Alternatives");
-    if let Ok(entries) = std::fs::read_dir(&alternatives) {
+
+    let mut parents: Vec<std::path::PathBuf> =
+        vec![bundle.to_path_buf(), bundle.join("Media")];
+    if let Ok(entries) = std::fs::read_dir(bundle.join("Alternatives")) {
         for entry in entries.flatten() {
             let alt_dir = entry.path();
-            if !alt_dir.is_dir() {
-                continue;
+            if alt_dir.is_dir() {
+                parents.push(alt_dir.clone());
+                parents.push(alt_dir.join("Media"));
             }
-            for (name, category) in buckets {
-                walk_bucket(&alt_dir.join(name), category, &mut files);
-            }
+        }
+    }
+
+    for parent in &parents {
+        for (name, category) in buckets {
+            walk_bucket(&parent.join(name), category, &mut files);
         }
     }
     files
@@ -249,6 +257,27 @@ mod tests {
         assert_eq!(files.len(), 1);
         assert_eq!(files[0].file_name, "kick.wav");
         assert_eq!(files[0].category, AudioCategory::AudioRegion);
+    }
+
+    #[test]
+    fn collect_audio_walks_media_subdirectory_for_modern_logic_packages() {
+        // Modern Logic (~10.5+) saves package-format projects with
+        // recorded audio under <bundle>/Media/Audio Files/, not the
+        // bundle root. The walker must look in both spots — older
+        // projects use root, newer ones use Media/. Found via testing
+        // against ~/Music/Logic/new idea.logicx where a single
+        // Monsters Inc acapella file lived in Media/Audio Files/.
+        let tmp = tempdir().unwrap();
+        let bundle = tmp.path().join("song.logicx");
+        write_file(&bundle.join("Media/Audio Files/take.wav"), b"AAA");
+        write_file(&bundle.join("Media/Bounces/mix.wav"), b"BBB");
+
+        let files = collect_audio(&bundle);
+
+        assert_eq!(files.len(), 2, "got {:?}", files);
+        let names: Vec<&str> = files.iter().map(|f| f.file_name.as_str()).collect();
+        assert!(names.contains(&"take.wav"));
+        assert!(names.contains(&"mix.wav"));
     }
 
     #[test]
