@@ -4,6 +4,12 @@ All notable changes to LPX Explorer are documented here. The CI release pipeline
 
 Format: standard Markdown — `-` bullets and free-form paragraphs. Headings within a section (`###`) are not currently extracted.
 
+## v0.0.7
+
+- Preview audio snippets from the `.logicx` bundle. LPX Explorer will attempt to select the best available file
+- Audio files include file size & playback duration
+- Browse all available audio files in your project with a collapsible panel showing file type, size, and per-file playback controls.
+
 ## v0.0.6
 
 - Anonymous install tracking via GoatCounter counting installs and upgrades only (no personal data, IP, sessions, or usage patterns collected)
