@@ -61,6 +61,26 @@ describe("<AudioPreview />", () => {
     expect(screen.getByText(/final_mix\.wav/i)).toBeInTheDocument();
   });
 
+  it("renders the hero with duration and size alongside the filename", async () => {
+    // The hero is the first thing a user reads — it should answer
+    // "what is this and how long?" without needing to expand the
+    // inventory panel.
+    mockInvoke.mockResolvedValueOnce([
+      audio({
+        file_name: "final_mix.wav",
+        category: "bounce",
+        size_bytes: 25 * 1024 * 1024, // 25 MB
+        duration_seconds: 280, // 4:40
+      }),
+    ] satisfies AudioFile[]);
+
+    render(<AudioPreview path="/song.logicx" />);
+
+    expect(await screen.findByText("final_mix.wav")).toBeInTheDocument();
+    expect(screen.getByText("4:40")).toBeInTheDocument();
+    expect(screen.getByText("25.0 MB")).toBeInTheDocument();
+  });
+
   it("clicking the hero play button mounts the waveform player with the picked file's src", async () => {
     // Single-player invariant is enforced by mounting one
     // WaveformPlayer whose data-now-playing-src reflects the
@@ -179,9 +199,12 @@ describe("<AudioPreview />", () => {
     });
     fireEvent.click(expandBtn);
 
-    // Duration appears for parsed file; .toBeInTheDocument confirms it
-    // rendered in the row, not just somewhere off-screen.
-    expect(await screen.findByText("1:15")).toBeInTheDocument();
+    // Duration shows in both the hero card and the row (hero gets
+    // picked from the inventory by smart-pick), so use findAllByText
+    // to allow the duplicate. Confirms it rendered *at all* —
+    // toBeInTheDocument is implicit in the length check.
+    const matches = await screen.findAllByText("1:15");
+    expect(matches.length).toBeGreaterThanOrEqual(1);
     // For unknown duration we render nothing — the cell should be absent.
     expect(screen.queryByText(/0:00/)).not.toBeInTheDocument();
   });
@@ -205,7 +228,9 @@ describe("<AudioPreview />", () => {
     });
     fireEvent.click(expandBtn);
 
-    expect(await screen.findByText("1:01:40")).toBeInTheDocument();
+    // Same hero+row duplicate as above — assert ≥1 rather than =1.
+    const matches = await screen.findAllByText("1:01:40");
+    expect(matches.length).toBeGreaterThanOrEqual(1);
   });
 
   it("re-fetches the inventory when the project path changes", async () => {

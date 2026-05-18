@@ -133,6 +133,17 @@ export function AudioPreview({ path }: Props) {
             <span className={styles.heroName} title={hero.path}>
               {hero.file_name}
             </span>
+            <span className={styles.heroStats}>
+              {formatDuration(hero.duration_seconds) !== null && (
+                <>
+                  <span className={styles.heroDuration}>
+                    {formatDuration(hero.duration_seconds)}
+                  </span>
+                  <span aria-hidden="true">·</span>
+                </>
+              )}
+              <span>{formatBytes(hero.size_bytes)}</span>
+            </span>
           </div>
         </div>
       )}

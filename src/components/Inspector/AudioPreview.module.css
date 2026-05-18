@@ -62,6 +62,20 @@
   text-overflow: ellipsis;
 }
 
+.heroStats {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--s-2);
+  font-size: var(--fs-caption);
+  color: var(--c-text-muted);
+  font-variant-numeric: tabular-nums;
+  margin-top: 2px;
+}
+
+.heroDuration {
+  font-family: var(--font-mono);
+}
+
 .expandToggle {
   background: none;
   border: none;
