@@ -50,6 +50,13 @@ export function WaveformPlayer({ src, autoPlay = false, onEnded }: Props) {
   useEffect(() => {
     if (containerRef.current === null) return;
 
+    // Strict-mode safety: decodeAudioData is async, so by the time
+    // wavesurfer fires 'ready' the dev double-mount may have already
+    // cleaned up. Without this flag, the second-pass ws.play() races
+    // ahead of destroy() and an orphan AudioBufferSourceNode keeps
+    // playing in the background even after the user hits pause.
+    let cancelled = false;
+
     const ws = WaveSurfer.create({
       container: containerRef.current,
       url: src,
@@ -65,18 +72,22 @@ export function WaveformPlayer({ src, autoPlay = false, onEnded }: Props) {
       barWidth: 2,
       barGap: 1,
       barRadius: 1,
-      autoplay: autoPlay,
-      // Disable wavesurfer's keyboard handling so it doesn't intercept
-      // global shortcuts (Cmd-O for open project, etc.) when the
-      // canvas has focus.
+      // Don't use wavesurfer's built-in `autoplay: true` — it fires
+      // after decode finishes, which may be post-cleanup. Trigger play
+      // manually below in the 'ready' handler so the cancellation
+      // flag can suppress it.
       interact: true,
     });
     wsRef.current = ws;
 
     const subs = [
       ws.on("ready", () => {
+        if (cancelled) return;
         setDuration(ws.getDuration());
         setStatus("ready");
+        if (autoPlay) {
+          void ws.play();
+        }
       }),
       ws.on("play", () => setIsPlaying(true)),
       ws.on("pause", () => setIsPlaying(false)),
@@ -89,8 +100,12 @@ export function WaveformPlayer({ src, autoPlay = false, onEnded }: Props) {
     ];
 
     return () => {
-      // Wavesurfer's destroy() also unsubscribes listeners, but calling
-      // them explicitly keeps the cleanup order obvious.
+      cancelled = true;
+      // Pause before destroying to stop any in-flight AudioBufferSource
+      // node — destroy() doesn't always cancel a node that was just
+      // scheduled. Wavesurfer's destroy() also unsubscribes listeners,
+      // but calling them explicitly keeps the cleanup order obvious.
+      ws.pause();
       for (const unsub of subs) unsub();
       ws.destroy();
       wsRef.current = null;
