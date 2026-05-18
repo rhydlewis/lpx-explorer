@@ -1,3 +1,4 @@
+mod audio_inventory;
 mod auval;
 mod bundle;
 mod commands;
@@ -325,6 +326,7 @@ pub fn run() {
             commands::is_dir,
             commands::home_dir,
             commands::list_alternatives,
+            commands::list_audio_files,
             commands::log_event,
             commands::parse_alternative,
             commands::parse_project,

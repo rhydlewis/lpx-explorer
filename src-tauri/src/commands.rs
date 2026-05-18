@@ -28,6 +28,7 @@ pub struct AlternativeEntry {
     pub last_saved_unix: i64,
 }
 
+use crate::audio_inventory::{collect_audio, AudioFile};
 use crate::bundle::{bundle_stats, BundleStats};
 
 #[derive(Debug, Serialize)]
@@ -128,6 +129,18 @@ pub fn is_dir(path: String) -> bool {
 #[tauri::command]
 pub fn home_dir() -> Option<String> {
     std::env::var("HOME").ok().filter(|s| !s.is_empty())
+}
+
+/// List every recognised audio file inside a `.logicx` bundle
+/// (lpx-explorer-34y). Walks `Bounces/`, `Audio Files/`, and
+/// `Freeze Files/` at the bundle root *and* mirrored under every
+/// `Alternatives/<NNN>/`. The order is whatever the directory walk
+/// emits — the frontend smart-picks a hero and labels each row by
+/// category, so no ordering contract is needed here.
+#[tauri::command]
+pub fn list_audio_files(path: String) -> Vec<AudioFile> {
+    let bundle = PathBuf::from(path);
+    collect_audio(&bundle)
 }
 
 /// Tauri command: relay a frontend log line to the Rust process's
@@ -652,6 +665,64 @@ mod tests {
                 m1,
                 m2,
                 "parse_project altered mtime of {} — read-only contract violated",
+                p1.display()
+            );
+        }
+    }
+
+    #[test]
+    fn list_audio_files_does_not_mutate_any_file_in_the_bundle() {
+        // Audio inventory walks Bounces/, Audio Files/, Freeze Files/
+        // and reads metadata (size + mtime) on every recognised file.
+        // SHA-256 + mtime of every file must be unchanged afterwards —
+        // the read-only contract for .logicx covers audio assets too.
+        let tmp = tempdir().unwrap();
+        let bundle = tmp.path().join("song.logicx");
+
+        fs::create_dir_all(bundle.join("Bounces")).unwrap();
+        fs::write(bundle.join("Bounces/final_mix.wav"), b"fake-wav-bytes").unwrap();
+        fs::create_dir_all(bundle.join("Audio Files/Drum Takes")).unwrap();
+        fs::write(
+            bundle.join("Audio Files/Drum Takes/kick.aif"),
+            b"fake-aiff-bytes",
+        )
+        .unwrap();
+        fs::create_dir_all(bundle.join("Freeze Files")).unwrap();
+        fs::write(
+            bundle.join("Freeze Files/track_1.caf"),
+            b"fake-caf-bytes",
+        )
+        .unwrap();
+        fs::create_dir_all(bundle.join("Alternatives/000/Bounces")).unwrap();
+        fs::write(
+            bundle.join("Alternatives/000/Bounces/alt_mix.wav"),
+            b"fake-alt-bytes",
+        )
+        .unwrap();
+
+        let before = snapshot_bundle(&bundle);
+        assert!(!before.is_empty(), "fixture bundle must contain files");
+
+        let files = list_audio_files(bundle.to_string_lossy().into_owned());
+        assert_eq!(files.len(), 4, "all four audio files must be enumerated");
+
+        let after = snapshot_bundle(&bundle);
+
+        assert_eq!(
+            before.len(),
+            after.len(),
+            "list_audio_files changed the file count in the bundle"
+        );
+        for ((p1, s1, m1), (p2, s2, m2)) in before.iter().zip(after.iter()) {
+            assert_eq!(p1, p2, "file set changed");
+            assert_eq!(
+                s1, s2,
+                "list_audio_files altered SHA-256 of {} — read-only contract violated",
+                p1.display()
+            );
+            assert_eq!(
+                m1, m2,
+                "list_audio_files altered mtime of {} — read-only contract violated",
                 p1.display()
             );
         }

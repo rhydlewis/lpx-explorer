@@ -1,6 +1,7 @@
 import { useProjectStore, type ProjectStatus } from "../../store/project-store";
 import { ErrorCard } from "../ErrorCard";
 
+import { AudioPreview } from "./AudioPreview";
 import { CompatibilityVerdict } from "./CompatibilityVerdict";
 import sectionStyles from "./Inspector.module.css";
 import { InspectorSkeleton } from "./InspectorSkeleton";
@@ -48,6 +49,7 @@ export function ProjectInspector({ status }: Props) {
         onSelectAlternative={(index) => void setActiveVariant(index)}
         lastSavedUnix={status.summary.stats.modified_at_unix}
       />
+      <AudioPreview path={status.path} />
       <div className={sectionStyles.metaTracksGrid}>
         <ProjectInfo
           metadata={status.summary.metadata}

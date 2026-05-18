@@ -127,6 +127,35 @@ export interface Alternative {
   readonly last_saved_unix: number;
 }
 
+// ─── Audio inventory (lpx-explorer-34y) ──────────────────────────────
+
+/**
+ * Which of Logic's three audio storage buckets a file came from.
+ * Drives the smart-pick fallback chain (Bounce → AudioRegion →
+ * FreezeFile) and the UI label that tells the user what they're
+ * listening to. Kebab-case to match the Rust `serde(rename_all)`.
+ */
+export type AudioCategory = "bounce" | "audio-region" | "freeze-file";
+
+/**
+ * One audio file found inside a `.logicx` bundle. Mirrors
+ * `audio_inventory::AudioFile` in Rust. `path` is an absolute
+ * filesystem path — pass through `convertFileSrc` for `<audio src>`.
+ */
+export interface AudioFile {
+  readonly path: string;
+  readonly file_name: string;
+  readonly category: AudioCategory;
+  readonly size_bytes: number;
+  readonly mtime_unix: number;
+  /**
+   * `true` when macOS WebKit's HTML5 `<audio>` element can play the
+   * file natively. `false` for CAF, which freeze files use — UI lists
+   * the file but disables the ▶ button.
+   */
+  readonly previewable: boolean;
+}
+
 // ─── Library / UI types ──────────────────────────────────────────────
 
 export interface RecentEntry {

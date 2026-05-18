@@ -1,0 +1,121 @@
+.hero {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-2) 0;
+}
+
+.heroPlay,
+.rowPlay {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--c-divider);
+  background-color: var(--c-surface-2);
+  color: var(--c-text-primary);
+  font-size: 14px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.heroPlay:hover:not(:disabled),
+.rowPlay:hover:not(:disabled) {
+  background-color: var(--c-surface-3, var(--c-surface-2));
+}
+
+.heroPlay:disabled,
+.rowPlay:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.rowPlay {
+  width: 28px;
+  height: 28px;
+  font-size: 12px;
+}
+
+.heroMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.heroLabel {
+  font-size: var(--fs-eyebrow);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--c-text-secondary);
+}
+
+.heroName {
+  font-size: var(--fs-body, 14px);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.expandToggle {
+  background: none;
+  border: none;
+  padding: var(--s-2) 0;
+  color: var(--c-text-secondary);
+  font-size: var(--fs-caption);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-1);
+}
+
+.expandToggle:hover {
+  color: var(--c-text-primary);
+}
+
+.inventoryList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.inventoryRow {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding: var(--s-1) 0;
+}
+
+.rowName {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: var(--fs-body, 14px);
+}
+
+.rowCategory {
+  font-size: var(--fs-caption);
+  color: var(--c-text-muted);
+  text-transform: capitalize;
+}
+
+.rowSize {
+  font-size: var(--fs-caption);
+  color: var(--c-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.placeholder {
+  font-style: italic;
+  color: var(--c-text-muted);
+  margin: 0;
+}
