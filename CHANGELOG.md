@@ -4,6 +4,12 @@ All notable changes to LPX Explorer are documented here. The CI release pipeline
 
 Format: standard Markdown — `-` bullets and free-form paragraphs. Headings within a section (`###`) are not currently extracted.
 
+## v0.0.8
+
+- Open active project in Logic Pro via the "Open in Logic Pro" button in the project header (next to Reveal in Finder) or File menu (shortcut Cmd+Shift+L)
+- Sort projects by in the library pane
+- Sort projects in the tile grid (independent of the library sort)
+
 ## v0.0.7
 
 - Preview audio snippets from the `.logicx` bundle. LPX Explorer will attempt to select the best available file
