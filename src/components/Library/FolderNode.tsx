@@ -3,7 +3,7 @@ import { useState } from "react";
 import { ChevronRight, X } from "lucide-react";
 
 import { openProject } from "../../lib/open-project";
-import { projectNameOf } from "../../lib/path-utils";
+import { projectNameOf, sortPaths } from "../../lib/path-utils";
 import type { FolderEntry } from "../../lib/types";
 import { useLibraryStore } from "../../store/library-store";
 import { useProjectStore } from "../../store/project-store";
@@ -67,8 +67,10 @@ export function FolderNode({ folder }: Props) {
     (s) => s.setSelectedLibraryFolder,
   );
   const isSelectedForBrowse = selectedLibraryFolder === folder.path;
+  const sortDir = useUIStore((s) => s.libraryRailSort);
 
-  const visibleProjects = folder.projects.filter((p) => matchesQuery(p, query));
+  const filtered = folder.projects.filter((p) => matchesQuery(p, query));
+  const visibleProjects = sortDir !== null ? sortPaths(filtered, sortDir) : filtered;
   const status = statusLine(folder, visibleProjects.length, query);
   const name = folderNameOf(folder.path);
 

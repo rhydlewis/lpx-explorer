@@ -24,3 +24,34 @@
 .list li {
   margin: 0;
 }
+
+.sortBar {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 var(--s-2) var(--s-2) var(--s-2);
+}
+
+.sortButton {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  padding: 2px var(--s-2);
+  font: inherit;
+  font-size: var(--fs-caption);
+  color: var(--c-text-muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-1);
+  border-radius: var(--radius-sm);
+}
+
+.sortButton:hover,
+.sortButton[aria-pressed="true"] {
+  color: var(--c-accent);
+}
+
+.sortButton:focus-visible {
+  outline: 2px solid var(--c-accent);
+  outline-offset: 2px;
+}

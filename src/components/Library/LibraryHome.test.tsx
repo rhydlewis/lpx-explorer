@@ -45,7 +45,7 @@ describe("<LibraryHome />", () => {
       query: "",
     });
     useLibrarySummariesStore.getState().clear();
-    useUIStore.setState({ librarySimilarityFilter: null });
+    useUIStore.setState({ librarySimilarityFilter: null, libraryHomeSort: null });
     mockedParse.mockReset();
     // Default: never resolves so tiles stay in loading state and don't
     // dominate the test output.
@@ -59,7 +59,7 @@ describe("<LibraryHome />", () => {
       query: "",
     });
     useLibrarySummariesStore.getState().clear();
-    useUIStore.setState({ librarySimilarityFilter: null });
+    useUIStore.setState({ librarySimilarityFilter: null, libraryHomeSort: null });
   });
 
   it("renders the section under aria-label='library home'", () => {
@@ -413,6 +413,42 @@ describe("<LibraryHome />", () => {
     expect(
       screen.getByRole("button", { name: /clear similarity filter/i }),
     ).toBeInTheDocument();
+  });
+
+  describe("sort by name (lpx-explorer-twm)", () => {
+    it("renders a sort toggle button when the folder has projects", () => {
+      render(<LibraryHome folder={folder({ projects: ["/a.logicx"] })} />);
+
+      expect(screen.getByRole("button", { name: /sort/i })).toBeInTheDocument();
+    });
+
+    it("does not render the sort button when the folder is empty", () => {
+      render(<LibraryHome folder={folder({ projects: [] })} />);
+
+      expect(screen.queryByRole("button", { name: /sort/i })).not.toBeInTheDocument();
+    });
+
+    it("sorts tiles A→Z when libraryHomeSort is 'asc'", () => {
+      useUIStore.setState({ libraryHomeSort: "asc" });
+      render(
+        <LibraryHome folder={folder({ projects: ["/z-project.logicx", "/a-project.logicx"] })} />,
+      );
+
+      const tiles = screen.getAllByText(/project/i);
+      expect(tiles[0]).toHaveTextContent("a-project");
+      expect(tiles[1]).toHaveTextContent("z-project");
+    });
+
+    it("sorts tiles Z→A when libraryHomeSort is 'desc'", () => {
+      useUIStore.setState({ libraryHomeSort: "desc" });
+      render(
+        <LibraryHome folder={folder({ projects: ["/a-project.logicx", "/z-project.logicx"] })} />,
+      );
+
+      const tiles = screen.getAllByText(/project/i);
+      expect(tiles[0]).toHaveTextContent("z-project");
+      expect(tiles[1]).toHaveTextContent("a-project");
+    });
   });
 
   it("switching folders DOES clear the filter (genuine path change)", () => {

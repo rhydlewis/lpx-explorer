@@ -19,3 +19,22 @@ export function folderNameOf(path: string): string {
   const segments = trimmed.split("/").filter(Boolean);
   return segments[segments.length - 1] ?? trimmed;
 }
+
+/**
+ * Sort an array of `.logicx` paths by project name.
+ * Uses locale-aware, numeric, case-insensitive comparison.
+ */
+export function sortPaths(
+  paths: ReadonlyArray<string>,
+  dir: "asc" | "desc",
+): ReadonlyArray<string> {
+  const sorted = [...paths].sort((a, b) =>
+    projectNameOf(a)
+      .trim()
+      .localeCompare(projectNameOf(b).trim(), undefined, {
+        numeric: true,
+        sensitivity: "base",
+      }),
+  );
+  return dir === "desc" ? sorted.reverse() : sorted;
+}

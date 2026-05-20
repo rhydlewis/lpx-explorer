@@ -152,6 +152,22 @@ pub fn log_event(level: String, message: String) {
     crate::tlog!("[js:{level}] {message}");
 }
 
+/// Open a `.logicx` bundle in Logic Pro via its bundle ID (lpx-explorer-f3l).
+/// Uses `open -b com.apple.logic10` so the correct app is found regardless
+/// of whether the user has "Logic Pro" or the older "Logic Pro X" installed.
+#[tauri::command]
+pub fn open_in_logic(path: String) -> Result<(), String> {
+    let status = std::process::Command::new("open")
+        .args(["-b", "com.apple.logic10", &path])
+        .status()
+        .map_err(|e| format!("failed to run open: {e}"))?;
+    if status.success() {
+        Ok(())
+    } else {
+        Err("Logic Pro could not be opened — is it installed on this Mac?".to_owned())
+    }
+}
+
 #[derive(Debug, Serialize)]
 pub struct ProjectDataStat {
     /// Mtime of the ProjectData file in unix epoch seconds.

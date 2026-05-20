@@ -239,6 +239,11 @@ function App() {
         useUIStore.getState().setTheme("light");
       } else if (id === "theme_dark") {
         useUIStore.getState().setTheme("dark");
+      } else if (id === "menu_open_in_logic") {
+        const cur = useProjectStore.getState().current;
+        if (cur.kind === "loaded") {
+          void invoke("open_in_logic", { path: cur.path });
+        }
       } else if (id.startsWith("recent_project::")) {
         void openProject(id.slice("recent_project::".length));
       } else if (id.startsWith("recent_folder::")) {

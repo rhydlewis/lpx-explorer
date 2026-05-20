@@ -34,6 +34,7 @@ macro_rules! tlog {
 
 const MENU_OPEN_PROJECT: &str = "menu_open_project";
 const MENU_OPEN_FOLDER: &str = "menu_open_folder";
+const MENU_OPEN_IN_LOGIC: &str = "menu_open_in_logic";
 const MENU_CLEAR_RECENT_PROJECTS: &str = "clear_recent_projects";
 const MENU_CLEAR_RECENT_FOLDERS: &str = "clear_recent_folders";
 const MENU_REPORT_ISSUE: &str = "help_report_issue";
@@ -215,6 +216,14 @@ fn build_menu(
             )?,
             &recent_folders_submenu,
             &PredefinedMenuItem::separator(app)?,
+            &MenuItem::with_id(
+                app,
+                MENU_OPEN_IN_LOGIC,
+                "Open in Logic Pro",
+                true,
+                Some("CmdOrCtrl+Shift+L"),
+            )?,
+            &PredefinedMenuItem::separator(app)?,
             &PredefinedMenuItem::close_window(app, None)?,
         ],
     )?;
@@ -329,6 +338,7 @@ pub fn run() {
             commands::list_alternatives,
             commands::list_audio_files,
             commands::log_event,
+            commands::open_in_logic,
             commands::parse_alternative,
             commands::parse_project,
             commands::project_data_stat,

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
-import { ChevronLeft, FolderOpen } from "lucide-react";
+import { ChevronLeft, ExternalLink, FolderOpen } from "lucide-react";
 
 import { folderNameOf } from "../../lib/path-utils";
 import { useProjectStore } from "../../store/project-store";
@@ -37,8 +38,18 @@ function trimmedPath(path: string): string {
 export function ProjectHeader({ path, children }: Props) {
   const trimmed = trimmedPath(path);
   const [menuPos, setMenuPos] = useState<MenuPos | null>(null);
+  const [logicError, setLogicError] = useState<string | null>(null);
   const selectedLibraryFolder = useUIStore((s) => s.selectedLibraryFolder);
   const clearProject = useProjectStore((s) => s.clear);
+
+  async function openInLogic() {
+    setLogicError(null);
+    try {
+      await invoke("open_in_logic", { path: trimmed });
+    } catch (e) {
+      setLogicError(typeof e === "string" ? e : "Could not open in Logic Pro");
+    }
+  }
 
   // Dismiss-on-outside-click + Escape. Listeners attach only while the
   // menu is open so we don't run a global keydown handler the rest of
@@ -94,8 +105,21 @@ export function ProjectHeader({ path, children }: Props) {
           <span className={styles.path}>{trimmed}</span>
           <FolderOpen size="0.9em" aria-hidden="true" className={styles.pathIcon} />
         </button>
+        <button
+          type="button"
+          className={styles.openInLogicButton}
+          title="Open in Logic Pro"
+          aria-label="Open in Logic Pro"
+          onClick={() => void openInLogic()}
+        >
+          <ExternalLink size="0.9em" aria-hidden="true" />
+          <span>Open in Logic Pro</span>
+        </button>
         {children}
       </div>
+      {logicError !== null && (
+        <p className={styles.logicError} role="alert">{logicError}</p>
+      )}
       {menuPos !== null && (
         <div
           role="menu"

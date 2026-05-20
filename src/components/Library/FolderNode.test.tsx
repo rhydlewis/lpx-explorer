@@ -3,6 +3,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 
 import type { FolderEntry } from "../../lib/types";
 import { useLibraryStore } from "../../store/library-store";
+import { useUIStore } from "../../store/ui-store";
 
 import { FolderNode } from "./FolderNode";
 
@@ -22,11 +23,13 @@ function entry(overrides: Partial<FolderEntry> = {}): FolderEntry {
 describe("<FolderNode />", () => {
   beforeEach(() => {
     useLibraryStore.getState().clear();
+    useUIStore.setState({ libraryRailSort: null });
     vi.clearAllMocks();
   });
 
   afterEach(() => {
     useLibraryStore.getState().clear();
+    useUIStore.setState({ libraryRailSort: null });
     vi.restoreAllMocks();
   });
 
@@ -167,6 +170,44 @@ describe("<FolderNode />", () => {
     );
 
     expect(screen.getByRole("button", { expanded: false })).toBeInTheDocument();
+  });
+
+  describe("sort by name (lpx-explorer-twm)", () => {
+    function expandedFolder(projects: string[]): FolderEntry {
+      return entry({ status: { kind: "done" }, projects });
+    }
+
+    it("sorts folder children A→Z when libraryRailSort is 'asc'", () => {
+      useUIStore.setState({ libraryRailSort: "asc" });
+      render(<FolderNode folder={expandedFolder([
+        "/Music/z-track.logicx",
+        "/Music/a-track.logicx",
+      ])} />);
+
+      fireEvent.click(screen.getByRole("button", { expanded: false }));
+
+      const rows = screen.getAllByRole("button");
+      const names = rows.map((b) => b.textContent ?? "");
+      const zIdx = names.findIndex((n) => n.includes("z-track"));
+      const aIdx = names.findIndex((n) => n.includes("a-track"));
+      expect(aIdx).toBeLessThan(zIdx);
+    });
+
+    it("sorts folder children Z→A when libraryRailSort is 'desc'", () => {
+      useUIStore.setState({ libraryRailSort: "desc" });
+      render(<FolderNode folder={expandedFolder([
+        "/Music/a-track.logicx",
+        "/Music/z-track.logicx",
+      ])} />);
+
+      fireEvent.click(screen.getByRole("button", { expanded: false }));
+
+      const rows = screen.getAllByRole("button");
+      const names = rows.map((b) => b.textContent ?? "");
+      const zIdx = names.findIndex((n) => n.includes("z-track"));
+      const aIdx = names.findIndex((n) => n.includes("a-track"));
+      expect(zIdx).toBeLessThan(aIdx);
+    });
   });
 
   it("adds the project to Recent when a folder-child row is clicked", () => {

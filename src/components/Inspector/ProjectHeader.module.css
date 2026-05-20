@@ -128,6 +128,43 @@
 }
 
 /*
+ * "Open in Logic Pro" action button — sibling of the reveal/path button.
+ * Quiet until hovered; flex row so the icon and label sit on one line.
+ */
+.openInLogicButton {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  font-size: var(--fs-caption);
+  color: var(--c-text-muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-1);
+  white-space: nowrap;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+}
+
+.openInLogicButton:hover {
+  color: var(--c-accent);
+}
+
+.openInLogicButton:focus-visible {
+  outline: 2px solid var(--c-accent);
+  outline-offset: 2px;
+}
+
+.logicError {
+  margin: var(--s-1) 0 0 0;
+  font-size: var(--fs-caption);
+  color: var(--c-danger, #c0392b);
+}
+
+/*
  * Right-click context menu on the path. Positioned via inline styles
  * (top/left from the contextmenu event coords). Auto-dismissed by the
  * window-level mousedown / Escape listeners in ProjectHeader.

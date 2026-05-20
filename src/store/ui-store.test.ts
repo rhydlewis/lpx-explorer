@@ -23,6 +23,8 @@ describe("useUIStore", () => {
       tracksAllExpanded: false,
       tracksExpansionNonce: 0,
       textZoom: TEXT_ZOOM_DEFAULT,
+      libraryRailSort: null,
+      libraryHomeSort: null,
     });
   });
   afterEach(() => {
@@ -40,6 +42,8 @@ describe("useUIStore", () => {
       tracksAllExpanded: false,
       tracksExpansionNonce: 0,
       textZoom: TEXT_ZOOM_DEFAULT,
+      libraryRailSort: null,
+      libraryHomeSort: null,
     });
   });
 
@@ -235,6 +239,40 @@ describe("useUIStore", () => {
       useUIStore.getState().setTextZoom(1.5);
       useUIStore.getState().resetTextZoom();
       expect(useUIStore.getState().textZoom).toBe(TEXT_ZOOM_DEFAULT);
+    });
+  });
+
+  describe("libraryRailSort (lpx-explorer-twm)", () => {
+    it("starts null — no sort applied", () => {
+      expect(useUIStore.getState().libraryRailSort).toBeNull();
+    });
+
+    it("cycleLibraryRailSort: null → asc → desc → null", () => {
+      useUIStore.getState().cycleLibraryRailSort();
+      expect(useUIStore.getState().libraryRailSort).toBe("asc");
+
+      useUIStore.getState().cycleLibraryRailSort();
+      expect(useUIStore.getState().libraryRailSort).toBe("desc");
+
+      useUIStore.getState().cycleLibraryRailSort();
+      expect(useUIStore.getState().libraryRailSort).toBeNull();
+    });
+  });
+
+  describe("libraryHomeSort (lpx-explorer-twm)", () => {
+    it("starts null — no sort applied", () => {
+      expect(useUIStore.getState().libraryHomeSort).toBeNull();
+    });
+
+    it("cycleLibraryHomeSort: null → asc → desc → null", () => {
+      useUIStore.getState().cycleLibraryHomeSort();
+      expect(useUIStore.getState().libraryHomeSort).toBe("asc");
+
+      useUIStore.getState().cycleLibraryHomeSort();
+      expect(useUIStore.getState().libraryHomeSort).toBe("desc");
+
+      useUIStore.getState().cycleLibraryHomeSort();
+      expect(useUIStore.getState().libraryHomeSort).toBeNull();
     });
   });
 });

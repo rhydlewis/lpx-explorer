@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 
-import { folderNameOf, projectNameOf } from "../../lib/path-utils";
+import { folderNameOf, projectNameOf, sortPaths } from "../../lib/path-utils";
 import { describeAxis, matchesAxis } from "../../lib/similarity";
 import type { FolderEntry } from "../../lib/types";
 import { useLibrarySummariesStore } from "../../store/library-summaries-store";
@@ -24,6 +25,12 @@ interface Props {
  * so a project that's already been parsed for the cross-project rollup
  * doesn't re-parse here.
  */
+function sortLabel(dir: "asc" | "desc" | null): string {
+  if (dir === "asc") return "Sort: A→Z";
+  if (dir === "desc") return "Sort: Z→A";
+  return "Sort by name";
+}
+
 export function LibraryHome({ folder }: Props) {
   const name = folderNameOf(folder.path);
   const errors = useLibrarySummariesStore((s) => s.errors);
@@ -32,6 +39,8 @@ export function LibraryHome({ folder }: Props) {
   const setSimilarityFilter = useUIStore(
     (s) => s.setLibrarySimilarityFilter,
   );
+  const sortDir = useUIStore((s) => s.libraryHomeSort);
+  const cycleSort = useUIStore((s) => s.cycleLibraryHomeSort);
   // Per-mount filter state (lpx-explorer-xxb). Reset implicitly on
   // folder switch via React's `key` semantics — each folder mounts a
   // fresh <LibraryHome /> from <App />.
@@ -61,7 +70,7 @@ export function LibraryHome({ folder }: Props) {
 
   const trimmed = query.trim().toLowerCase();
   const visibleProjects = useMemo(() => {
-    return folder.projects.filter((path) => {
+    const filtered = folder.projects.filter((path) => {
       if (
         trimmed !== "" &&
         !projectNameOf(path).toLowerCase().includes(trimmed)
@@ -75,7 +84,8 @@ export function LibraryHome({ folder }: Props) {
       }
       return true;
     });
-  }, [folder.projects, trimmed, similarityFilter, summaries]);
+    return sortDir !== null ? sortPaths(filtered, sortDir) : filtered;
+  }, [folder.projects, trimmed, similarityFilter, summaries, sortDir]);
 
   return (
     <section
@@ -104,18 +114,33 @@ export function LibraryHome({ folder }: Props) {
           </button>
         )}
         {folder.projects.length > 0 && (
-          <input
-            type="search"
-            role="searchbox"
-            aria-label="Search projects"
-            placeholder="Search projects…"
-            value={query}
-            className={styles.search}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Escape") setQuery("");
-            }}
-          />
+          <div className={styles.searchRow}>
+            <input
+              type="search"
+              role="searchbox"
+              aria-label="Search projects"
+              placeholder="Search projects…"
+              value={query}
+              className={styles.search}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") setQuery("");
+              }}
+            />
+            <button
+              type="button"
+              className={styles.sortButton}
+              aria-label={sortLabel(sortDir)}
+              aria-pressed={sortDir !== null}
+              title={sortLabel(sortDir)}
+              onClick={cycleSort}
+            >
+              {sortDir === "asc" && <ArrowUp size="0.9em" aria-hidden="true" />}
+              {sortDir === "desc" && <ArrowDown size="0.9em" aria-hidden="true" />}
+              {sortDir === null && <ArrowUpDown size="0.9em" aria-hidden="true" />}
+              <span>{sortLabel(sortDir)}</span>
+            </button>
+          </div>
         )}
         {(similarityFilter !== null || trimmed !== "") &&
           folder.projects.length > 0 && (

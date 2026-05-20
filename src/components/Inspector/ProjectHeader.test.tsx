@@ -1,5 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
+import { invoke } from "@tauri-apps/api/core";
+
+const mockInvoke = vi.mocked(invoke);
 
 import { useProjectStore } from "../../store/project-store";
 import { useUIStore } from "../../store/ui-store";
@@ -162,4 +165,54 @@ describe("<ProjectHeader />", () => {
   // refactor — AlternativeStrip (inside ProjectWindow) is the canonical
   // selector now. Coverage for selection lives in AlternativeStrip.test
   // + ProjectInspector.test.
+
+  describe("Open in Logic Pro button (lpx-explorer-f3l)", () => {
+    beforeEach(() => {
+      mockInvoke.mockReset();
+    });
+
+    it("renders an 'Open in Logic Pro' button", () => {
+      render(<ProjectHeader path="/x.logicx" />);
+
+      expect(
+        screen.getByRole("button", { name: /open in logic pro/i }),
+      ).toBeInTheDocument();
+    });
+
+    it("clicking invokes open_in_logic with the trimmed path", () => {
+      mockInvoke.mockResolvedValueOnce(undefined);
+      render(<ProjectHeader path="/x.logicx/" />);
+
+      fireEvent.click(screen.getByRole("button", { name: /open in logic pro/i }));
+
+      expect(mockInvoke).toHaveBeenCalledWith("open_in_logic", { path: "/x.logicx" });
+    });
+
+    it("shows an inline error when the command rejects", async () => {
+      mockInvoke.mockRejectedValueOnce("Logic Pro is not installed on this Mac");
+      render(<ProjectHeader path="/x.logicx" />);
+
+      fireEvent.click(screen.getByRole("button", { name: /open in logic pro/i }));
+
+      expect(
+        await screen.findByText(/logic pro is not installed/i),
+      ).toBeInTheDocument();
+    });
+
+    it("clears the error immediately when clicked again (before second result)", async () => {
+      mockInvoke
+        .mockRejectedValueOnce("Logic Pro is not installed on this Mac")
+        .mockResolvedValueOnce(undefined);
+      render(<ProjectHeader path="/x.logicx" />);
+
+      fireEvent.click(screen.getByRole("button", { name: /open in logic pro/i }));
+      await screen.findByText(/logic pro is not installed/i);
+
+      fireEvent.click(screen.getByRole("button", { name: /open in logic pro/i }));
+
+      // Error clears immediately on the second click (setLogicError(null) is synchronous)
+      expect(screen.queryByText(/logic pro is not installed/i)).not.toBeInTheDocument();
+      expect(mockInvoke).toHaveBeenCalledTimes(2);
+    });
+  });
 });

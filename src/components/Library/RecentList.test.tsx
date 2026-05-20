@@ -3,6 +3,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 
 import { useLibraryStore } from "../../store/library-store";
 import { useProjectStore } from "../../store/project-store";
+import { useUIStore } from "../../store/ui-store";
 
 import { RecentList } from "./RecentList";
 
@@ -14,11 +15,13 @@ describe("<RecentList />", () => {
   beforeEach(() => {
     useLibraryStore.getState().clear();
     useProjectStore.getState().clear();
+    useUIStore.setState({ libraryRailSort: null });
   });
 
   afterEach(() => {
     useLibraryStore.getState().clear();
     useProjectStore.getState().clear();
+    useUIStore.setState({ libraryRailSort: null });
   });
 
   it("renders nothing when there are no recent entries", () => {
@@ -71,5 +74,49 @@ describe("<RecentList />", () => {
       "aria-current",
       "true",
     );
+  });
+
+  describe("sort by name (lpx-explorer-twm)", () => {
+    it("renders entries in recency order when sort is null", () => {
+      useLibraryStore.getState().addRecent("/z-project.logicx", 1);
+      useLibraryStore.getState().addRecent("/a-project.logicx", 2);
+      // addRecent puts newest at top, so a-project (added last) comes first
+
+      render(<RecentList />);
+
+      const rows = screen.getAllByRole("button");
+      const names = rows.map((b) => b.textContent ?? "");
+      const aIdx = names.findIndex((n) => n.includes("a-project"));
+      const zIdx = names.findIndex((n) => n.includes("z-project"));
+      expect(aIdx).toBeLessThan(zIdx);
+    });
+
+    it("sorts A→Z when libraryRailSort is 'asc'", () => {
+      useLibraryStore.getState().addRecent("/z-project.logicx", 1);
+      useLibraryStore.getState().addRecent("/a-project.logicx", 2);
+      useUIStore.setState({ libraryRailSort: "asc" });
+
+      render(<RecentList />);
+
+      const rows = screen.getAllByRole("button");
+      const names = rows.map((b) => b.textContent ?? "");
+      const zIdx = names.findIndex((n) => n.includes("z-project"));
+      const aIdx = names.findIndex((n) => n.includes("a-project"));
+      expect(aIdx).toBeLessThan(zIdx);
+    });
+
+    it("sorts Z→A when libraryRailSort is 'desc'", () => {
+      useLibraryStore.getState().addRecent("/a-project.logicx", 1);
+      useLibraryStore.getState().addRecent("/z-project.logicx", 2);
+      useUIStore.setState({ libraryRailSort: "desc" });
+
+      render(<RecentList />);
+
+      const rows = screen.getAllByRole("button");
+      const names = rows.map((b) => b.textContent ?? "");
+      const zIdx = names.findIndex((n) => n.includes("z-project"));
+      const aIdx = names.findIndex((n) => n.includes("a-project"));
+      expect(zIdx).toBeLessThan(aIdx);
+    });
   });
 });

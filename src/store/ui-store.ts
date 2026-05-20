@@ -3,6 +3,15 @@ import { create } from "zustand";
 import type { AuFineCategory } from "../lib/au-categories";
 import type { SimilarityAxis } from "../lib/similarity";
 
+/** null = insertion order; 'asc' = A→Z; 'desc' = Z→A */
+export type SortDir = "asc" | "desc" | null;
+
+function cycleSortDir(current: SortDir): SortDir {
+  if (current === null) return "asc";
+  if (current === "asc") return "desc";
+  return null;
+}
+
 /**
  * App theme mode (lpx-explorer-klh, sme epic). 'system' auto-follows
  * the OS via `prefers-color-scheme`; 'light' / 'dark' are explicit
@@ -125,6 +134,12 @@ export interface UIState {
   setTextZoom: (z: number) => void;
   bumpTextZoom: (delta: number) => void;
   resetTextZoom: () => void;
+  /** Sort direction for the left library rail (Recent + folder project lists). Session-only. */
+  libraryRailSort: SortDir;
+  cycleLibraryRailSort: () => void;
+  /** Sort direction for the LibraryHome tile grid. Session-only. Resets on folder navigation. */
+  libraryHomeSort: SortDir;
+  cycleLibraryHomeSort: () => void;
 }
 
 export const TEXT_ZOOM_MIN = 0.75;
@@ -210,4 +225,10 @@ export const useUIStore = create<UIState>((set) => ({
   bumpTextZoom: (delta: number) =>
     set((s) => ({ textZoom: clampZoom(s.textZoom + delta) })),
   resetTextZoom: () => set({ textZoom: TEXT_ZOOM_DEFAULT }),
+  libraryRailSort: null,
+  cycleLibraryRailSort: () =>
+    set((s) => ({ libraryRailSort: cycleSortDir(s.libraryRailSort) })),
+  libraryHomeSort: null,
+  cycleLibraryHomeSort: () =>
+    set((s) => ({ libraryHomeSort: cycleSortDir(s.libraryHomeSort) })),
 }));
