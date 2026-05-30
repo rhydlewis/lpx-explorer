@@ -13,6 +13,7 @@ import {
 } from "./lib/scan-scheduler";
 import { installThemeWatcher } from "./lib/theme";
 import { openProject } from "./lib/open-project";
+import { runReadmeExport } from "./lib/export-action";
 import { pickAndAddFolder } from "./lib/open-folder";
 import { routeDrop } from "./lib/drop-routing";
 import {
@@ -244,6 +245,16 @@ function App() {
         if (cur.kind === "loaded") {
           void invoke("open_in_logic", { path: cur.path });
         }
+      } else if (id === "menu_export_readme") {
+        void runReadmeExport().then((result) => {
+          if (result.kind === "written") {
+            const name = result.path.split("/").pop() ?? result.path;
+            setHint(`Exported README to ${name}`);
+          } else if (result.kind === "error") {
+            setHint(`Export failed: ${result.message}`);
+          }
+          // 'no-project' and 'cancelled' are silent — nothing to report.
+        });
       } else if (id.startsWith("recent_project::")) {
         void openProject(id.slice("recent_project::".length));
       } else if (id.startsWith("recent_folder::")) {

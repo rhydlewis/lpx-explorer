@@ -135,6 +135,31 @@ pub fn project_information_present(path: String) -> bool {
         .is_file()
 }
 
+/// True if any component of `path` is a `.logicx` bundle — i.e. the
+/// target sits inside a Logic project. Used to enforce the read-only
+/// contract on the README export.
+fn is_inside_logicx_bundle(path: &Path) -> bool {
+    path.components().any(|c| {
+        c.as_os_str()
+            .to_str()
+            .is_some_and(|s| s.to_ascii_lowercase().ends_with(".logicx"))
+    })
+}
+
+/// Tauri command: write the collaborator/archive README to a
+/// user-chosen path (lpx-explorer-428). The destination comes from a
+/// native save dialog, so it's outside any bundle — but we defensively
+/// refuse to write anywhere inside a `.logicx` to uphold the read-only
+/// contract no matter what path arrives.
+#[tauri::command]
+pub fn export_readme(path: String, contents: String) -> Result<(), String> {
+    let target = PathBuf::from(&path);
+    if is_inside_logicx_bundle(&target) {
+        return Err("refusing to write inside a .logicx bundle".to_owned());
+    }
+    fs::write(&target, contents).map_err(|e| format!("failed to write README: {e}"))
+}
+
 /// Tauri command: the user's HOME directory as a string, or `None`
 /// when the env var is unset (e.g. sandboxed contexts where $HOME is
 /// blank). The frontend uses it to build the default-library path
@@ -533,6 +558,40 @@ mod tests {
         assert!(!project_information_present(
             bundle.to_string_lossy().into_owned()
         ));
+    }
+
+    #[test]
+    fn export_readme_writes_contents_to_the_chosen_path() {
+        // lpx-explorer-428: the export writes the README text verbatim to
+        // the user-chosen destination.
+        let tmp = tempdir().unwrap();
+        let out = tmp.path().join("README.txt");
+
+        export_readme(
+            out.to_string_lossy().into_owned(),
+            "project summary\n".to_owned(),
+        )
+        .expect("export should succeed");
+
+        assert_eq!(fs::read_to_string(&out).unwrap(), "project summary\n");
+    }
+
+    #[test]
+    fn export_readme_refuses_to_write_inside_a_logicx_bundle() {
+        // Read-only contract: never write inside a Logic project, even if
+        // a path pointing there somehow arrives.
+        let tmp = tempdir().unwrap();
+        let bundle = tmp.path().join("song.logicx");
+        fs::create_dir_all(&bundle).unwrap();
+        let out = bundle.join("README.txt");
+
+        let result = export_readme(
+            out.to_string_lossy().into_owned(),
+            "should not be written".to_owned(),
+        );
+
+        assert!(result.is_err(), "writing inside .logicx must be refused");
+        assert!(!out.exists(), "no file should be created inside the bundle");
     }
 
     #[test]

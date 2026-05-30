@@ -35,6 +35,7 @@ macro_rules! tlog {
 const MENU_OPEN_PROJECT: &str = "menu_open_project";
 const MENU_OPEN_FOLDER: &str = "menu_open_folder";
 const MENU_OPEN_IN_LOGIC: &str = "menu_open_in_logic";
+const MENU_EXPORT_README: &str = "menu_export_readme";
 const MENU_CLEAR_RECENT_PROJECTS: &str = "clear_recent_projects";
 const MENU_CLEAR_RECENT_FOLDERS: &str = "clear_recent_folders";
 const MENU_REPORT_ISSUE: &str = "help_report_issue";
@@ -224,6 +225,16 @@ fn build_menu(
                 Some("CmdOrCtrl+Shift+L"),
             )?,
             &PredefinedMenuItem::separator(app)?,
+            // Export collaborator/archive README (lpx-explorer-428). Always
+            // enabled; the frontend no-ops when no project is open.
+            &MenuItem::with_id(
+                app,
+                MENU_EXPORT_README,
+                "Export README…",
+                true,
+                Some("CmdOrCtrl+Shift+E"),
+            )?,
+            &PredefinedMenuItem::separator(app)?,
             &PredefinedMenuItem::close_window(app, None)?,
         ],
     )?;
@@ -334,6 +345,7 @@ pub fn run() {
             auval::load_au_registry,
             auval::run_au_scan,
             commands::is_dir,
+            commands::export_readme,
             commands::home_dir,
             commands::list_alternatives,
             commands::list_audio_files,
