@@ -60,3 +60,40 @@
   border: 1px dashed var(--c-divider);
   text-align: center;
 }
+
+/*
+ * Right-click context menu on the hero image (lpx-explorer-l7e).
+ * Replaces the WebView's dead 'Open Image in New Window' entry with a
+ * working one. Positioned via inline styles from the contextmenu event
+ * coords; dismissed by the window-level mousedown / Escape listeners.
+ */
+.contextMenu {
+  position: fixed;
+  z-index: var(--z-toast, 1000);
+  background-color: var(--c-bg);
+  border: 1px solid var(--c-divider);
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 12px var(--c-shadow);
+  padding: var(--s-1) 0;
+  min-width: 180px;
+}
+
+.contextMenuItem {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  width: 100%;
+  text-align: left;
+  padding: var(--s-1) var(--s-3);
+  font-size: var(--fs-caption);
+  color: var(--c-text);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.contextMenuItem:hover,
+.contextMenuItem:focus-visible {
+  background-color: var(--c-accent);
+  color: var(--c-on-saturated);
+  outline: none;
+}

@@ -145,6 +145,53 @@ describe("<ProjectWindow />", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
+  it("right-clicking the hero image suppresses the native menu and shows an 'Open Image in New Window' item (lpx-explorer-l7e)", () => {
+    // The default WebView context menu's 'Open Image in New Window' is a
+    // dead no-op on asset:// URLs. We preventDefault to kill it and show
+    // our own working entry instead.
+    const path = "/x/Alternatives/000/WindowImage.jpg";
+    render(
+      <ProjectWindow
+        alternatives={[alt(0, "x", true, path)]}
+        activeVariantIndex={0}
+        onSelectAlternative={() => {}}
+        lastSavedUnix={1715000000}
+      />,
+    );
+
+    const img = screen.getByRole("img", { name: /logic window/i });
+    // fireEvent returns false when the event was cancelled (preventDefault).
+    const notCancelled = fireEvent.contextMenu(img);
+    expect(notCancelled).toBe(false);
+
+    expect(
+      screen.getByRole("menuitem", { name: /open image in new window/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("clicking 'Open Image in New Window' opens the lightbox showing the image (lpx-explorer-l7e)", () => {
+    const path = "/x/Alternatives/000/WindowImage.jpg";
+    render(
+      <ProjectWindow
+        alternatives={[alt(0, "x", true, path)]}
+        activeVariantIndex={0}
+        onSelectAlternative={() => {}}
+        lastSavedUnix={1715000000}
+      />,
+    );
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+    fireEvent.contextMenu(screen.getByRole("img", { name: /logic window/i }));
+    fireEvent.click(
+      screen.getByRole("menuitem", { name: /open image in new window/i }),
+    );
+
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toBeInTheDocument();
+    expect(dialog.querySelector("img")).toHaveAttribute("src", `asset://${path}`);
+  });
+
   it("renders the AlternativeStrip inside the project-window section", () => {
     // The strip is the canonical alternative selector — it lives inside
     // the project-window section as the left column, even for projects
