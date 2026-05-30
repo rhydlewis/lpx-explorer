@@ -21,6 +21,11 @@ export function AlternativeStrip({
   now = new Date(),
 }: Props) {
   const buttonRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  // Only frame the strip as "alternatives" when there's more than one
+  // variant (lpx-explorer-dqh). A single-variant project's lone thumb
+  // isn't an alternative, so the header + 'Current' badge would be
+  // misleading noise — degrade gracefully to a bare thumb.
+  const isMultiVariant = alternatives.length >= 2;
 
   function handleKey(event: React.KeyboardEvent<HTMLButtonElement>, pos: number) {
     if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
@@ -35,6 +40,14 @@ export function AlternativeStrip({
 
   return (
     <div role="group" aria-label="alternatives" className={styles.strip}>
+      {isMultiVariant && (
+        <p
+          className={styles.header}
+          title="Project Alternatives are saved variants of this project (e.g. different mixes or arrangements). Click a thumbnail to load that variant."
+        >
+          Project Alternatives
+        </p>
+      )}
       {alternatives.map((alt, pos) => {
         const isActive = alt.index === activeVariantIndex;
         return (
@@ -65,6 +78,13 @@ export function AlternativeStrip({
               </span>
             )}
             <span className={styles.thumbLabel}>{alt.display_name}</span>
+            {isMultiVariant && isActive && (
+              // aria-hidden: aria-current already conveys "active" to AT;
+              // the badge is a visual reinforcement only.
+              <span className={styles.currentBadge} aria-hidden="true">
+                Current
+              </span>
+            )}
             {alt.last_saved_unix > 0 && (
               <span className={styles.thumbTimestamp}>
                 {formatRelative(alt.last_saved_unix, now)}

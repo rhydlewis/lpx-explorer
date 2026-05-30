@@ -1,9 +1,19 @@
 import { describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 
 import type { Alternative } from "../../lib/types";
 
 import { AlternativeStrip } from "./AlternativeStrip";
+
+const oneAlt: ReadonlyArray<Alternative> = [
+  {
+    index: 0,
+    display_name: "new idea",
+    is_active: true,
+    window_image_path: null,
+    last_saved_unix: 0,
+  },
+];
 
 const twoAlts: ReadonlyArray<Alternative> = [
   {
@@ -149,5 +159,62 @@ describe("<AlternativeStrip />", () => {
 
     // No timestamp text rendered; only the display names + thumbs.
     expect(screen.queryByText(/ago|last/i)).not.toBeInTheDocument();
+  });
+
+  it("labels the strip 'Project Alternatives' with an explanatory tooltip when there are 2+ alternatives (lpx-explorer-dqh)", () => {
+    render(
+      <AlternativeStrip
+        alternatives={twoAlts}
+        activeVariantIndex={1}
+        onSelectAlternative={() => {}}
+      />,
+    );
+
+    const header = screen.getByText("Project Alternatives");
+    expect(header).toBeInTheDocument();
+    // Hover tooltip explains the alternatives concept on first encounter.
+    expect(header).toHaveAttribute("title", expect.stringMatching(/alternative/i));
+  });
+
+  it("omits the 'Project Alternatives' header for a single-alternative project (lpx-explorer-dqh)", () => {
+    // Graceful degradation: a lone variant isn't an "alternative" — no
+    // header, no misleading framing.
+    render(
+      <AlternativeStrip
+        alternatives={oneAlt}
+        activeVariantIndex={0}
+        onSelectAlternative={() => {}}
+      />,
+    );
+
+    expect(screen.queryByText("Project Alternatives")).not.toBeInTheDocument();
+  });
+
+  it("badges the active alternative as 'Current' when there are 2+ alternatives (lpx-explorer-dqh)", () => {
+    render(
+      <AlternativeStrip
+        alternatives={twoAlts}
+        activeVariantIndex={1}
+        onSelectAlternative={() => {}}
+      />,
+    );
+
+    const active = screen.getByRole("button", { name: /new idea - alt 1/i });
+    expect(within(active).getByText(/^Current$/)).toBeInTheDocument();
+
+    const inactive = screen.getByRole("button", { name: /new idea(?! - alt)/i });
+    expect(within(inactive).queryByText(/^Current$/)).not.toBeInTheDocument();
+  });
+
+  it("does not badge the lone variant as 'Current' in a single-alternative project (lpx-explorer-dqh)", () => {
+    render(
+      <AlternativeStrip
+        alternatives={oneAlt}
+        activeVariantIndex={0}
+        onSelectAlternative={() => {}}
+      />,
+    );
+
+    expect(screen.queryByText(/^Current$/)).not.toBeInTheDocument();
   });
 });

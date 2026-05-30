@@ -91,3 +91,36 @@
   color: var(--c-text);
   font-weight: 500;
 }
+
+/*
+ * 'Project Alternatives' section header (lpx-explorer-dqh). Shown only
+ * when there are 2+ variants so single-variant projects don't carry a
+ * misleading label. `title` supplies the hover-tooltip explainer.
+ */
+.header {
+  margin: 0 0 var(--s-1);
+  font-size: var(--fs-caption);
+  font-weight: 600;
+  color: var(--c-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  cursor: help;
+}
+
+/*
+ * 'Current' badge on the active alternative (lpx-explorer-dqh). A small
+ * accent pill that makes the loaded variant unmistakable beyond the
+ * border highlight.
+ */
+.currentBadge {
+  align-self: flex-start;
+  font-size: var(--fs-meta, var(--fs-caption));
+  font-weight: 600;
+  line-height: 1.4;
+  padding: 0 var(--s-1);
+  border-radius: var(--radius-sm);
+  background-color: var(--c-accent);
+  color: var(--c-on-saturated);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
