@@ -192,6 +192,12 @@ pub fn collect_audio(bundle: &Path) -> Vec<AudioFile> {
 /// files are eligible — CAF gets surfaced in the list but never as the
 /// hero (the play button would just be disabled). Returns `None` when
 /// no previewable file exists in any tier.
+///
+/// Production hero-picking runs in TS (`pickHeroAudio` in `parse.ts`)
+/// so the inventory call stays a pure read; this Rust version is the
+/// canonical reference the TS mirrors, kept here under test as the
+/// source of truth — hence not called from non-test code.
+#[allow(dead_code)]
 pub fn pick_hero(files: &[AudioFile]) -> Option<&AudioFile> {
     fn most_recent<'a>(
         files: &'a [AudioFile],
