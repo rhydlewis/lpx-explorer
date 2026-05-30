@@ -4,6 +4,14 @@ All notable changes to LPX Explorer are documented here. The CI release pipeline
 
 Format: standard Markdown — `-` bullets and free-form paragraphs. Headings within a section (`###`) are not currently extracted.
 
+## v0.0.9
+
+- See which Logic version last saved a project — shown in the Metadata panel as "Last saved with" and in the exported README
+- Export a plain-text project README for collaborators or archives (File → Export README…, ⌘⇧E) — covers tempo / sample rate / frame rate, project alternatives, the current alternative, and 3rd-party plug-ins
+- Project Alternatives are now clearly labelled — a "Project Alternatives" header, a "Current" badge on the active variant, and a hover tooltip explaining what they are
+- "Open Image in New Window" on the project window image now works (previously did nothing)
+- Projects missing their ProjectInformation.plist now show a warning banner instead of silently reading as fine
+
 ## v0.0.8
 
 - Open active project in Logic Pro via the "Open in Logic Pro" button in the project header (next to Reveal in Finder) or File menu (shortcut Cmd+Shift+L)
