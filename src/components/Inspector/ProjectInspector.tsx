@@ -5,6 +5,7 @@ import { AudioPreview } from "./AudioPreview";
 import { CompatibilityVerdict } from "./CompatibilityVerdict";
 import sectionStyles from "./Inspector.module.css";
 import { InspectorSkeleton } from "./InspectorSkeleton";
+import { MissingManifestBanner } from "./MissingManifestBanner";
 import { ProjectHeader } from "./ProjectHeader";
 import { ProjectInfo } from "./ProjectInfo";
 import { ProjectWindow } from "./ProjectWindow";
@@ -40,6 +41,7 @@ export function ProjectInspector({ status }: Props) {
 
   return (
     <>
+      <MissingManifestBanner missing={status.projectInformationMissing} />
       <ProjectHeader path={status.path}>
         <CompatibilityVerdict />
       </ProjectHeader>

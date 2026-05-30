@@ -85,6 +85,7 @@ export function makeLoadedStatus(overrides: {
   readonly summary: ProjectSummary;
   readonly alternatives?: ReadonlyArray<Alternative>;
   readonly activeVariantIndex?: number;
+  readonly projectInformationMissing?: boolean;
 }): ProjectStatus {
   const path = overrides.path;
   const lastSlash = path.lastIndexOf("/");
@@ -100,5 +101,6 @@ export function makeLoadedStatus(overrides: {
       { index: 0, display_name: basename, is_active: true, window_image_path: null, last_saved_unix: 0 },
     ],
     activeVariantIndex: overrides.activeVariantIndex ?? 0,
+    projectInformationMissing: overrides.projectInformationMissing ?? false,
   };
 }

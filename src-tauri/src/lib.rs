@@ -342,6 +342,7 @@ pub fn run() {
             commands::parse_alternative,
             commands::parse_project,
             commands::project_data_stat,
+            commands::project_information_present,
             library::scan_folder,
             set_recent_menu,
             set_theme_menu

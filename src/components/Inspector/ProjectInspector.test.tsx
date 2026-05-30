@@ -12,6 +12,7 @@ const loaded: ProjectStatus = {
   summary: makeSummary(),
 alternatives: [{ index: 0, display_name: "x", is_active: true, window_image_path: null, last_saved_unix: 0 }],
 activeVariantIndex: 0,
+projectInformationMissing: false,
 };
 
 describe("<ProjectInspector />", () => {
@@ -139,5 +140,23 @@ describe("<ProjectInspector />", () => {
 
     expect(screen.getByRole("alert")).toHaveTextContent(/projectdata not found/i);
     expect(screen.queryByRole("region", { name: "tracks" })).not.toBeInTheDocument();
+  });
+
+  it("shows the missing-manifest banner when ProjectInformation.plist is absent (lpx-explorer-dfg)", () => {
+    const broken: ProjectStatus = { ...loaded, projectInformationMissing: true };
+    render(<ProjectInspector status={broken} />);
+
+    // Banner names the missing file and the rest of the inspector still
+    // renders (non-blocking).
+    expect(screen.getByRole("status")).toHaveTextContent(/ProjectInformation\.plist/);
+    expect(screen.getByRole("region", { name: "tracks" })).toBeInTheDocument();
+  });
+
+  it("hides the missing-manifest banner when the manifest is present", () => {
+    render(<ProjectInspector status={loaded} />);
+
+    expect(
+      screen.queryByText(/ProjectInformation\.plist/),
+    ).not.toBeInTheDocument();
   });
 });

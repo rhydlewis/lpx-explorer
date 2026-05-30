@@ -1,7 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Alternative, ProjectSummary } from "../lib/types";
-import { listAlternatives, parseAlternative } from "../lib/parse";
+import {
+  listAlternatives,
+  parseAlternative,
+  projectInformationPresent,
+} from "../lib/parse";
 import { makeSummary } from "../test/fixtures";
 
 import { useProjectStore } from "./project-store";
@@ -9,10 +13,12 @@ import { useProjectStore } from "./project-store";
 vi.mock("../lib/parse", () => ({
   listAlternatives: vi.fn(),
   parseAlternative: vi.fn(),
+  projectInformationPresent: vi.fn(),
 }));
 
 const mockedListAlternatives = vi.mocked(listAlternatives);
 const mockedParseAlternative = vi.mocked(parseAlternative);
+const mockedProjectInformationPresent = vi.mocked(projectInformationPresent);
 
 function alt(
   index: number,
@@ -27,6 +33,9 @@ describe("useProjectStore", () => {
     useProjectStore.getState().clear();
     mockedListAlternatives.mockReset();
     mockedParseAlternative.mockReset();
+    mockedProjectInformationPresent.mockReset();
+    // Default: manifest present (the common case) unless a test overrides.
+    mockedProjectInformationPresent.mockResolvedValue(true);
   });
 
   afterEach(() => {
@@ -72,7 +81,35 @@ describe("useProjectStore", () => {
       summary,
       alternatives: [alt(0, "song", true)],
       activeVariantIndex: 0,
+      projectInformationMissing: false,
     });
+  });
+
+  it("flags projectInformationMissing when the manifest is absent (lpx-explorer-dfg)", async () => {
+    mockedListAlternatives.mockResolvedValueOnce([alt(0, "broken", true)]);
+    mockedParseAlternative.mockResolvedValueOnce(makeSummary());
+    mockedProjectInformationPresent.mockResolvedValueOnce(false);
+
+    await useProjectStore.getState().select("/broken.logicx");
+
+    const state = useProjectStore.getState().current;
+    expect(state.kind).toBe("loaded");
+    if (state.kind === "loaded") {
+      expect(state.projectInformationMissing).toBe(true);
+    }
+  });
+
+  it("leaves projectInformationMissing false when the manifest is present", async () => {
+    mockedListAlternatives.mockResolvedValueOnce([alt(0, "song", true)]);
+    mockedParseAlternative.mockResolvedValueOnce(makeSummary());
+    mockedProjectInformationPresent.mockResolvedValueOnce(true);
+
+    await useProjectStore.getState().select("/song.logicx");
+
+    const state = useProjectStore.getState().current;
+    if (state.kind === "loaded") {
+      expect(state.projectInformationMissing).toBe(false);
+    }
   });
 
   it("picks the manifest's active variant by default", async () => {

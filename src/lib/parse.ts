@@ -56,6 +56,15 @@ export async function projectDataStat(
 }
 
 /**
+ * Does `<bundle>/Resources/ProjectInformation.plist` exist
+ * (lpx-explorer-dfg)? Logic writes this manifest on save; the frontend
+ * shows a non-blocking warning banner when it's absent. Pure read.
+ */
+export async function projectInformationPresent(path: string): Promise<boolean> {
+  return invoke<boolean>("project_information_present", { path });
+}
+
+/**
  * Enumerate every recognised audio file inside a `.logicx` bundle
  * (lpx-explorer-34y). Walks `Bounces/`, `Audio Files/`, `Freeze
  * Files/` at the bundle root and mirrored under each

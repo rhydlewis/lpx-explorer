@@ -1,6 +1,10 @@
 import { create } from "zustand";
 
-import { listAlternatives, parseAlternative } from "../lib/parse";
+import {
+  listAlternatives,
+  parseAlternative,
+  projectInformationPresent,
+} from "../lib/parse";
 import type { Alternative, ProjectSummary } from "../lib/types";
 
 export type ProjectStatus =
@@ -18,6 +22,13 @@ export type ProjectStatus =
       alternatives: ReadonlyArray<Alternative>;
       /** Index into `alternatives` of the variant whose summary is loaded. */
       activeVariantIndex: number;
+      /**
+       * True when `<bundle>/Resources/ProjectInformation.plist` is absent
+       * (lpx-explorer-dfg). The project still opens via the synthetic
+       * single-variant fallback; the inspector shows a non-blocking
+       * warning banner so the user knows the manifest is missing.
+       */
+      projectInformationMissing: boolean;
     }
   | { kind: "error"; path: string; message: string };
 
@@ -62,7 +73,13 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         throw new Error("ProjectData not found inside bundle");
       }
       const activeVariantIndex = pickActiveIndex(alternatives);
-      const summary = await parseAlternative(path, activeVariantIndex);
+      // Parse and the cheap manifest-presence stat run concurrently —
+      // the banner flag (lpx-explorer-dfg) shouldn't add a round-trip to
+      // the critical path.
+      const [summary, manifestPresent] = await Promise.all([
+        parseAlternative(path, activeVariantIndex),
+        projectInformationPresent(path),
+      ]);
       set({
         current: {
           kind: "loaded",
@@ -70,6 +87,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
           summary,
           alternatives,
           activeVariantIndex,
+          projectInformationMissing: !manifestPresent,
         },
       });
     } catch (e) {

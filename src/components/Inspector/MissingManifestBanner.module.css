@@ -1,0 +1,25 @@
+.banner {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-2);
+  padding: var(--s-2) var(--s-3);
+  border: 1px solid var(--c-status-warn);
+  border-radius: var(--radius-md);
+  background-color: var(--c-band-warn);
+  font-size: var(--fs-caption);
+  color: var(--c-text);
+}
+
+.icon {
+  flex-shrink: 0;
+  color: var(--c-status-warn);
+  font-weight: 600;
+}
+
+.text {
+  margin: 0;
+}
+
+.file {
+  font-family: var(--font-mono, ui-monospace, monospace);
+}

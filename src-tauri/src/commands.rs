@@ -121,6 +121,20 @@ pub fn is_dir(path: String) -> bool {
     PathBuf::from(path).is_dir()
 }
 
+/// Tauri command: does `<bundle>/Resources/ProjectInformation.plist`
+/// exist? (lpx-explorer-dfg). Logic writes this manifest on save; its
+/// absence is worth flagging because Logic may refuse to open the
+/// project and the alternatives list can't be built from it. The
+/// frontend surfaces a non-blocking warning banner when this is false.
+/// Pure read — never touches the bundle.
+#[tauri::command]
+pub fn project_information_present(path: String) -> bool {
+    PathBuf::from(path)
+        .join("Resources")
+        .join("ProjectInformation.plist")
+        .is_file()
+}
+
 /// Tauri command: the user's HOME directory as a string, or `None`
 /// when the env var is unset (e.g. sandboxed contexts where $HOME is
 /// blank). The frontend uses it to build the default-library path
@@ -492,6 +506,33 @@ mod tests {
         assert_eq!(alts[0].index, 0);
         assert_eq!(alts[0].display_name, "old project");
         assert!(alts[0].is_active);
+    }
+
+    #[test]
+    fn project_information_present_true_when_manifest_exists() {
+        // lpx-explorer-dfg: a bundle that has the manifest reports true,
+        // so the frontend shows no missing-file warning.
+        let tmp = tempdir().unwrap();
+        let bundle = tmp.path().join("song.logicx");
+        write_manifest(&bundle, &xml_plist("<key>ActiveVariant</key><integer>0</integer>"));
+
+        assert!(project_information_present(
+            bundle.to_string_lossy().into_owned()
+        ));
+    }
+
+    #[test]
+    fn project_information_present_false_when_manifest_absent() {
+        // The reported bug (lpx-explorer-dfg): bundle has Alternatives but
+        // no Resources/ProjectInformation.plist — reports false so the
+        // frontend can warn.
+        let tmp = tempdir().unwrap();
+        let bundle = tmp.path().join("broken.logicx");
+        write_alternative(&bundle, 0, b"\x00\x00");
+
+        assert!(!project_information_present(
+            bundle.to_string_lossy().into_owned()
+        ));
     }
 
     #[test]

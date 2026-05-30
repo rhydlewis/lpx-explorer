@@ -14,6 +14,7 @@ vi.mock("./parse", () => ({
     { index: 0, display_name: "song", is_active: true },
   ]),
   parseAlternative: vi.fn().mockResolvedValue({ fingerprints: [] }),
+  projectInformationPresent: vi.fn().mockResolvedValue(true),
 }));
 
 describe("openProject", () => {

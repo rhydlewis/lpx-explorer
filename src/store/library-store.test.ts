@@ -15,6 +15,7 @@ vi.mock("../lib/parse", () => ({
     { index: 0, display_name: "x", is_active: true },
   ]),
   parseAlternative: vi.fn().mockResolvedValue({ fingerprints: [] }),
+  projectInformationPresent: vi.fn().mockResolvedValue(true),
 }));
 
 const mockedScan = vi.mocked(scanFolder);

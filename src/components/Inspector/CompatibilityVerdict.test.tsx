@@ -56,6 +56,7 @@ describe("<CompatibilityVerdict />", () => {
         }),
       alternatives: [{ index: 0, display_name: "x", is_active: true, window_image_path: null, last_saved_unix: 0 }],
       activeVariantIndex: 0,
+      projectInformationMissing: false,
       },
     });
 
@@ -88,6 +89,7 @@ describe("<CompatibilityVerdict />", () => {
         }),
       alternatives: [{ index: 0, display_name: "x", is_active: true, window_image_path: null, last_saved_unix: 0 }],
       activeVariantIndex: 0,
+      projectInformationMissing: false,
       },
     });
 
@@ -127,6 +129,7 @@ describe("<CompatibilityVerdict />", () => {
         }),
       alternatives: [{ index: 0, display_name: "x", is_active: true, window_image_path: null, last_saved_unix: 0 }],
       activeVariantIndex: 0,
+      projectInformationMissing: false,
       },
     });
 
@@ -151,6 +154,7 @@ describe("<CompatibilityVerdict />", () => {
         }),
       alternatives: [{ index: 0, display_name: "x", is_active: true, window_image_path: null, last_saved_unix: 0 }],
       activeVariantIndex: 0,
+      projectInformationMissing: false,
       },
     });
 
@@ -171,6 +175,7 @@ describe("<CompatibilityVerdict />", () => {
         summary: makeSummary({ fingerprints: [] }),
       alternatives: [{ index: 0, display_name: "x", is_active: true, window_image_path: null, last_saved_unix: 0 }],
       activeVariantIndex: 0,
+      projectInformationMissing: false,
       },
     });
 
@@ -256,6 +261,7 @@ describe("<CompatibilityVerdict />", () => {
         }),
       alternatives: [{ index: 0, display_name: "x", is_active: true, window_image_path: null, last_saved_unix: 0 }],
       activeVariantIndex: 0,
+      projectInformationMissing: false,
       },
     });
 
@@ -285,6 +291,7 @@ describe("<CompatibilityVerdict />", () => {
         }),
       alternatives: [{ index: 0, display_name: "x", is_active: true, window_image_path: null, last_saved_unix: 0 }],
       activeVariantIndex: 0,
+      projectInformationMissing: false,
       },
     });
     const before = useUIStore.getState().pluginRailJumpToMissingNonce;
@@ -321,6 +328,7 @@ describe("<CompatibilityVerdict />", () => {
         }),
       alternatives: [{ index: 0, display_name: "x", is_active: true, window_image_path: null, last_saved_unix: 0 }],
       activeVariantIndex: 0,
+      projectInformationMissing: false,
       },
     });
 
@@ -350,6 +358,7 @@ describe("<CompatibilityVerdict />", () => {
         }),
       alternatives: [{ index: 0, display_name: "x", is_active: true, window_image_path: null, last_saved_unix: 0 }],
       activeVariantIndex: 0,
+      projectInformationMissing: false,
       },
     });
 
