@@ -5,6 +5,7 @@ import {
   listAlternatives,
   parseAlternative,
   projectInformationPresent,
+  projectLastSavedFrom,
 } from "../lib/parse";
 import { makeSummary } from "../test/fixtures";
 
@@ -14,11 +15,13 @@ vi.mock("../lib/parse", () => ({
   listAlternatives: vi.fn(),
   parseAlternative: vi.fn(),
   projectInformationPresent: vi.fn(),
+  projectLastSavedFrom: vi.fn(),
 }));
 
 const mockedListAlternatives = vi.mocked(listAlternatives);
 const mockedParseAlternative = vi.mocked(parseAlternative);
 const mockedProjectInformationPresent = vi.mocked(projectInformationPresent);
+const mockedProjectLastSavedFrom = vi.mocked(projectLastSavedFrom);
 
 function alt(
   index: number,
@@ -34,8 +37,11 @@ describe("useProjectStore", () => {
     mockedListAlternatives.mockReset();
     mockedParseAlternative.mockReset();
     mockedProjectInformationPresent.mockReset();
+    mockedProjectLastSavedFrom.mockReset();
     // Default: manifest present (the common case) unless a test overrides.
     mockedProjectInformationPresent.mockResolvedValue(true);
+    // Default: no version captured unless a test overrides.
+    mockedProjectLastSavedFrom.mockResolvedValue(null);
   });
 
   afterEach(() => {
@@ -82,6 +88,7 @@ describe("useProjectStore", () => {
       alternatives: [alt(0, "song", true)],
       activeVariantIndex: 0,
       projectInformationMissing: false,
+      lastSavedFrom: null,
     });
   });
 
@@ -109,6 +116,19 @@ describe("useProjectStore", () => {
     const state = useProjectStore.getState().current;
     if (state.kind === "loaded") {
       expect(state.projectInformationMissing).toBe(false);
+    }
+  });
+
+  it("captures the LastSavedFrom Logic version on load (lpx-explorer-2o2)", async () => {
+    mockedListAlternatives.mockResolvedValueOnce([alt(0, "song", true)]);
+    mockedParseAlternative.mockResolvedValueOnce(makeSummary());
+    mockedProjectLastSavedFrom.mockResolvedValueOnce("Logic Pro 12.2 (6644)");
+
+    await useProjectStore.getState().select("/song.logicx");
+
+    const state = useProjectStore.getState().current;
+    if (state.kind === "loaded") {
+      expect(state.lastSavedFrom).toBe("Logic Pro 12.2 (6644)");
     }
   });
 

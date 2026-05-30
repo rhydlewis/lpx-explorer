@@ -159,4 +159,15 @@ describe("<ProjectInspector />", () => {
       screen.queryByText(/ProjectInformation\.plist/),
     ).not.toBeInTheDocument();
   });
+
+  it("passes the Logic version to the Metadata panel's 'Last saved with' row (lpx-explorer-2o2)", () => {
+    const withVersion: ProjectStatus = {
+      ...loaded,
+      lastSavedFrom: "Logic Pro 12.2 (6644)",
+    };
+    render(<ProjectInspector status={withVersion} />);
+
+    expect(screen.getByText("Last saved with")).toBeInTheDocument();
+    expect(screen.getByText("Logic Pro 12.2 (6644)")).toBeInTheDocument();
+  });
 });

@@ -65,6 +65,15 @@ export async function projectInformationPresent(path: string): Promise<boolean> 
 }
 
 /**
+ * The Logic Pro version that last saved this project (lpx-explorer-2o2),
+ * verbatim from `ProjectInformation.plist`'s `LastSavedFrom` key (e.g.
+ * `"Logic Pro 12.2 (6644)"`). `null` when the manifest or key is absent.
+ */
+export async function projectLastSavedFrom(path: string): Promise<string | null> {
+  return invoke<string | null>("project_last_saved_from", { path });
+}
+
+/**
  * Enumerate every recognised audio file inside a `.logicx` bundle
  * (lpx-explorer-34y). Walks `Bounces/`, `Audio Files/`, `Freeze
  * Files/` at the bundle root and mirrored under each

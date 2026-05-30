@@ -35,6 +35,7 @@ export async function runReadmeExport(): Promise<ReadmeExportResult> {
     alternatives: project.alternatives,
     activeVariantIndex: project.activeVariantIndex,
     registry,
+    lastSavedFrom: project.lastSavedFrom ?? null,
   });
   const contents = buildProjectReadme(input);
 

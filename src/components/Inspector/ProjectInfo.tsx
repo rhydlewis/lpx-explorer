@@ -1,5 +1,6 @@
 import {
   Activity,
+  AppWindow,
   AudioLines,
   Calendar,
   Clock4,
@@ -26,6 +27,11 @@ import styles from "./ProjectInfo.module.css";
 interface Props {
   readonly metadata: ProjectMetadata;
   readonly stats: BundleStats;
+  /**
+   * Logic Pro version that last saved the project (lpx-explorer-2o2),
+   * verbatim from `LastSavedFrom`. Omitted from the panel when null/absent.
+   */
+  readonly lastSavedFrom?: string | null;
   /**
    * Reference instant for relative-time formatting. Defaults to `new Date()`
    * — tests pin it for deterministic output.
@@ -154,6 +160,7 @@ function buildItems(
   metadata: ProjectMetadata,
   stats: BundleStats,
   now: Date,
+  lastSavedFrom: string | null,
 ): ReadonlyArray<MetaItem> {
   const keyText = formatKey(metadata);
   const bpmText = formatBpm(metadata.bpm);
@@ -225,6 +232,11 @@ function buildItems(
       value: formatDateWithRelative(stats.modified_at_unix, now),
       icon: History,
     },
+    // Logic version that last saved the project (lpx-explorer-2o2);
+    // omitted when unknown.
+    ...(lastSavedFrom !== null && lastSavedFrom !== ""
+      ? [{ label: "Last saved with", value: lastSavedFrom, icon: AppWindow }]
+      : []),
     {
       label: "Bundle size",
       value: formatBytes(stats.size_bytes),
@@ -249,9 +261,10 @@ function buildItems(
 export function ProjectInfo({
   metadata,
   stats,
+  lastSavedFrom = null,
   now = new Date(),
 }: Props) {
-  const items = buildItems(metadata, stats, now);
+  const items = buildItems(metadata, stats, now, lastSavedFrom);
   const combined =
     isKeyKnown(metadata) && isBpmKnown(metadata)
       ? ({

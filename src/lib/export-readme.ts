@@ -11,6 +11,11 @@ import type { Alternative, AuRegistry, ProjectSummary } from "./types";
 
 export interface ReadmeInput {
   readonly projectName: string;
+  /**
+   * Logic Pro version that last saved the project (lpx-explorer-2o2),
+   * e.g. "Logic Pro 12.2 (6644)". null when unknown — omitted.
+   */
+  readonly logicVersion: string | null;
   /** Tempo in BPM. <= 0 means unknown — omitted from the header. */
   readonly bpm: number;
   /** Sample rate in Hz. <= 0 means unknown — omitted. */
@@ -47,6 +52,7 @@ function frameRateLabel(idx: number): string | null {
 
 function statsLine(input: ReadmeInput): string | null {
   const parts: string[] = [];
+  if (input.logicVersion !== null) parts.push(input.logicVersion);
   if (input.bpm > 0) parts.push(`${input.bpm.toFixed(1)} BPM`);
   if (input.sampleRateHz > 0) {
     parts.push(`${(input.sampleRateHz / 1000).toFixed(1)} kHz`);
@@ -97,6 +103,8 @@ export interface ProjectForReadme {
   readonly alternatives: ReadonlyArray<Alternative>;
   readonly activeVariantIndex: number;
   readonly registry: AuRegistry | null;
+  /** `LastSavedFrom` Logic version, or null when unknown (lpx-explorer-2o2). */
+  readonly lastSavedFrom: string | null;
 }
 
 /**
@@ -120,6 +128,7 @@ export function readmeInputFromProject(p: ProjectForReadme): ReadmeInput {
 
   return {
     projectName: projectNameOf(p.path),
+    logicVersion: p.lastSavedFrom,
     bpm: p.summary.metadata.bpm,
     sampleRateHz: p.summary.metadata.sample_rate,
     frameRateIndex: p.summary.metadata.frame_rate_index,

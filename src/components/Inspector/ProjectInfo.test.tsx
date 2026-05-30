@@ -21,6 +21,35 @@ describe("<ProjectInfo />", () => {
     ).toBeInTheDocument();
   });
 
+  it("renders a 'Last saved with' row showing the Logic version (lpx-explorer-2o2)", () => {
+    const s = makeSummary();
+    render(
+      <ProjectInfo
+        metadata={s.metadata}
+        stats={s.stats}
+        now={fixedNow}
+        lastSavedFrom="Logic Pro 12.2 (6644)"
+      />,
+    );
+
+    expect(screen.getByText("Last saved with")).toBeInTheDocument();
+    expect(screen.getByText("Logic Pro 12.2 (6644)")).toBeInTheDocument();
+  });
+
+  it("omits the 'Last saved with' row when the version is unknown", () => {
+    const s = makeSummary();
+    render(
+      <ProjectInfo
+        metadata={s.metadata}
+        stats={s.stats}
+        now={fixedNow}
+        lastSavedFrom={null}
+      />,
+    );
+
+    expect(screen.queryByText("Last saved with")).not.toBeInTheDocument();
+  });
+
   it("renders key + gender as 'C major' when both present", () => {
     const s = makeSummary({ metadata: { song_key: "C", song_gender: "Major" } });
     render(<ProjectInfo metadata={s.metadata} stats={s.stats} now={fixedNow} />);

@@ -135,6 +135,19 @@ pub fn project_information_present(path: String) -> bool {
         .is_file()
 }
 
+/// Tauri command: the Logic Pro version that last saved this project
+/// (lpx-explorer-2o2), read verbatim from `ProjectInformation.plist`'s
+/// `LastSavedFrom` key (e.g. `"Logic Pro 12.2 (6644)"`). `None` when the
+/// manifest or key is absent. Pure read.
+#[tauri::command]
+pub fn project_last_saved_from(path: String) -> Option<String> {
+    let manifest = PathBuf::from(path)
+        .join("Resources")
+        .join("ProjectInformation.plist");
+    let bytes = fs::read(&manifest).ok()?;
+    lpx_parser::parse_last_saved_from(&bytes)
+}
+
 /// True if any component of `path` is a `.logicx` bundle — i.e. the
 /// target sits inside a Logic project. Used to enforce the read-only
 /// contract on the README export.
@@ -558,6 +571,35 @@ mod tests {
         assert!(!project_information_present(
             bundle.to_string_lossy().into_owned()
         ));
+    }
+
+    #[test]
+    fn project_last_saved_from_reads_the_manifest_key() {
+        // lpx-explorer-2o2: surface the Logic version verbatim.
+        let tmp = tempdir().unwrap();
+        let bundle = tmp.path().join("song.logicx");
+        write_manifest(
+            &bundle,
+            &xml_plist(
+                "<key>LastSavedFrom</key><string>Logic Pro 12.2 (6644)</string>",
+            ),
+        );
+
+        assert_eq!(
+            project_last_saved_from(bundle.to_string_lossy().into_owned()).as_deref(),
+            Some("Logic Pro 12.2 (6644)"),
+        );
+    }
+
+    #[test]
+    fn project_last_saved_from_is_none_when_manifest_missing() {
+        let tmp = tempdir().unwrap();
+        let bundle = tmp.path().join("song.logicx");
+        write_alternative(&bundle, 0, b"\x00\x00");
+
+        assert!(
+            project_last_saved_from(bundle.to_string_lossy().into_owned()).is_none()
+        );
     }
 
     #[test]

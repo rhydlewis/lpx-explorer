@@ -15,6 +15,7 @@ vi.mock("./parse", () => ({
   ]),
   parseAlternative: vi.fn().mockResolvedValue({ fingerprints: [] }),
   projectInformationPresent: vi.fn().mockResolvedValue(true),
+  projectLastSavedFrom: vi.fn().mockResolvedValue(null),
 }));
 
 describe("openProject", () => {

@@ -18,7 +18,9 @@ mod regions;
 mod tracks;
 mod tracks_registry;
 
-pub use alternatives::{parse_alternatives_manifest, Alternative, AlternativesError};
+pub use alternatives::{
+    parse_alternatives_manifest, parse_last_saved_from, Alternative, AlternativesError,
+};
 pub use auval::{parse_auval_line, AuvalEntry};
 pub use metadata::{parse_metadata_plist, MetadataError, ProjectMetadata};
 pub use regions::{

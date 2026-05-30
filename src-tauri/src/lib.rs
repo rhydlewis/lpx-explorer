@@ -355,6 +355,7 @@ pub fn run() {
             commands::parse_project,
             commands::project_data_stat,
             commands::project_information_present,
+            commands::project_last_saved_from,
             library::scan_folder,
             set_recent_menu,
             set_theme_menu

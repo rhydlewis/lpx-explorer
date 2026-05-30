@@ -4,6 +4,7 @@ import {
   listAlternatives,
   parseAlternative,
   projectInformationPresent,
+  projectLastSavedFrom,
 } from "../lib/parse";
 import type { Alternative, ProjectSummary } from "../lib/types";
 
@@ -29,6 +30,13 @@ export type ProjectStatus =
        * warning banner so the user knows the manifest is missing.
        */
       projectInformationMissing: boolean;
+      /**
+       * Logic Pro version that last saved this project (lpx-explorer-2o2),
+       * verbatim from `ProjectInformation.plist`'s `LastSavedFrom` (e.g.
+       * `"Logic Pro 12.2 (6644)"`). `null` when the manifest/key is absent.
+       * Optional so older inline test fixtures don't have to set it.
+       */
+      lastSavedFrom?: string | null;
     }
   | { kind: "error"; path: string; message: string };
 
@@ -76,9 +84,10 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       // Parse and the cheap manifest-presence stat run concurrently —
       // the banner flag (lpx-explorer-dfg) shouldn't add a round-trip to
       // the critical path.
-      const [summary, manifestPresent] = await Promise.all([
+      const [summary, manifestPresent, lastSavedFrom] = await Promise.all([
         parseAlternative(path, activeVariantIndex),
         projectInformationPresent(path),
+        projectLastSavedFrom(path),
       ]);
       set({
         current: {
@@ -88,6 +97,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
           alternatives,
           activeVariantIndex,
           projectInformationMissing: !manifestPresent,
+          lastSavedFrom,
         },
       });
     } catch (e) {

@@ -89,6 +89,22 @@ pub fn parse_alternatives_manifest(
         .collect())
 }
 
+/// Extract the `LastSavedFrom` string from a `ProjectInformation.plist`
+/// payload — the Logic Pro version that last saved the project, verbatim
+/// (e.g. `"Logic Pro 12.2 (6644)"`). Returns `None` when the key is
+/// absent (older formats) or the plist is unparseable. Bytes-only.
+///
+/// Logic records only the most-recent save; there is no "created with"
+/// version. See lpx-explorer-2o2.
+pub fn parse_last_saved_from(bytes: &[u8]) -> Option<String> {
+    let value: plist::Value = plist::from_bytes(bytes).ok()?;
+    value
+        .as_dictionary()?
+        .get("LastSavedFrom")?
+        .as_string()
+        .map(str::to_owned)
+}
+
 fn collect_named(
     dict: &plist::Dictionary,
     bundle_name: &str,
@@ -258,5 +274,32 @@ mod tests {
 
         let err = parse_alternatives_manifest(&bytes, "x").unwrap_err();
         assert!(matches!(err, AlternativesError::Invalid(_)));
+    }
+
+    #[test]
+    fn reads_last_saved_from_verbatim() {
+        // lpx-explorer-2o2: the Logic version that last saved the project,
+        // taken verbatim from the real key seen in `new idea.logicx`.
+        let bytes = xml_plist(
+            r#"<key>LastSavedFrom</key><string>Logic Pro 12.2 (6644)</string>"#,
+        );
+
+        assert_eq!(
+            parse_last_saved_from(&bytes).as_deref(),
+            Some("Logic Pro 12.2 (6644)"),
+        );
+    }
+
+    #[test]
+    fn last_saved_from_is_none_when_key_absent() {
+        // Older formats lack the key — omit it cleanly.
+        let bytes = xml_plist(r#"<key>BundleVersion</key><integer>2</integer>"#);
+
+        assert!(parse_last_saved_from(&bytes).is_none());
+    }
+
+    #[test]
+    fn last_saved_from_is_none_for_unparseable_plist() {
+        assert!(parse_last_saved_from(b"not a plist").is_none());
     }
 }

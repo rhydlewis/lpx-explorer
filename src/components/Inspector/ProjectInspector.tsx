@@ -56,6 +56,7 @@ export function ProjectInspector({ status }: Props) {
         <ProjectInfo
           metadata={status.summary.metadata}
           stats={status.summary.stats}
+          lastSavedFrom={status.lastSavedFrom ?? null}
         />
         <TrackList tracks={status.summary.tracks} />
       </div>

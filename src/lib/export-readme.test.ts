@@ -11,6 +11,7 @@ import {
 function makeInput(overrides: Partial<ReadmeInput> = {}): ReadmeInput {
   return {
     projectName: "new idea",
+    logicVersion: "Logic Pro 12.2 (6644)",
     bpm: 125,
     sampleRateHz: 44100,
     frameRateIndex: 1, // 25 fps
@@ -27,9 +28,17 @@ describe("buildProjectReadme", () => {
     const lines = text.split("\n");
 
     expect(lines[0]).toBe("new idea");
+    expect(lines[1]).toMatch(/Logic Pro 12\.2 \(6644\)/);
     expect(lines[1]).toMatch(/125\.0 BPM/);
     expect(lines[1]).toMatch(/44\.1 kHz/);
     expect(lines[1]).toMatch(/25 fps/);
+  });
+
+  it("omits the Logic version cleanly when it's unknown", () => {
+    const text = buildProjectReadme(makeInput({ logicVersion: null }));
+    expect(text).not.toContain("Logic Pro");
+    // The other header fields still render.
+    expect(text).toMatch(/125\.0 BPM/);
   });
 
   it("omits unknown header fields cleanly (no '—', no empty stats line)", () => {
@@ -102,9 +111,11 @@ describe("readmeInputFromProject", () => {
       alternatives: [alt(0, "mix a", false), alt(1, "mix b", true)],
       activeVariantIndex: 1,
       registry: null,
+      lastSavedFrom: "Logic Pro 12.2 (6644)",
     });
 
     expect(input.projectName).toBe("song");
+    expect(input.logicVersion).toBe("Logic Pro 12.2 (6644)");
     expect(input.bpm).toBe(90);
     expect(input.sampleRateHz).toBe(48000);
     expect(input.frameRateIndex).toBe(5);
@@ -150,6 +161,7 @@ describe("readmeInputFromProject", () => {
       alternatives: [alt(0, "song", true)],
       activeVariantIndex: 0,
       registry,
+      lastSavedFrom: null,
     });
 
     expect(input.thirdPartyPlugins).toContain("Serum");
