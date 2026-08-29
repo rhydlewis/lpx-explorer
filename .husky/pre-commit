@@ -1,3 +1,14 @@
 npm run typecheck
 npx lint-staged
 npm test
+
+if command -v bd >/dev/null 2>&1 && [ -d .beads ]; then
+  echo "  → beads export..."
+  if bd export -o .beads/issues.jsonl; then
+    git add .beads/issues.jsonl
+  else
+    echo "⚠️  beads export failed — issues.jsonl may be stale" >&2
+  fi
+fi
+
+echo "✅ All checks passed!"
