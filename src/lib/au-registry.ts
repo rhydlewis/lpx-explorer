@@ -16,6 +16,15 @@ export async function loadAuRegistry(): Promise<AuRegistry | null> {
 }
 
 /**
+ * Newest mtime (unix seconds) across the macOS AU search paths. `null`
+ * when none of them exist. Compared against `AuRegistry.scanned_at_unix`
+ * to decide the cached registry has gone stale (lpx-explorer-kw0).
+ */
+export async function loadAuPathsNewestMtime(): Promise<number | null> {
+  return invoke<number | null>("au_paths_newest_mtime");
+}
+
+/**
  * Spawn `auval -l` and stream each parsed entry through `onEntry`.
  * Resolves when the scan completes (cache written on the Rust side);
  * rejects with an `AuvalError` if `auval` couldn't be spawned or

@@ -1,23 +1,37 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { loadAuRegistry, runAuScan } from "../lib/au-registry";
+import {
+  loadAuPathsNewestMtime,
+  loadAuRegistry,
+  runAuScan,
+} from "../lib/au-registry";
 import type { AuvalEntry } from "../lib/types";
 import { makeAuRegistry } from "../test/fixtures";
 
 import { useAuRegistryStore } from "./au-registry-store";
 
 vi.mock("../lib/au-registry", () => ({
+  loadAuPathsNewestMtime: vi.fn(),
   loadAuRegistry: vi.fn(),
   runAuScan: vi.fn(),
 }));
 
 const mockedLoad = vi.mocked(loadAuRegistry);
 const mockedRun = vi.mocked(runAuScan);
+const mockedMtime = vi.mocked(loadAuPathsNewestMtime);
+
+const nowUnix = () => Math.floor(Date.now() / 1000);
+
+/** A registry scanned just now — fresh by both mtime and TTL. */
+function freshRegistry(...fps: string[]) {
+  return { ...makeAuRegistry(fps), scanned_at_unix: nowUnix() };
+}
 
 describe("useAuRegistryStore", () => {
   beforeEach(() => {
     useAuRegistryStore.getState().reset();
     vi.clearAllMocks();
+    mockedMtime.mockResolvedValue(null);
   });
 
   afterEach(() => {
@@ -123,7 +137,7 @@ describe("useAuRegistryStore", () => {
     }
   });
 
-  it("autoScanIfAbsent triggers a scan when the cache is missing", async () => {
+  it("autoScanIfStale triggers a scan when the cache is missing", async () => {
     // First call — no cache. Should auto-kick the scan instead of leaving
     // the user on a non-actionable 'absent' pill.
     mockedLoad.mockResolvedValueOnce(null);
@@ -135,7 +149,7 @@ describe("useAuRegistryStore", () => {
     });
     mockedLoad.mockResolvedValueOnce(makeAuRegistry(["aufx/Cmpr/appl"]));
 
-    const promise = useAuRegistryStore.getState().autoScanIfAbsent();
+    const promise = useAuRegistryStore.getState().autoScanIfStale();
     // Should be scanning by the time loadFromCache resolves with null.
     await Promise.resolve();
     await Promise.resolve();
@@ -151,24 +165,159 @@ describe("useAuRegistryStore", () => {
     expect(mockedRun).toHaveBeenCalledTimes(1);
   });
 
-  it("autoScanIfAbsent does NOT scan when the cache already exists", async () => {
-    mockedLoad.mockResolvedValueOnce(makeAuRegistry(["aufx/Cmpr/appl"]));
+  it("autoScanIfStale does NOT scan when the cache is fresh", async () => {
+    mockedLoad.mockResolvedValueOnce(freshRegistry("aufx/Cmpr/appl"));
+    mockedMtime.mockResolvedValue(nowUnix() - 3600);
 
-    await useAuRegistryStore.getState().autoScanIfAbsent();
+    await useAuRegistryStore.getState().autoScanIfStale();
 
     expect(useAuRegistryStore.getState().status.kind).toBe("loaded");
     expect(mockedRun).not.toHaveBeenCalled();
   });
 
-  it("autoScanIfAbsent does NOT scan when loadFromCache errors", async () => {
+  it("autoScanIfStale rescans when a plug-in was installed after the scan", async () => {
+    // The lpx-explorer-kw0 regression test: cache exists, so the old
+    // 'absent'-only guard skipped the rescan and kept reporting the
+    // newly installed plug-in as missing.
+    const stale = freshRegistry("aufx/Cmpr/appl");
+    mockedLoad.mockResolvedValueOnce(stale);
+    mockedMtime.mockResolvedValue(stale.scanned_at_unix + 60);
+    mockedRun.mockResolvedValueOnce(undefined);
+    mockedLoad.mockResolvedValueOnce(
+      freshRegistry("aufx/Cmpr/appl", "aumu/kphp/ kHs"),
+    );
+
+    await useAuRegistryStore.getState().autoScanIfStale();
+
+    expect(mockedRun).toHaveBeenCalledTimes(1);
+    const status = useAuRegistryStore.getState().status;
+    expect(status.kind).toBe("loaded");
+    if (status.kind === "loaded") {
+      expect(status.registry.entries).toHaveLength(2);
+    }
+  });
+
+  it("autoScanIfStale keeps the stale registry rendering during the refresh", async () => {
+    // A refresh must not blank the verdict back to 'Haven't checked your
+    // AUs yet' — the user is mid-read of a project.
+    const stale = freshRegistry("aufx/Cmpr/appl");
+    mockedLoad.mockResolvedValueOnce(stale);
+    mockedMtime.mockResolvedValue(stale.scanned_at_unix + 60);
+    let resolveScan!: () => void;
+    mockedRun.mockImplementationOnce(async () => {
+      await new Promise<void>((r) => {
+        resolveScan = r;
+      });
+    });
+    mockedLoad.mockResolvedValueOnce(freshRegistry("aufx/Cmpr/appl"));
+
+    const promise = useAuRegistryStore.getState().autoScanIfStale();
+    await vi.waitFor(() => {
+      expect(useAuRegistryStore.getState().rescanning).toBe(true);
+    });
+    expect(useAuRegistryStore.getState().status).toEqual({
+      kind: "loaded",
+      registry: stale,
+    });
+
+    resolveScan();
+    await promise;
+    expect(useAuRegistryStore.getState().rescanning).toBe(false);
+  });
+
+  it("a failed rescan preserves the previously loaded registry", async () => {
+    // auval segfaults on a broken plug-in install. Losing a good
+    // registry to that would be a worse bug than the staleness it fixes.
+    const good = freshRegistry("aufx/Cmpr/appl");
+    mockedLoad.mockResolvedValueOnce(good);
+    await useAuRegistryStore.getState().loadFromCache();
+    mockedRun.mockRejectedValueOnce(new Error("auval exited with signal 11"));
+
+    await useAuRegistryStore.getState().rescan();
+
+    expect(useAuRegistryStore.getState().status).toEqual({
+      kind: "loaded",
+      registry: good,
+    });
+    expect(useAuRegistryStore.getState().rescanning).toBe(false);
+    expect(useAuRegistryStore.getState().rescanError).toMatch(/auval/i);
+  });
+
+  it("a successful rescan clears a previous rescan error", async () => {
+    mockedLoad.mockResolvedValueOnce(freshRegistry("aufx/Cmpr/appl"));
+    await useAuRegistryStore.getState().loadFromCache();
+    mockedRun.mockRejectedValueOnce(new Error("auval exited with signal 11"));
+    await useAuRegistryStore.getState().rescan();
+    expect(useAuRegistryStore.getState().rescanError).not.toBeNull();
+
+    mockedRun.mockResolvedValueOnce(undefined);
+    mockedLoad.mockResolvedValueOnce(freshRegistry("aufx/Cmpr/appl", "aumu/kphp/ kHs"));
+    await useAuRegistryStore.getState().rescan();
+
+    expect(useAuRegistryStore.getState().rescanError).toBeNull();
+  });
+
+  it("autoScanIfStale does NOT scan when loadFromCache errors", async () => {
     // A disk-read error shouldn't trigger an expensive scan automatically
     // — error states should be visible, not papered over with side effects.
     mockedLoad.mockRejectedValueOnce(new Error("disk read fail"));
 
-    await useAuRegistryStore.getState().autoScanIfAbsent();
+    await useAuRegistryStore.getState().autoScanIfStale();
 
     expect(useAuRegistryStore.getState().status.kind).toBe("error");
     expect(mockedRun).not.toHaveBeenCalled();
+  });
+
+
+  it("a second rescan while one is in flight is a no-op", async () => {
+    // React StrictMode double-invokes mount effects in dev, and the user
+    // can hit Rescan while the auto-refresh is already running. Two
+    // concurrent 'auval -l' processes race to write the same cache file.
+    mockedLoad.mockResolvedValueOnce(freshRegistry("aufx/Cmpr/appl"));
+    await useAuRegistryStore.getState().loadFromCache();
+    let resolveScan!: () => void;
+    mockedRun.mockImplementationOnce(async () => {
+      await new Promise<void>((r) => {
+        resolveScan = r;
+      });
+    });
+    mockedLoad.mockResolvedValueOnce(freshRegistry("aufx/Cmpr/appl"));
+
+    const first = useAuRegistryStore.getState().rescan();
+    await vi.waitFor(() => {
+      expect(useAuRegistryStore.getState().rescanning).toBe(true);
+    });
+    await useAuRegistryStore.getState().rescan();
+
+    expect(mockedRun).toHaveBeenCalledTimes(1);
+
+    resolveScan();
+    await first;
+  });
+
+  it("autoScanIfStale does not stack a scan on top of one already running", async () => {
+    const stale = freshRegistry("aufx/Cmpr/appl");
+    mockedLoad.mockResolvedValue(stale);
+    mockedMtime.mockResolvedValue(stale.scanned_at_unix + 60);
+    let resolveScan!: () => void;
+    mockedRun.mockImplementationOnce(async () => {
+      await new Promise<void>((r) => {
+        resolveScan = r;
+      });
+    });
+
+    const both = Promise.all([
+      useAuRegistryStore.getState().autoScanIfStale(),
+      useAuRegistryStore.getState().autoScanIfStale(),
+    ]);
+    await vi.waitFor(() => {
+      expect(useAuRegistryStore.getState().rescanning).toBe(true);
+    });
+
+    expect(mockedRun).toHaveBeenCalledTimes(1);
+
+    resolveScan();
+    await both;
   });
 
   it("byFingerprint returns an empty map when not loaded", () => {

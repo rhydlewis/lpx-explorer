@@ -1,6 +1,10 @@
 import { create } from "zustand";
 
 import type { AuFineCategory } from "../lib/au-categories";
+import {
+  DEFAULT_SEARCH_ENGINE,
+  type SearchEngineId,
+} from "../lib/search-engines";
 import type { SimilarityAxis } from "../lib/similarity";
 
 /** null = insertion order; 'asc' = A→Z; 'desc' = Z→A */
@@ -78,6 +82,12 @@ export interface UIState {
   pluginRailShowFingerprints: boolean;
   setPluginRailShowFingerprints: (show: boolean) => void;
   togglePluginRailShowFingerprints: () => void;
+  /**
+   * Engine used by the "Search the web" plug-in action
+   * (lpx-explorer-tmo). Set from the View → Search With native menu.
+   */
+  searchEngine: SearchEngineId;
+  setSearchEngine: (engine: SearchEngineId) => void;
   /**
    * Path of the LibraryRail folder the user has selected for browse
    * mode. When set AND no project is loaded, the main area renders the
@@ -173,6 +183,8 @@ export const useUIStore = create<UIState>((set) => ({
   pluginRailScope: "project",
   setPluginRailScope: (scope: PluginRailScope) => set({ pluginRailScope: scope }),
   pluginRailShowFingerprints: false,
+  searchEngine: DEFAULT_SEARCH_ENGINE,
+  setSearchEngine: (engine: SearchEngineId) => set({ searchEngine: engine }),
   setPluginRailShowFingerprints: (show: boolean) =>
     set({ pluginRailShowFingerprints: show }),
   togglePluginRailShowFingerprints: () =>

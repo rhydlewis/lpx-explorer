@@ -2,7 +2,12 @@ import { describe, expect, it } from "vitest";
 
 import type { AURef, AuRegistry } from "./types";
 
-import { groupFingerprints, installStatusOf } from "./au-utils";
+import {
+  REGISTRY_TTL_SECONDS,
+  groupFingerprints,
+  installStatusOf,
+  registryIsStale,
+} from "./au-utils";
 
 const registryWith = (...fps: string[]): AuRegistry => ({
   entries: fps.map((fingerprint) => ({
@@ -86,5 +91,45 @@ describe("groupFingerprints", () => {
     ]);
     expect(groups[0]?.count).toBe(2);
     expect(groups[0]?.first_offset).toBe(10);
+  });
+});
+
+describe("registryIsStale", () => {
+  const scannedAt = 1_000_000;
+  const registry = (): AuRegistry => ({ entries: [], scanned_at_unix: scannedAt });
+
+  it("is stale when a plug-in folder changed after the scan", () => {
+    // The lpx-explorer-kw0 bug: user installs a plug-in, relaunches,
+    // and the two-day-old registry still calls it missing.
+    expect(registryIsStale(registry(), scannedAt + 1, scannedAt + 10)).toBe(true);
+  });
+
+  it("is fresh when the newest plug-in folder predates the scan", () => {
+    expect(registryIsStale(registry(), scannedAt - 1, scannedAt + 10)).toBe(false);
+  });
+
+  it("is fresh when a plug-in folder changed at the very same second", () => {
+    // Boundary: a scan kicked off by an install races the mtime it was
+    // triggered by. Equal timestamps must not loop us into rescanning
+    // on every launch.
+    expect(registryIsStale(registry(), scannedAt, scannedAt + 10)).toBe(false);
+  });
+
+  it("is stale once the TTL lapses even with no folder change", () => {
+    // Backstop for an installer that swaps a bundle's innards without
+    // touching the bundle or its parent directory.
+    expect(
+      registryIsStale(registry(), null, scannedAt + REGISTRY_TTL_SECONDS + 1),
+    ).toBe(true);
+  });
+
+  it("is fresh inside the TTL when the mtime probe is unavailable", () => {
+    expect(registryIsStale(registry(), null, scannedAt + 60)).toBe(false);
+  });
+
+  it("is not stale when the clock has skewed backwards", () => {
+    // A scanned_at in the future must not read as 'ancient' and trigger
+    // a rescan on every single launch.
+    expect(registryIsStale(registry(), null, scannedAt - 999_999)).toBe(false);
   });
 });

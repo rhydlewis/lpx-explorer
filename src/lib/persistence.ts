@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { load } from "@tauri-apps/plugin-store";
 
+import { isSearchEngineId, type SearchEngineId } from "./search-engines";
 import type { ProjectSummary, RecentEntry } from "./types";
 
 const STORE_FILE = "library.json";
@@ -11,6 +12,7 @@ const KEY_FOLDERS = "folders";
 const KEY_TEXT_ZOOM = "textZoom";
 const KEY_SHOW_FINGERPRINTS = "pluginRailShowFingerprints";
 const KEY_THEME = "theme";
+const KEY_SEARCH_ENGINE = "searchEngine";
 
 const THEME_MODES = ["system", "light", "dark"] as const;
 type PersistedThemeMode = (typeof THEME_MODES)[number];
@@ -158,6 +160,26 @@ export async function loadShowFingerprints(): Promise<boolean | null> {
 export async function persistShowFingerprints(show: boolean): Promise<void> {
   const store = await getStore();
   await store.set(KEY_SHOW_FINGERPRINTS, show);
+  await store.save();
+}
+
+/**
+ * Read the persisted web-search engine (lpx-explorer-tmo). Returns
+ * `null` when nothing has been saved yet, or when the stored value
+ * isn't a known engine id — caller falls back to
+ * `DEFAULT_SEARCH_ENGINE`.
+ */
+export async function loadSearchEngine(): Promise<SearchEngineId | null> {
+  const store = await getStore();
+  const raw = await store.get(KEY_SEARCH_ENGINE);
+  return isSearchEngineId(raw) ? raw : null;
+}
+
+export async function persistSearchEngine(
+  engine: SearchEngineId,
+): Promise<void> {
+  const store = await getStore();
+  await store.set(KEY_SEARCH_ENGINE, engine);
   await store.save();
 }
 

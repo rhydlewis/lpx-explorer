@@ -48,6 +48,21 @@ const PREFIX_RECENT_PROJECT: &str = "recent_project::";
 const PREFIX_RECENT_FOLDER: &str = "recent_folder::";
 const MENU_EVENT: &str = "menu-event";
 
+const PREFIX_SEARCH_ENGINE: &str = "search_engine::";
+const DEFAULT_SEARCH_ENGINE: &str = "google";
+
+/// Engines offered in View → Search With (lpx-explorer-tmo). Ids must
+/// match `SEARCH_ENGINES` in `src/lib/search-engines.ts` — the frontend
+/// owns URL construction, this list only drives the menu.
+const SEARCH_ENGINES: &[(&str, &str)] = &[
+    ("google", "Google"),
+    ("duckduckgo", "DuckDuckGo"),
+    ("bing", "Bing"),
+    ("kagi", "Kagi"),
+    ("brave", "Brave"),
+    ("ecosia", "Ecosia"),
+];
+
 const THEME_SYSTEM: &str = "system";
 const THEME_LIGHT: &str = "light";
 const THEME_DARK: &str = "dark";
@@ -60,6 +75,7 @@ const THEME_DARK: &str = "dark";
 #[derive(Default)]
 struct AppMenuState {
     active_theme: Mutex<String>,
+    active_search_engine: Mutex<String>,
 }
 
 fn active_theme_or_default(state: &AppMenuState) -> String {
@@ -71,9 +87,48 @@ fn active_theme_or_default(state: &AppMenuState) -> String {
     }
 }
 
+fn active_search_engine_or_default(state: &AppMenuState) -> String {
+    let guard = state
+        .active_search_engine
+        .lock()
+        .expect("search engine state poisoned");
+    if guard.is_empty() {
+        DEFAULT_SEARCH_ENGINE.to_owned()
+    } else {
+        guard.clone()
+    }
+}
+
+/// View → Search With (lpx-explorer-tmo). macOS exposes no API for
+/// "the user's default search engine" — `x-web-search://` is a
+/// Safari-only scheme that is absent on some machines and bypasses
+/// browser routers like Finicky, so it would ignore the user's browser
+/// choice rather than honour it. An explicit pick is the only approach
+/// that works whichever browser opens the URL.
+fn build_search_engine_submenu(
+    app: &AppHandle,
+    active_engine: &str,
+) -> tauri::Result<Submenu<Wry>> {
+    let mut items: Vec<Box<dyn tauri::menu::IsMenuItem<Wry>>> = Vec::new();
+    for (id, label) in SEARCH_ENGINES {
+        items.push(Box::new(CheckMenuItem::with_id(
+            app,
+            format!("{PREFIX_SEARCH_ENGINE}{id}"),
+            label,
+            true,
+            active_engine == *id,
+            None::<&str>,
+        )?));
+    }
+    let refs: Vec<&dyn tauri::menu::IsMenuItem<Wry>> =
+        items.iter().map(|i| i.as_ref()).collect();
+    Submenu::with_items(app, "Search With", true, &refs)
+}
+
 fn build_view_submenu(
     app: &AppHandle,
     active_theme: &str,
+    active_engine: &str,
 ) -> tauri::Result<Submenu<Wry>> {
     let system = CheckMenuItem::with_id(
         app,
@@ -99,7 +154,19 @@ fn build_view_submenu(
         active_theme == THEME_DARK,
         None::<&str>,
     )?;
-    Submenu::with_items(app, "View", true, &[&system, &light, &dark])
+    let search_with = build_search_engine_submenu(app, active_engine)?;
+    Submenu::with_items(
+        app,
+        "View",
+        true,
+        &[
+            &system,
+            &light,
+            &dark,
+            &PredefinedMenuItem::separator(app)?,
+            &search_with,
+        ],
+    )
 }
 
 #[derive(Debug, Deserialize)]
@@ -149,6 +216,7 @@ fn build_menu(
     recent_projects: &[RecentMenuItem],
     recent_folders: &[RecentMenuItem],
     active_theme: &str,
+    active_engine: &str,
 ) -> tauri::Result<Menu<Wry>> {
     let app_menu = Submenu::with_items(
         app,
@@ -279,7 +347,7 @@ fn build_menu(
         ],
     )?;
 
-    let view_menu = build_view_submenu(app, active_theme)?;
+    let view_menu = build_view_submenu(app, active_theme, active_engine)?;
 
     Menu::with_items(
         app,
@@ -300,8 +368,15 @@ fn set_recent_menu(
     recent_folders: Vec<RecentMenuItem>,
 ) -> Result<(), String> {
     let active_theme = active_theme_or_default(&state);
-    let menu = build_menu(&app, &recent_projects, &recent_folders, &active_theme)
-        .map_err(|e| format!("failed to build menu: {e}"))?;
+    let active_engine = active_search_engine_or_default(&state);
+    let menu = build_menu(
+        &app,
+        &recent_projects,
+        &recent_folders,
+        &active_theme,
+        &active_engine,
+    )
+    .map_err(|e| format!("failed to build menu: {e}"))?;
     app.set_menu(menu)
         .map_err(|e| format!("failed to set menu: {e}"))?;
     Ok(())
@@ -325,7 +400,32 @@ fn set_theme_menu(
             .map_err(|e| format!("theme state poisoned: {e}"))?;
         *guard = theme.clone();
     }
-    let menu = build_menu(&app, &[], &[], &theme)
+    let active_engine = active_search_engine_or_default(&state);
+    let menu = build_menu(&app, &[], &[], &theme, &active_engine)
+        .map_err(|e| format!("failed to build menu: {e}"))?;
+    app.set_menu(menu)
+        .map_err(|e| format!("failed to set menu: {e}"))?;
+    Ok(())
+}
+
+/// Frontend-invoked: update the checked engine in View → Search With
+/// (lpx-explorer-tmo). Mirrors `set_theme_menu` — the choice is stored
+/// in AppMenuState so later rebuilds keep the checkmark in place.
+#[tauri::command]
+fn set_search_engine_menu(
+    app: AppHandle,
+    state: State<'_, AppMenuState>,
+    engine: String,
+) -> Result<(), String> {
+    {
+        let mut guard = state
+            .active_search_engine
+            .lock()
+            .map_err(|e| format!("search engine state poisoned: {e}"))?;
+        *guard = engine.clone();
+    }
+    let active_theme = active_theme_or_default(&state);
+    let menu = build_menu(&app, &[], &[], &active_theme, &engine)
         .map_err(|e| format!("failed to build menu: {e}"))?;
     app.set_menu(menu)
         .map_err(|e| format!("failed to set menu: {e}"))?;
@@ -342,6 +442,7 @@ pub fn run() {
         .plugin(tauri_plugin_http::init())
         .manage(AppMenuState::default())
         .invoke_handler(tauri::generate_handler![
+            auval::au_paths_newest_mtime,
             auval::load_au_registry,
             auval::run_au_scan,
             commands::is_dir,
@@ -358,6 +459,7 @@ pub fn run() {
             commands::project_last_saved_from,
             library::scan_folder,
             set_recent_menu,
+            set_search_engine_menu,
             set_theme_menu
         ]);
 
@@ -375,7 +477,13 @@ pub fn run() {
             // Initial menu uses 'system' as the default theme; the
             // frontend re-pushes the persisted preference once it
             // hydrates via set_theme_menu.
-            let menu = build_menu(app.handle(), &[], &[], THEME_SYSTEM)?;
+            let menu = build_menu(
+                app.handle(),
+                &[],
+                &[],
+                THEME_SYSTEM,
+                DEFAULT_SEARCH_ENGINE,
+            )?;
             app.set_menu(menu)?;
             tlog!("[main] setup() done — menu attached, webview booting");
             Ok(())

@@ -41,6 +41,73 @@ pub fn default_cache_path() -> Option<PathBuf> {
     Some(PathBuf::from(home).join(".cache/lpx-explorer/auval.json"))
 }
 
+/// Directories macOS searches for Audio Unit components. A plug-in
+/// installer drops a `.component` bundle into one of these, which bumps
+/// the containing directory's mtime — the signal we use to decide the
+/// cached registry has gone stale (lpx-explorer-kw0).
+pub fn au_search_dirs() -> Vec<PathBuf> {
+    let mut dirs = vec![PathBuf::from("/Library/Audio/Plug-Ins/Components")];
+    if let Some(home) = std::env::var_os("HOME") {
+        dirs.push(PathBuf::from(home).join("Library/Audio/Plug-Ins/Components"));
+    }
+    dirs
+}
+
+/// Newest mtime (unix seconds) across `dirs` and their immediate
+/// children. `None` when none of the paths exist — a Mac with no
+/// third-party AUs has no `~/Library/.../Components` at all.
+pub fn newest_mtime_unix(dirs: &[PathBuf]) -> Option<i64> {
+    let mut newest: Option<i64> = None;
+    for dir in dirs {
+        // The directory's own mtime catches add/remove of a bundle.
+        consider(&mut newest, mtime_of(dir));
+        // Each immediate child catches an installer that replaced a
+        // bundle in place without touching the parent.
+        if let Ok(entries) = std::fs::read_dir(dir) {
+            for entry in entries.flatten() {
+                consider(
+                    &mut newest,
+                    entry
+                        .metadata()
+                        .ok()
+                        .and_then(|m| mtime_from(&m)),
+                );
+            }
+        }
+    }
+    newest
+}
+
+fn consider(newest: &mut Option<i64>, candidate: Option<i64>) {
+    if let Some(c) = candidate {
+        if newest.is_none_or(|n| c > n) {
+            *newest = Some(c);
+        }
+    }
+}
+
+fn mtime_of(path: &Path) -> Option<i64> {
+    mtime_from(&std::fs::metadata(path).ok()?)
+}
+
+/// Unix seconds from a [`std::fs::Metadata`]. `None` for a pre-epoch
+/// mtime — `duration_since` errors there, and a plug-in stamped before
+/// 1970 is not a staleness signal worth honouring.
+fn mtime_from(meta: &std::fs::Metadata) -> Option<i64> {
+    meta.modified()
+        .ok()?
+        .duration_since(std::time::UNIX_EPOCH)
+        .ok()
+        .map(|d| d.as_secs() as i64)
+}
+
+/// Tauri command: newest mtime across the AU search paths, for the
+/// frontend's staleness check.
+#[tauri::command]
+pub fn au_paths_newest_mtime() -> Option<i64> {
+    newest_mtime_unix(&au_search_dirs())
+}
+
 /// Streamed events emitted by [`run_au_scan`]. One [`AuvalEvent::Entry`]
 /// per parsed `auval -l` line; a final [`AuvalEvent::Done`] when the
 /// scan completes successfully.
@@ -190,6 +257,13 @@ mod tests {
 
     use tempfile::tempdir;
 
+    fn set_mtime(path: &Path, unix_secs: u64) {
+        let t = std::time::UNIX_EPOCH + std::time::Duration::from_secs(unix_secs);
+        let times = fs::FileTimes::new().set_accessed(t).set_modified(t);
+        let f = fs::File::open(path).expect("open for set_times");
+        f.set_times(times).expect("set_times");
+    }
+
     fn sample_registry() -> AuRegistry {
         AuRegistry {
             entries: vec![
@@ -277,6 +351,81 @@ mod tests {
 
         assert_eq!(loaded.entries[0].subtype_4cc, "EB  ");
         assert_eq!(loaded.entries[0].fingerprint, "aufx/EB  /SToy");
+    }
+
+    // ─── AU search-path mtime (staleness signal) ─────────────────
+
+    #[test]
+    fn newest_mtime_returns_none_when_no_search_dir_exists() {
+        let dir = tempdir().expect("tempdir");
+        let absent = dir.path().join("nope/Components");
+
+        assert_eq!(newest_mtime_unix(&[absent]), None);
+    }
+
+    #[test]
+    fn newest_mtime_reports_the_directory_itself() {
+        let dir = tempdir().expect("tempdir");
+
+        let mtime = newest_mtime_unix(&[dir.path().to_path_buf()]).expect("some");
+
+        assert!(mtime > 0, "a real directory has a positive mtime");
+    }
+
+    #[test]
+    fn newest_mtime_picks_the_newest_across_dirs_and_children() {
+        // Installing a plug-in bumps the parent dir's mtime AND drops in a
+        // freshly-stamped .component bundle. Either signal must win.
+        let dir = tempdir().expect("tempdir");
+        let old = dir.path().join("old");
+        let new = dir.path().join("new");
+        fs::create_dir(&old).expect("mkdir old");
+        fs::create_dir(&new).expect("mkdir new");
+        set_mtime(&old, 1_000_000);
+        set_mtime(&new, 2_000_000);
+        let child = new.join("Fresh.component");
+        fs::create_dir(&child).expect("mkdir child");
+        set_mtime(&child, 3_000_000);
+        // Re-stamp the parent AFTER creating the child, otherwise the
+        // create_dir call bumps it to "now" and masks the child signal.
+        set_mtime(&new, 2_000_000);
+
+        let mtime = newest_mtime_unix(&[old, new]).expect("some");
+
+        assert_eq!(mtime, 3_000_000, "the child bundle is the newest signal");
+    }
+
+    #[test]
+    fn newest_mtime_skips_absent_dirs_without_discarding_present_ones() {
+        // ~/Library/Audio/Plug-Ins/Components does not exist on a Mac
+        // that has only ever installed system-wide plug-ins.
+        let dir = tempdir().expect("tempdir");
+        let present = dir.path().join("present");
+        fs::create_dir(&present).expect("mkdir");
+        set_mtime(&present, 1_500_000);
+
+        let mtime = newest_mtime_unix(&[dir.path().join("absent"), present]);
+
+        assert_eq!(mtime, Some(1_500_000));
+    }
+
+    #[test]
+    fn au_search_dirs_covers_system_and_user_component_folders() {
+        let dirs = au_search_dirs();
+
+        let joined: Vec<String> =
+            dirs.iter().map(|p| p.to_string_lossy().into_owned()).collect();
+        assert!(
+            joined.iter().any(|s| s == "/Library/Audio/Plug-Ins/Components"),
+            "system-wide Components dir missing from {joined:?}"
+        );
+        assert!(
+            joined
+                .iter()
+                .any(|s| s.ends_with("Library/Audio/Plug-Ins/Components")
+                    && s != "/Library/Audio/Plug-Ins/Components"),
+            "per-user Components dir missing from {joined:?}"
+        );
     }
 
     #[test]

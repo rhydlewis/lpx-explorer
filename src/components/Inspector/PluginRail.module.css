@@ -166,13 +166,46 @@
   100% { background: transparent; }
 }
 
+/*
+ * Plug-in name (lpx-explorer-9ll). A button, not a span: long names are
+ * clipped to one line in a narrow rail, and the only way to read the
+ * rest used to be nothing at all. Activating it unclamps to full wrap.
+ * Reset to look like text — the affordance is the hover underline, not
+ * button chrome.
+ */
 .name {
   flex: 1 1 auto;
   min-width: 0;
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  font-size: var(--fs-body);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  font-size: var(--fs-body);
+}
+
+.name[data-expanded="true"] {
+  white-space: normal;
+  overflow: visible;
+  overflow-wrap: anywhere;
+}
+
+.name:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.name:focus-visible {
+  outline: 2px solid var(--c-accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
 }
 
 /*
@@ -234,6 +267,14 @@
  * for the action to outweigh the 'missing' badge — buttons are
  * always-visible (no hover-reveal) and use a subtle accent treatment
  * so they read as obvious next steps without shouting.
+ */
+/*
+ * Row actions (lpx-explorer-akj). Rendered on missing rows — where the
+ * 2026-05-06 Whimsy review made the action the loudest element — and on
+ * any row whose name the user has expanded. Rows stay one line tall by
+ * default: an always-present actions strip would add a second line to
+ * every row in a long list, and hiding it with opacity would still cost
+ * the height.
  */
 .actions {
   display: flex;
@@ -305,50 +346,25 @@
 }
 
 /*
- * Library-scope row's project disclosure. Lists the contributing
- * project paths under the row; each path is a button that opens the
- * project via the existing flow.
+ * Library-scope row's project disclosure (lpx-explorer-akj). The count
+ * badge is the toggle; the contributing project paths list below the
+ * row, each a button that opens the project via the existing flow.
+ * Previously a <details>/<summary> wrapping all of line 1 — replaced
+ * once line 1 gained its own buttons, which a <summary> would swallow.
  */
-.libraryProjects {
-  margin-top: var(--s-1);
-}
-
-.libraryProjectsSummary {
-  cursor: pointer;
-  font-size: var(--fs-caption);
-  color: var(--c-text-muted);
-  list-style: revert;
-  user-select: none;
-  padding: var(--s-1) 0;
-}
-
-.libraryProjectsSummary:hover {
-  color: var(--c-text-secondary);
-}
-
-/*
- * Library-scope row summary — the line-1 layout matches <PluginRow />
- * exactly. The whole line IS the disclosure trigger; clicking anywhere
- * on it toggles the project-paths list below. The native marker is
- * dropped because we use the count-as-affordance instead.
- */
-.libraryRowSummary {
-  cursor: pointer;
-  list-style: none;
-  user-select: none;
-}
-
-.libraryRowSummary::-webkit-details-marker {
-  display: none;
-}
-
 .libraryCount {
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
   font-size: var(--fs-meta);
   color: var(--c-text-secondary);
   font-variant-numeric: tabular-nums;
 }
 
-details[open] > .libraryRowSummary .libraryCount {
+.libraryCount[aria-expanded="true"] {
   color: var(--c-accent);
 }
 
@@ -382,3 +398,60 @@ details[open] > .libraryRowSummary .libraryCount {
   text-decoration: underline;
 }
 
+
+/*
+ * AU registry freshness footnote + Rescan (lpx-explorer-kw0). Quiet by
+ * default — it's provenance for the install badges above it, not a
+ * call to action. Only the error state raises its voice.
+ */
+.freshnessLine {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+  margin: 0;
+  font-size: var(--fs-meta);
+  color: var(--c-text-muted);
+}
+
+.freshnessButton {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: inherit;
+  color: var(--c-text-secondary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.freshnessButton:hover:not(:disabled) {
+  color: var(--c-text-primary);
+}
+
+.freshnessButton:disabled {
+  color: var(--c-text-muted);
+  text-decoration: none;
+  cursor: default;
+}
+
+.freshnessButton:focus-visible {
+  outline: 2px solid var(--c-accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+.freshnessError {
+  flex-basis: 100%;
+  color: var(--c-status-fail);
+}
+
+.libraryCount:hover {
+  color: var(--c-text-secondary);
+}
+
+.libraryCount:focus-visible {
+  outline: 2px solid var(--c-accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}

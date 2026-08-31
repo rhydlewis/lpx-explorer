@@ -362,6 +362,34 @@ describe("<PluginRail />", () => {
     expect(screen.queryByRole("button", { name: /search the web/i })).toBeNull();
   });
 
+  it("expanding a long name reveals copy/search actions on an installed row", () => {
+    // lpx-explorer-9ll: a clipped name had no way to be read in full or
+    // copied. Expanding it is also how a non-missing row reaches the
+    // actions, which keeps every row one line tall by default.
+    useAuRegistryStore.setState({
+      status: {
+        kind: "loaded",
+        registry: makeAuRegistry(["aufx/Comp/Yamh"]),
+      },
+    });
+    render(
+      <PluginRail
+        summary={makeSummary({
+          fingerprints: [ref("aufx", "Comp", "Yamh", 1)],
+        })}
+      />,
+    );
+    expect(
+      screen.queryByRole("button", { name: /copy name/i }),
+    ).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "aufx/Comp/Yamh" }));
+
+    expect(
+      screen.getByRole("button", { name: /copy fingerprint/i }),
+    ).toBeInTheDocument();
+  });
+
   it("clicking 'Copy fingerprint' on a missing row copies the canonical fingerprint", () => {
     useAuRegistryStore.setState({
       status: { kind: "loaded", registry: makeAuRegistry([]) },
@@ -400,7 +428,7 @@ describe("<PluginRail />", () => {
     fireEvent.click(screen.getByRole("button", { name: /search the web/i }));
 
     expect(mockedSearch).toHaveBeenCalledTimes(1);
-    expect(mockedSearch).toHaveBeenCalledWith("aumu/EZk2/Toon");
+    expect(mockedSearch).toHaveBeenCalledWith("aumu/EZk2/Toon", "google");
   });
 
   it("renders a quiet ghost mark next to a Klopfgeist row (Logic's stock metronome)", () => {
@@ -596,15 +624,68 @@ describe("<PluginRail />", () => {
 
       render(<PluginRail summary={makeSummary()} />);
 
-      await screen.findByText(/· 1 project/i);
-      const disclosure = screen.getByText(/· 1 project/i)
-        .closest("details");
-      expect(disclosure).not.toBeNull();
-      // Open the disclosure and check the project path appears.
-      if (disclosure !== null) {
-        fireEvent.click(disclosure.querySelector("summary")!);
-      }
+      const disclosure = await screen.findByRole("button", {
+        name: /· 1 project/i,
+      });
+      expect(disclosure).toHaveAttribute("aria-expanded", "false");
+      expect(screen.queryByText("/a.logicx")).toBeNull();
+
+      fireEvent.click(disclosure);
+
+      expect(disclosure).toHaveAttribute("aria-expanded", "true");
       expect(screen.getByText("/a.logicx")).toBeInTheDocument();
+    });
+
+    it("library rows expose the same copy/search actions as project rows", async () => {
+      // lpx-explorer-akj: the Library scope is where a user is
+      // triage-shopping for a plug-in missing across several projects,
+      // so the actions matter at least as much here as per-project.
+      useLibraryStore.setState({
+        recent: [{ path: "/a.logicx", name: "a", lastLoadedMs: 1 }],
+        folders: [],
+      });
+      mockedParse.mockResolvedValue(
+        makeSummary({ fingerprints: [ref("aumu", "EZk2", "Toon", 1)] }),
+      );
+      useAuRegistryStore.setState({
+        status: { kind: "loaded", registry: makeAuRegistry([]) },
+      });
+      useUIStore.setState({ pluginRailScope: "library" });
+
+      render(<PluginRail summary={makeSummary()} />);
+
+      await screen.findByRole("button", { name: /· 1 project/i });
+      fireEvent.click(
+        screen.getByRole("button", { name: /copy fingerprint/i }),
+      );
+
+      expect(mockedCopy).toHaveBeenCalledWith("aumu/EZk2/Toon");
+    });
+
+    it("using a library row action does not toggle the projects disclosure", async () => {
+      // The trap in nesting controls inside the old <summary>: every
+      // action click would have opened/closed the disclosure too.
+      useLibraryStore.setState({
+        recent: [{ path: "/a.logicx", name: "a", lastLoadedMs: 1 }],
+        folders: [],
+      });
+      mockedParse.mockResolvedValue(
+        makeSummary({ fingerprints: [ref("aumu", "EZk2", "Toon", 1)] }),
+      );
+      useAuRegistryStore.setState({
+        status: { kind: "loaded", registry: makeAuRegistry([]) },
+      });
+      useUIStore.setState({ pluginRailScope: "library" });
+
+      render(<PluginRail summary={makeSummary()} />);
+      const disclosure = await screen.findByRole("button", {
+        name: /· 1 project/i,
+      });
+
+      fireEvent.click(screen.getByRole("button", { name: /search the web/i }));
+
+      expect(disclosure).toHaveAttribute("aria-expanded", "false");
+      expect(screen.queryByText("/a.logicx")).toBeNull();
     });
 
     it("clicking a project path inside a library row opens that project", async () => {
@@ -619,13 +700,10 @@ describe("<PluginRail />", () => {
 
       render(<PluginRail summary={makeSummary()} />);
 
-      await screen.findByText(/· 1 project/i);
       // Open the disclosure first.
-      const summary = screen
-        .getByText(/· 1 project/i)
-        .closest("details")
-        ?.querySelector("summary");
-      if (summary) fireEvent.click(summary);
+      fireEvent.click(
+        await screen.findByRole("button", { name: /· 1 project/i }),
+      );
 
       fireEvent.click(screen.getByText("/a.logicx"));
 

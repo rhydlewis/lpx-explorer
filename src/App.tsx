@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
-import { openUrl } from "@tauri-apps/plugin-opener";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 
 import { runLibraryHydration } from "./lib/library-hydration";
@@ -13,18 +12,20 @@ import {
 } from "./lib/scan-scheduler";
 import { installThemeWatcher } from "./lib/theme";
 import { openProject } from "./lib/open-project";
-import { runReadmeExport } from "./lib/export-action";
 import { pickAndAddFolder } from "./lib/open-folder";
 import { routeDrop } from "./lib/drop-routing";
 import {
+  loadSearchEngine,
   loadShowFingerprints,
   loadTextZoom,
   loadThemePreference,
+  persistSearchEngine,
   persistShowFingerprints,
   persistTextZoom,
   persistThemePreference,
   setThemeMenu,
 } from "./lib/persistence";
+import { dispatchMenuEvent } from "./lib/menu-dispatch";
 import { useMediaQuery } from "./lib/use-media-query";
 import { useAuRegistryStore } from "./store/au-registry-store";
 import { useLibraryStore } from "./store/library-store";
@@ -41,8 +42,6 @@ import { LibraryRail } from "./components/Library/LibraryRail";
 import "./App.css";
 
 const HINT_DISMISS_MS = 4000;
-const REPORT_ISSUE_URL = "https://github.com/rhydlewis/lpx-explorer/issues";
-const BUY_ME_COFFEE_URL = "https://buymeacoffee.com/rhyd";
 /**
  * Below this viewport width the right Plug-ins rail collapses to a
  * topbar toggle — at narrower widths a 320px rail crowds the
@@ -63,6 +62,7 @@ function App() {
   const selectedLibraryFolder = useUIStore((s) => s.selectedLibraryFolder);
   const textZoom = useUIStore((s) => s.textZoom);
   const showFingerprints = useUIStore((s) => s.pluginRailShowFingerprints);
+  const searchEngine = useUIStore((s) => s.searchEngine);
   const theme = useUIStore((s) => s.theme);
   const isNarrow = useMediaQuery(`(max-width: ${RIGHT_RAIL_BREAKPOINT_PX - 1}px)`);
   const [hint, setHint] = useState<string | null>(null);
@@ -81,7 +81,7 @@ function App() {
   }
 
   useEffect(() => {
-    void useAuRegistryStore.getState().autoScanIfAbsent();
+    void useAuRegistryStore.getState().autoScanIfStale();
   }, []);
 
   useEffect(() => hydrateParseCacheAsync(), []);
@@ -97,6 +97,7 @@ function App() {
   const themeHydrated = useRef(false);
   const textZoomHydrated = useRef(false);
   const showFingerprintsHydrated = useRef(false);
+  const searchEngineHydrated = useRef(false);
 
   // Theme preference (lpx-explorer-6zn) — hydrate once on mount,
   // persist on every change. The watcher above re-applies the
@@ -156,6 +157,24 @@ function App() {
     if (!showFingerprintsHydrated.current) return;
     void persistShowFingerprints(showFingerprints);
   }, [showFingerprints]);
+
+  // Web-search engine pref (lpx-explorer-tmo) — hydrate once, persist on
+  // change, and keep the native View → Search With checkmark in sync.
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const p = await loadSearchEngine();
+      if (cancelled) return;
+      searchEngineHydrated.current = true;
+      if (p !== null) useUIStore.getState().setSearchEngine(p);
+    })();
+    return () => { cancelled = true; };
+  }, []);
+  useEffect(() => {
+    void invoke("set_search_engine_menu", { engine: searchEngine });
+    if (!searchEngineHydrated.current) return;
+    void persistSearchEngine(searchEngine);
+  }, [searchEngine]);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -221,47 +240,10 @@ function App() {
 
   useEffect(() => {
     const unlistenPromise = listen<string>("menu-event", (event) => {
-      const id = event.payload;
-      if (id === "menu_open_project") {
-        void pickProject();
-      } else if (id === "menu_open_folder") {
-        void pickAndAddFolder();
-      } else if (id === "clear_recent_projects") {
-        useLibraryStore.getState().clearRecent();
-      } else if (id === "clear_recent_folders") {
-        useLibraryStore.getState().clearRecentFolders();
-      } else if (id === "help_report_issue") {
-        void openUrl(REPORT_ISSUE_URL);
-      } else if (id === "help_buy_me_coffee") {
-        void openUrl(BUY_ME_COFFEE_URL);
-      } else if (id === "theme_system") {
-        useUIStore.getState().setTheme("system");
-      } else if (id === "theme_light") {
-        useUIStore.getState().setTheme("light");
-      } else if (id === "theme_dark") {
-        useUIStore.getState().setTheme("dark");
-      } else if (id === "menu_open_in_logic") {
-        const cur = useProjectStore.getState().current;
-        if (cur.kind === "loaded") {
-          void invoke("open_in_logic", { path: cur.path });
-        }
-      } else if (id === "menu_export_readme") {
-        void runReadmeExport().then((result) => {
-          if (result.kind === "written") {
-            const name = result.path.split("/").pop() ?? result.path;
-            setHint(`Exported README to ${name}`);
-          } else if (result.kind === "error") {
-            setHint(`Export failed: ${result.message}`);
-          }
-          // 'no-project' and 'cancelled' are silent — nothing to report.
-        });
-      } else if (id.startsWith("recent_project::")) {
-        void openProject(id.slice("recent_project::".length));
-      } else if (id.startsWith("recent_folder::")) {
-        void useLibraryStore
-          .getState()
-          .addFolder(id.slice("recent_folder::".length));
-      }
+      dispatchMenuEvent(event.payload, {
+        pickProject: () => void pickProject(),
+        setHint,
+      });
     });
     return () => {
       void unlistenPromise.then((unlisten) => unlisten());

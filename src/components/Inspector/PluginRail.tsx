@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { type InstallStatus } from "../../lib/au-utils";
 import { aggregateLibrary } from "../../lib/library-rollup";
@@ -12,8 +12,10 @@ import {
   type PluginRailScope,
 } from "../../store/ui-store";
 
+import { AuFreshness } from "./AuFreshnessLine";
 import { LibraryPluginRow } from "./LibraryPluginRow";
-import { MissingRowActions } from "./MissingRowActions";
+import { PluginName } from "./PluginName";
+import { PluginRowActions } from "./PluginRowActions";
 import { PluginRailCountLine } from "./PluginRailCountLine";
 import { PluginRailFacetRow } from "./PluginRailFacetRow";
 import { RowIcon } from "./RowIcon";
@@ -186,6 +188,7 @@ export function PluginRail({ summary }: Props) {
         missing={missingCount}
         categorised={categorisedCount}
       />
+      <AuFreshness />
       <div className={styles.scopeRow} role="group" aria-label="plug-in scope">
         {SCOPES.map((s) => (
           <button
@@ -291,6 +294,7 @@ interface RowProps {
 }
 
 function PluginRow({ group, showFingerprint }: RowProps) {
+  const [nameExpanded, setNameExpanded] = useState(false);
   const { displayName, hasRegistryEntry, status } = group;
   const fingerprintLineVisible = showFingerprint && hasRegistryEntry;
   const count = group.group.count;
@@ -302,7 +306,11 @@ function PluginRow({ group, showFingerprint }: RowProps) {
     >
       <div className={styles.line}>
         <RowIcon fingerprint={group.group.fingerprint} status={status} />
-        <span className={styles.name}>{displayName}</span>
+        <PluginName
+          displayName={displayName}
+          expanded={nameExpanded}
+          onToggle={() => setNameExpanded((v) => !v)}
+        />
         {count > 1 && (
           <span className={styles.countBadge}>×{count}</span>
         )}
@@ -319,8 +327,8 @@ function PluginRow({ group, showFingerprint }: RowProps) {
           </span>
         </div>
       )}
-      {status === "missing" && (
-        <MissingRowActions
+      {(status === "missing" || nameExpanded) && (
+        <PluginRowActions
           fingerprint={group.group.fingerprint}
           displayName={displayName}
         />

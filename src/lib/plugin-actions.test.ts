@@ -53,8 +53,8 @@ describe("searchPluginOnWeb", () => {
     mockedOpenUrl.mockClear();
   });
 
-  it("opens a Google search URL for the given query", async () => {
-    await searchPluginOnWeb("Soundtoys EchoBoy");
+  it("opens a search URL on the engine it was given", async () => {
+    await searchPluginOnWeb("Soundtoys EchoBoy", "google");
 
     expect(mockedOpenUrl).toHaveBeenCalledTimes(1);
     const url = mockedOpenUrl.mock.calls[0][0];
@@ -62,8 +62,17 @@ describe("searchPluginOnWeb", () => {
     expect(url).toContain(encodeURIComponent("Soundtoys EchoBoy"));
   });
 
+  it("honours a non-Google engine rather than forcing Google", async () => {
+    // lpx-explorer-tmo — the whole point of the preference.
+    await searchPluginOnWeb("Soundtoys EchoBoy", "duckduckgo");
+
+    const url = mockedOpenUrl.mock.calls[0][0];
+    expect(url).toMatch(/^https:\/\/duckduckgo\.com\/\?q=/);
+    expect(url).not.toContain("google.com");
+  });
+
   it("URL-encodes special characters in the query", async () => {
-    await searchPluginOnWeb("aufx/Comp/appl");
+    await searchPluginOnWeb("aufx/Comp/appl", "google");
 
     const url = mockedOpenUrl.mock.calls[0][0];
     // Slashes must be percent-encoded in the query string.

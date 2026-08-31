@@ -1,7 +1,11 @@
+import { useState } from "react";
+
 import type { InstallStatus } from "../../lib/au-utils";
 import type { RolledFingerprint } from "../../lib/library-rollup";
 import { openProject } from "../../lib/open-project";
 
+import { PluginName } from "./PluginName";
+import { PluginRowActions } from "./PluginRowActions";
 import { RowIcon } from "./RowIcon";
 
 import styles from "./PluginRail.module.css";
@@ -25,6 +29,12 @@ export interface LibraryPluginRowProps {
  * badge — so the user reads both scopes the same way. The library
  * twist: the count badge reads `· N projects` (clickable disclosure)
  * and expands to list the contributing paths.
+ *
+ * The disclosure is a plain button + `aria-expanded` rather than
+ * `<details>/<summary>` (lpx-explorer-akj). Line 1 now carries its own
+ * interactive controls — the expandable name and the row actions — and
+ * nesting buttons inside a `<summary>` both hijacks their clicks and
+ * reads badly to screen readers.
  */
 export function LibraryPluginRow({
   fingerprint,
@@ -33,6 +43,8 @@ export function LibraryPluginRow({
   rolled,
   showFingerprint,
 }: LibraryPluginRowProps) {
+  const [expanded, setExpanded] = useState(false);
+  const [nameExpanded, setNameExpanded] = useState(false);
   const projectsLabel = `${rolled.projectCount} project${
     rolled.projectCount === 1 ? "" : "s"
   }`;
@@ -42,19 +54,28 @@ export function LibraryPluginRow({
       data-fingerprint={fingerprint}
       data-status={status}
     >
-      <details className={styles.libraryProjects}>
-        <summary className={styles.libraryRowSummary}>
-          <span className={styles.line}>
-            <RowIcon fingerprint={fingerprint} status={status} />
-            <span className={styles.name}>{displayName}</span>
-            <span className={styles.libraryCount}>· {projectsLabel}</span>
-            {status !== "unknown" && (
-              <span data-status={status} className={styles.installBadge}>
-                {INSTALL_LABEL[status]}
-              </span>
-            )}
+      <div className={styles.line}>
+        <RowIcon fingerprint={fingerprint} status={status} />
+        <PluginName
+          displayName={displayName}
+          expanded={nameExpanded}
+          onToggle={() => setNameExpanded((v) => !v)}
+        />
+        <button
+          type="button"
+          className={styles.libraryCount}
+          aria-expanded={expanded}
+          onClick={() => setExpanded((v) => !v)}
+        >
+          · {projectsLabel}
+        </button>
+        {status !== "unknown" && (
+          <span data-status={status} className={styles.installBadge}>
+            {INSTALL_LABEL[status]}
           </span>
-        </summary>
+        )}
+      </div>
+      {expanded && (
         <ul className={styles.libraryProjectsList}>
           {rolled.projectPaths.map((path) => (
             <li key={path}>
@@ -68,11 +89,14 @@ export function LibraryPluginRow({
             </li>
           ))}
         </ul>
-      </details>
+      )}
       {showFingerprint && displayName !== fingerprint && (
         <div className={styles.line}>
           <span className={styles.fingerprint}>{fingerprint}</span>
         </div>
+      )}
+      {(status === "missing" || nameExpanded) && (
+        <PluginRowActions fingerprint={fingerprint} displayName={displayName} />
       )}
     </li>
   );
