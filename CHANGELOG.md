@@ -4,6 +4,14 @@ All notable changes to LPX Explorer are documented here. The CI release pipeline
 
 Format: standard Markdown — `-` bullets and free-form paragraphs. Headings within a section (`###`) are not currently extracted.
 
+## v0.0.10
+
+- Plug-ins you install after your first scan are now recognised. LPX Explorer rechecks your Audio Units whenever your plug-in folders change — previously it trusted its very first scan forever, so a plug-in installed later kept showing as "Missing on this Mac" no matter how many times you relaunched
+- The plug-in panel now shows when your Audio Units were last checked, with a "Rescan" button to recheck at any time
+- Choose the search engine behind "Search the web" — View → Search With, offering Google, DuckDuckGo, Bing, Kagi, Brave and Ecosia. Your choice is remembered between launches
+- Long plug-in names are no longer cut off with no way to read them — click a name (or Tab to it and press Enter) to see it in full, and copy the name to the clipboard
+- "Copy fingerprint" and "Search the web" are now available on Library rows too, not just when viewing a single project
+
 ## v0.0.9
 
 - See which Logic version last saved a project — shown in the Metadata panel as "Last saved with" and in the exported README
